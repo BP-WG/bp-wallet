@@ -73,7 +73,7 @@ fn run() -> Result<(), RuntimeError> {
 
     // let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
 
-    let mut runtime = Runtime::<DescriptorStd, ()>::load(opts.data_dir.clone())?;
+    let mut runtime = opts.runtime()?;
     debug!("Executing command: {}", opts.command);
     opts.command.exec(&mut runtime)?;
     Ok(())

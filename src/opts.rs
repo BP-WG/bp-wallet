@@ -22,7 +22,8 @@
 
 use std::path::PathBuf;
 
-use bp::Chain;
+use bp::{Chain, DescriptorStd, TrKey, XpubDescriptor};
+use bp_rt::{Runtime, RuntimeError};
 use clap::ValueHint;
 
 use crate::{Command, BP_DATA_DIR};
@@ -47,9 +48,10 @@ pub struct Opts {
         global = true,
         default_value = BP_DATA_DIR,
         env = "BP_DATA_DIR",
-        value_hint = ValueHint::DirPath
+        value_hint = ValueHint::DirPath,
+        required_unless_present_any = ["wallet-path", "tr-key-only"]
     )]
-    pub data_dir: PathBuf,
+    pub data_dir: Option<PathBuf>,
 
     /// Blockchain to use.
     #[clap(
@@ -58,12 +60,27 @@ pub struct Opts {
         global = true,
         alias = "network",
         default_value = "testnet",
-        env = "BP_NETWORK"
+        env = "BP_NETWORK",
+        required_unless_present_any = ["wallet-path", "tr-key-only"]
     )]
-    pub chain: Chain,
+    pub chain: Option<Chain>,
+
+    /// Path to wallet directory.
+    #[clap(
+        short,
+        long,
+        global = true,
+        value_hint = ValueHint::DirPath,
+        conflicts_with_all = ["data-dir", "chain"]
+    )]
+    pub wallet_path: Option<PathBuf>,
+
+    /// Use tr(KEY) descriptor as wallet.
+    #[clap(long, global = true, conflicts_with = "wallet-path")]
+    pub tr_key_only: Option<XpubDescriptor>,
 
     /// Esplora server to use.
-    #[clap(short, long, env = "BP_ELECTRUM_SERVER")]
+    #[clap(short, long, global = true, env = "BP_ELECTRUM_SERVER")]
     pub esplora: Option<String>,
 
     /// Command to execute.
@@ -73,7 +90,23 @@ pub struct Opts {
 
 impl Opts {
     pub fn process(&mut self) {
-        self.data_dir =
-            PathBuf::from(shellexpand::tilde(&self.data_dir.display().to_string()).to_string());
+        self.data_dir.as_mut().map(|data_dir| {
+            *data_dir =
+                PathBuf::from(shellexpand::tilde(&data_dir.display().to_string()).to_string())
+        });
+    }
+
+    pub fn runtime(&self) -> Result<Runtime, RuntimeError> {
+        if let Some(mut data_dir) = self.data_dir.clone() {
+            let network = self.chain.expect("chain must be present in data director is given");
+            data_dir.push(network.to_string());
+            Runtime::load(data_dir)
+        } else if let Some(wallet_path) = self.wallet_path.clone() {
+            Runtime::load(wallet_path)
+        } else if let Some(d) = self.tr_key_only.clone() {
+            Ok(Runtime::new(TrKey::from(d).into()))
+        } else {
+            unreachable!()
+        }
     }
 }
