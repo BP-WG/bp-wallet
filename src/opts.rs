@@ -49,7 +49,7 @@ pub struct Opts {
         default_value = BP_DATA_DIR,
         env = "BP_DATA_DIR",
         value_hint = ValueHint::DirPath,
-        required_unless_present_any = ["wallet-path", "tr-key-only"]
+        conflicts_with_all = ["wallet_path", "tr_key_only"],
     )]
     pub data_dir: Option<PathBuf>,
 
@@ -61,7 +61,7 @@ pub struct Opts {
         alias = "network",
         default_value = "testnet",
         env = "BP_NETWORK",
-        required_unless_present = "wallet-path"
+        conflicts_with = "wallet_path"
     )]
     pub chain: Option<Chain>,
 
@@ -71,12 +71,12 @@ pub struct Opts {
         long,
         global = true,
         value_hint = ValueHint::DirPath,
-        conflicts_with_all = ["data-dir", "chain"]
+        conflicts_with = "tr_key_only",
     )]
     pub wallet_path: Option<PathBuf>,
 
     /// Use tr(KEY) descriptor as wallet.
-    #[clap(long, global = true, conflicts_with = "wallet-path")]
+    #[clap(long, global = true)]
     pub tr_key_only: Option<XpubDescriptor>,
 
     /// Esplora server to use.
@@ -97,15 +97,15 @@ impl Opts {
     }
 
     pub fn runtime(&self) -> Result<Runtime, RuntimeError> {
-        if let Some(mut data_dir) = self.data_dir.clone() {
+        if let Some(d) = self.tr_key_only.clone() {
+            let network = self.chain.expect("chain must be present in data director is given");
+            Ok(Runtime::new(TrKey::from(d).into(), network))
+        } else if let Some(wallet_path) = self.wallet_path.clone() {
+            Runtime::load(wallet_path)
+        } else if let Some(mut data_dir) = self.data_dir.clone() {
             let network = self.chain.expect("chain must be present in data director is given");
             data_dir.push(network.to_string());
             Runtime::load(data_dir)
-        } else if let Some(wallet_path) = self.wallet_path.clone() {
-            Runtime::load(wallet_path)
-        } else if let Some(d) = self.tr_key_only.clone() {
-            let network = self.chain.expect("chain must be present in data director is given");
-            Ok(Runtime::new(TrKey::from(d).into(), network))
         } else {
             unreachable!()
         }

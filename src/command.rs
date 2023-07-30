@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::DeriveSpk;
+use bp::{DeriveSpk, DerivedAddr};
 use bp_rt::{Runtime, RuntimeError};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
@@ -39,9 +39,21 @@ impl Command {
         runtime: &mut Runtime<D, L2>,
     ) -> Result<(), RuntimeError> {
         match self {
-            Command::Addresses { count } => runtime,
+            Command::Addresses { count } => {
+                println!();
+                println!("Addresses (outer):");
+                for derived in runtime.addresses().take(count as usize) {
+                    let DerivedAddr {
+                        addr,
+                        keychain,
+                        index,
+                    } = derived;
+                    println!("/{keychain}/{index}\t{addr}");
+                }
+            }
         };
 
+        println!();
         Ok(())
     }
 }

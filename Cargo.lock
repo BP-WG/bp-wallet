@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "amplify"
-version = "4.0.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f26966af46e0d200e8bf2b7f16230997c1c3f2d141bc27ccc091c012ed527b58"
+checksum = "4707ab08f19a25ba492cbf61713591b7f022b54ee188f35457e6de22f367df4a"
 dependencies = [
  "amplify_apfloat",
  "amplify_derive",
@@ -175,7 +175,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
+source = "git+https://github.com/BP-WG/bp-wallet#5a414a7eed1c7fba99c29bfa7aefe0ac14408485"
 dependencies = [
  "amplify",
  "bp-std",
@@ -185,7 +185,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.6"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#e13eb2897f6a53d5815c6542b2c5c5c9a1d5d424"
+source = "git+https://github.com/BP-WG/bp-core?branch=primitives#61f6ecfd136cb657f7a178b1cd0562a8ef11dad3"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -207,7 +207,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
+source = "git+https://github.com/BP-WG/bp-wallet#5a414a7eed1c7fba99c29bfa7aefe0ac14408485"
 dependencies = [
  "amplify",
  "bech32",
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 name = "bp-wallet"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
+source = "git+https://github.com/BP-WG/bp-wallet#5a414a7eed1c7fba99c29bfa7aefe0ac14408485"
 dependencies = [
  "amplify",
  "bp-invoice",
@@ -293,7 +293,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.27",
+ "syn 2.0.28",
 ]
 
 [[package]]
@@ -549,7 +549,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
+source = "git+https://github.com/BP-WG/bp-wallet#5a414a7eed1c7fba99c29bfa7aefe0ac14408485"
 dependencies = [
  "amplify",
  "bp-std",
@@ -654,22 +654,22 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.178"
+version = "1.0.179"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60363bdd39a7be0266a520dab25fdc9241d2f987b08a01e01f0ec6d06a981348"
+checksum = "0a5bf42b8d227d4abf38a1ddb08602e229108a517cd4e5bb28f9c7eaafdce5c0"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.178"
+version = "1.0.179"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28482318d6641454cb273da158647922d1be6b5a2fcc6165cd89ebdd7ed576b"
+checksum = "741e124f5485c7e60c03b043f79f320bff3527f4bbf12cf3831750dc46a0ec2c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.27",
+ "syn 2.0.28",
 ]
 
 [[package]]
@@ -787,9 +787,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.27"
+version = "2.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b60f673f44a8255b9c8c657daf66a596d435f2da81a555b06dc644d080ba45e0"
+checksum = "04361975b3f5e348b2189d8dc55bc942f278b2d482a6a0365de5bdd62d351567"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -822,7 +822,7 @@ checksum = "090198534930841fab3a5d1bb637cde49e339654e606195f8d9c76eeb081dc96"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.27",
+ "syn 2.0.28",
 ]
 
 [[package]]
@@ -925,7 +925,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.27",
+ "syn 2.0.28",
  "wasm-bindgen-shared",
 ]
 
@@ -947,7 +947,7 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.27",
+ "syn 2.0.28",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
