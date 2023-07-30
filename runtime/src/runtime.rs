@@ -21,6 +21,10 @@
 // limitations under the License.
 
 use std::io;
+use std::ops::{Deref, DerefMut};
+use std::path::PathBuf;
+
+use bp::{DeriveSpk, DescriptorStd, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
@@ -32,4 +36,23 @@ pub enum RuntimeError {
     Custom(String),
 }
 
-pub struct Runtime {}
+#[derive(Getters, Debug)]
+pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Default = ()> {
+    path: Option<PathBuf>,
+    wallet: Wallet<D, L2>,
+}
+
+impl<D: DeriveSpk, L2: Default> Deref for Runtime<D, L2> {
+    type Target = Wallet<D, L2>;
+    fn deref(&self) -> &Self::Target { &self.wallet }
+}
+
+impl<D: DeriveSpk, L2: Default> DerefMut for Runtime<D, L2> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
+}
+
+impl<D: DeriveSpk, L2: Default> Runtime<D, L2> {
+    pub fn new(descr: D) -> Self { todo!() }
+
+    pub fn load(path: PathBuf) -> Result<Self, RuntimeError> { todo!() }
+}

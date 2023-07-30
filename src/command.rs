@@ -20,15 +20,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use bp::DeriveSpk;
 use bp_rt::{Runtime, RuntimeError};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
-pub enum Command {}
+pub enum Command {
+    Noop,
+}
 
 impl Command {
-    pub fn exec(self, runtime: &mut Runtime) -> Result<(), RuntimeError> {
-        match self {}
+    pub fn exec<D: DeriveSpk, L2: Default>(
+        self,
+        runtime: &mut Runtime<D, L2>,
+    ) -> Result<(), RuntimeError> {
+        match self {
+            Command::Noop => {}
+        }
 
         Ok(())
     }

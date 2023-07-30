@@ -33,6 +33,7 @@ mod command;
 
 use std::process::ExitCode;
 
+use bp::DescriptorStd;
 use bp_rt::{Runtime, RuntimeError};
 use clap::Parser;
 
@@ -70,9 +71,9 @@ fn run() -> Result<(), RuntimeError> {
     LogLevel::from_verbosity_flag_count(opts.verbose).apply();
     trace!("Command-line arguments: {:#?}", &opts);
 
-    let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
+    // let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
 
-    let mut runtime = Runtime::load(opts.data_dir.clone(), opts.chain, &esplora)?;
+    let mut runtime = Runtime::<DescriptorStd, ()>::load(opts.data_dir.clone())?;
     debug!("Executing command: {}", opts.command);
     opts.command.exec(&mut runtime)?;
     Ok(())
