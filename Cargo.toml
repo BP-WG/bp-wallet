@@ -1,0 +1,58 @@
+[workspace]
+members = [".", "runtime"]
+exclude = ["convert"]
+
+[workspace.package]
+version = "0.11.0"
+keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
+categories = ["cryptography::cryptocurrencies"]
+authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
+homepage = "https://lnp-bp.org"
+repository = "https://github.com/BP-WG/bp-wallet"
+rust-version = "1.60" # Due to rust-amplify
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+amplify = "4.0.0"
+bp-wallet = "0.11.0"
+serde_crate = { package = "serde", version = "1", features = ["derive"] }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+
+[package]
+name = "bp-tools"
+version = { workspace = true }
+description = "Modern, minimalistic & standard-compliant cold wallet library"
+keywords = { workspace = true }
+categories = { workspace = true }
+readme = "README.md"
+authors = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+
+[[bin]]
+name = "bp"
+path = "src/main.rs"
+
+[dependencies]
+amplify = { workspace = true, features = ["serde"] }
+bp-runtime = { path = "runtime", features = ["serde"] }
+bp-wallet = { workspace = true, features = ["serde"] }
+log = { workspace = true }
+env_logger = "0.10.0"
+clap = { version = "4.1.8", features = ["derive", "env"] }
+shellexpand = "3.0.0"
+serde_crate = { workspace = true }
+serde_yaml = "0.9.19"
+toml = "0.7.6"
+
+[features]
+default = []
+all = []
+
+[patch.crates-io]
+bp-primitives = { git = "https://github.com/BP-WG/bp-core", branch = "primitives" }
+bp-wallet = { git = "https://github.com/BP-WG/bp-wallet" }

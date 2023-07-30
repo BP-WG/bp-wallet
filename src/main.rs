@@ -1,0 +1,79 @@
+// Modern, minimalistic & standard-compliant cold wallet library.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Written in 2020-2023 by
+//     Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+//
+// Copyright (C) 2020-2023 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2020-2023 Dr Maxim Orlovsky. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#[macro_use]
+extern crate amplify;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate clap;
+
+mod loglevel;
+mod opts;
+mod command;
+
+use std::process::ExitCode;
+
+use bp_rt::{Runtime, RuntimeError};
+use clap::Parser;
+
+pub use crate::command::Command;
+pub use crate::loglevel::LogLevel;
+pub use crate::opts::Opts;
+
+#[cfg(any(target_os = "linux"))]
+pub const BP_DATA_DIR: &str = "~/.bp";
+#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
+pub const BP_DATA_DIR: &str = "~/.bp";
+#[cfg(target_os = "macos")]
+pub const BP_DATA_DIR: &str = "~/Library/Application Support/BP Wallets";
+#[cfg(target_os = "windows")]
+pub const BP_DATA_DIR: &str = "~\\AppData\\Local\\BP Wallets";
+#[cfg(target_os = "ios")]
+pub const BP_DATA_DIR: &str = "~/Documents";
+#[cfg(target_os = "android")]
+pub const BP_DATA_DIR: &str = ".";
+
+pub const DEFAULT_ESPLORA: &str = "https://blockstream.info";
+
+fn main() -> ExitCode {
+    if let Err(err) = run() {
+        eprintln!("Error: {err}");
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn run() -> Result<(), RuntimeError> {
+    let mut opts = Opts::parse();
+    opts.process();
+    LogLevel::from_verbosity_flag_count(opts.verbose).apply();
+    trace!("Command-line arguments: {:#?}", &opts);
+
+    let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
+
+    let mut runtime = Runtime::load(opts.data_dir.clone(), opts.chain, &esplora)?;
+    debug!("Executing command: {}", opts.command);
+    opts.command.exec(&mut runtime)?;
+    Ok(())
+}

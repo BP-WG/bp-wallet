@@ -1,0 +1,27 @@
+[package]
+name = "bp-runtime"
+version.workspace = true
+description = "Modern, minimalistic & standard-compliant bitcoin wallet runtime"
+keywords.workspace = true
+categories.workspace = true
+readme = "../README.md"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "bp_rt"
+
+[dependencies]
+amplify = { workspace = true }
+bp-wallet = { workspace = true }
+log = { workspace = true, optional = true }
+serde_crate = { workspace = true, optional = true }
+
+[features]
+default = []
+all = ["serde"]
+serde = ["serde_crate", "bp-wallet/serde"]
