@@ -26,7 +26,11 @@ use bp_rt::{Runtime, RuntimeError};
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
 pub enum Command {
-    Noop,
+    /// List addresses for the wallet descriptor.
+    Addresses {
+        #[clap(short, default_value = "20")]
+        count: u16,
+    },
 }
 
 impl Command {
@@ -35,8 +39,8 @@ impl Command {
         runtime: &mut Runtime<D, L2>,
     ) -> Result<(), RuntimeError> {
         match self {
-            Command::Noop => {}
-        }
+            Command::Addresses { count } => runtime,
+        };
 
         Ok(())
     }

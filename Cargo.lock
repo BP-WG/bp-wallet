@@ -175,7 +175,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#ecde566c08da1df16da2936f86090e8e6839219c"
+source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
 dependencies = [
  "amplify",
  "bp-std",
@@ -207,7 +207,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#ecde566c08da1df16da2936f86090e8e6839219c"
+source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
 dependencies = [
  "amplify",
  "bech32",
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 name = "bp-wallet"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#ecde566c08da1df16da2936f86090e8e6839219c"
+source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
 dependencies = [
  "amplify",
  "bp-invoice",
@@ -549,7 +549,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-wallet#ecde566c08da1df16da2936f86090e8e6839219c"
+source = "git+https://github.com/BP-WG/bp-wallet#52433a0e768beeee7785952996cfda66e269d9a3"
 dependencies = [
  "amplify",
  "bp-std",

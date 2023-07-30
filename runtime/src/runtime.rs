@@ -24,7 +24,7 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
-use bp::{DeriveSpk, DescriptorStd, Wallet};
+use bp::{Chain, DeriveSpk, DescriptorStd, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
@@ -52,7 +52,12 @@ impl<D: DeriveSpk, L2: Default> DerefMut for Runtime<D, L2> {
 }
 
 impl<D: DeriveSpk, L2: Default> Runtime<D, L2> {
-    pub fn new(descr: D) -> Self { todo!() }
+    pub fn new(descr: D, network: Chain) -> Self {
+        Runtime {
+            path: None,
+            wallet: Wallet::new(descr, network),
+        }
+    }
 
     pub fn load(path: PathBuf) -> Result<Self, RuntimeError> { todo!() }
 }

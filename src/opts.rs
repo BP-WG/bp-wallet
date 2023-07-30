@@ -61,7 +61,7 @@ pub struct Opts {
         alias = "network",
         default_value = "testnet",
         env = "BP_NETWORK",
-        required_unless_present_any = ["wallet-path", "tr-key-only"]
+        required_unless_present = "wallet-path"
     )]
     pub chain: Option<Chain>,
 
@@ -104,7 +104,8 @@ impl Opts {
         } else if let Some(wallet_path) = self.wallet_path.clone() {
             Runtime::load(wallet_path)
         } else if let Some(d) = self.tr_key_only.clone() {
-            Ok(Runtime::new(TrKey::from(d).into()))
+            let network = self.chain.expect("chain must be present in data director is given");
+            Ok(Runtime::new(TrKey::from(d).into(), network))
         } else {
             unreachable!()
         }
