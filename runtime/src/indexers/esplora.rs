@@ -41,41 +41,42 @@ impl Indexer for BlockingClient {
         for keychain in &descriptor.keychains {
             let mut index = NormalIndex::ZERO;
             let max_known = cache.max_known.entry(*keychain).or_default();
+            let mut empty_count = 0usize;
             loop {
-                let scripts = descriptor.derive_batch(keychain, index, BATCH_SIZE);
+                let script = descriptor.derive(keychain, index);
 
-                let mut tx_count = 0usize;
-                for script in scripts {
-                    let address = Address::with(&script, descriptor.chain.into())
-                        .expect("descriptor guarantees");
-                    let Ok(txes) =
-                        self.scripthash_txs(&script, None).map_err(|err| errors.push(err))
-                    else {
-                        continue;
-                    };
-                    *max_known = max(*max_known, index);
-                    for tx in txes {
-                        for (vout, out) in tx.vout.iter().enumerate() {
-                            if out.scriptpubkey != script {
-                                continue;
+                let address =
+                    Address::with(&script, descriptor.chain.into()).expect("descriptor guarantees");
+                eprint!(".");
+                match self.scripthash_txs(&script, None) {
+                    Err(err) => errors.push(err),
+                    Ok(txes) if txes.is_empty() => {
+                        empty_count += 1;
+                        if empty_count >= BATCH_SIZE as usize {
+                            break;
+                        }
+                    }
+                    Ok(txes) => {
+                        empty_count = 0;
+                        *max_known = max(*max_known, index);
+                        for tx in txes {
+                            for (vout, out) in tx.vout.iter().enumerate() {
+                                if out.scriptpubkey != script {
+                                    continue;
+                                }
+                                let utxo = UtxoInfo {
+                                    outpoint: Outpoint::new(tx.txid, vout as u32),
+                                    terminal: Terminal::new(*keychain, index),
+                                    address,
+                                    value: out.value.into(),
+                                };
+                                cache.utxo.entry(address).or_default().insert(utxo);
                             }
-                            tx_count += 1;
-                            let utxo = UtxoInfo {
-                                outpoint: Outpoint::new(tx.txid, vout as u32),
-                                terminal: Terminal::new(*keychain, index),
-                                address,
-                                value: out.value.into(),
-                            };
-                            cache.utxo.entry(address).or_default().insert(utxo);
                         }
                     }
                 }
 
-                if tx_count == 0 {
-                    break;
-                }
-
-                if !index.saturating_add_assign(BATCH_SIZE) {
+                if index.checked_inc_assign().is_none() {
                     break;
                 }
             }

@@ -27,7 +27,7 @@ use bp::DeriveSpk;
 
 use crate::{MayError, WalletCache, WalletDescr};
 
-pub(self) const BATCH_SIZE: u8 = 20;
+pub(self) const BATCH_SIZE: u8 = 10;
 
 pub trait Indexer {
     type Error;

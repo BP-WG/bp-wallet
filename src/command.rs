@@ -59,16 +59,17 @@ impl Command {
                 println!();
                 println!("Coins (UTXOs):");
                 println!();
-                println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
+                println!("Address\t{:>12}\tOutpoint", "Value");
                 for (addr, coins) in runtime.address_coins() {
-                    println!("{addr}");
+                    println!("{addr}:");
                     for utxo in coins {
                         let UtxoInfo {
                             outpoint, value, ..
                         } = utxo;
-                        println!("{value}ṩ\t{outpoint}");
+                        println!("\t{:>12} ṩ\t{outpoint}", value.0);
                         //₿
                     }
+                    println!();
                 }
             }
         };

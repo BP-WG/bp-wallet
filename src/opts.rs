@@ -115,26 +115,34 @@ impl Opts {
     }
 
     pub fn runtime(&self) -> Result<Runtime, BoostrapError> {
+        eprint!("Loading descriptor");
         let mut runtime: Runtime<DescriptorStd, ()> = if let Some(d) = self.tr_key_only.clone() {
+            eprint!(" from command-line argument ...");
             let network = self.chain.expect("chain must be present in data director is given");
             Ok(Runtime::new(TrKey::from(d).into(), network))
         } else if let Some(wallet_path) = self.wallet_path.clone() {
+            eprint!(" from specified wallet directory ...");
             Runtime::load(wallet_path)
         } else if let Some(mut data_dir) = self.data_dir.clone() {
+            eprint!(" from wallet ...");
             let network = self.chain.expect("chain must be present in data director is given");
             data_dir.push(network.to_string());
             Runtime::load(data_dir)
         } else {
             unreachable!()
         }?;
+        eprintln!(" success");
 
         if self.sync || self.tr_key_only.is_some() {
+            eprint!("Syncing ...");
             let indexer = esplora::Builder::new(&self.esplora).build_blocking()?;
             if let Err(errors) = runtime.sync(&indexer) {
-                eprintln!("Errors synching wallet with blockchain:");
+                eprintln!(" partial, some requests has failed:");
                 for err in errors {
                     eprintln!("- {err}");
                 }
+            } else {
+                eprintln!(" success");
             }
         }
 

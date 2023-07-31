@@ -72,6 +72,8 @@ fn run() -> Result<(), BoostrapError> {
 
     // let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
 
+    eprintln!("\nBP: command-line wallet for bitcoin protocol");
+    eprintln!("    by LNP/BP Standards Association\n");
     let mut runtime = opts.runtime()?;
     debug!("Executing command: {}", opts.command);
     opts.command.exec(&mut runtime);
