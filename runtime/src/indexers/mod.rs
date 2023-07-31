@@ -20,21 +20,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
-extern crate amplify;
-#[macro_use]
-extern crate serde_crate as serde;
+#[cfg(feature = "esplora")]
+mod esplora;
 
-mod indexers;
-mod runtime;
-mod util;
-mod chain;
-mod wallet;
+use bp::DeriveSpk;
 
-pub use chain::{
-    AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, UtxoInfo,
-};
-pub use indexers::Indexer;
-pub use runtime::{LoadError, Runtime};
-pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+use crate::{MayError, WalletCache, WalletDescr};
+
+pub(self) const BATCH_SIZE: u8 = 20;
+
+pub trait Indexer {
+    type Error;
+
+    fn create<D: DeriveSpk>(
+        &self,
+        descr: &WalletDescr<D>,
+    ) -> MayError<WalletCache, Vec<Self::Error>>;
+
+    fn update<D: DeriveSpk>(
+        &self,
+        descr: &WalletDescr<D>,
+        cache: &mut WalletCache,
+    ) -> (usize, Vec<Self::Error>);
+}

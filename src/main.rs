@@ -33,12 +33,11 @@ mod command;
 
 use std::process::ExitCode;
 
-use bp::DescriptorStd;
-use bp_rt::{Runtime, RuntimeError};
 use clap::Parser;
 
 pub use crate::command::Command;
 pub use crate::loglevel::LogLevel;
+use crate::opts::BoostrapError;
 pub use crate::opts::Opts;
 
 #[cfg(any(target_os = "linux"))]
@@ -65,7 +64,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run() -> Result<(), RuntimeError> {
+fn run() -> Result<(), BoostrapError> {
     let mut opts = Opts::parse();
     opts.process();
     LogLevel::from_verbosity_flag_count(opts.verbose).apply();
@@ -75,6 +74,6 @@ fn run() -> Result<(), RuntimeError> {
 
     let mut runtime = opts.runtime()?;
     debug!("Executing command: {}", opts.command);
-    opts.command.exec(&mut runtime)?;
+    opts.command.exec(&mut runtime);
     Ok(())
 }

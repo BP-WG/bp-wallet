@@ -24,11 +24,13 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
-use bp::{Chain, DeriveSpk, DescriptorStd, Wallet};
+use bp::{Chain, DeriveSpk, DescriptorStd};
+
+use crate::{Indexer, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
-pub enum RuntimeError {
+pub enum LoadError {
     #[from]
     Io(io::Error),
 
@@ -59,5 +61,9 @@ impl<D: DeriveSpk, L2: Default> Runtime<D, L2> {
         }
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, RuntimeError> { todo!() }
+    pub fn load(path: PathBuf) -> Result<Self, LoadError> { todo!() }
+
+    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
+        self.wallet.update(indexer).into_result()
+    }
 }

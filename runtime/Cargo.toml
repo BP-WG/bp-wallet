@@ -18,10 +18,11 @@ name = "bp_rt"
 [dependencies]
 amplify = { workspace = true }
 bp-wallet = { workspace = true }
-log = { workspace = true, optional = true }
+bp-esplora = { workspace = true, optional = true }
 serde_crate = { workspace = true, optional = true }
 
 [features]
-default = []
-all = ["serde"]
+default = ["esplora"]
+all = ["esplora",  "serde"]
+esplora = ["bp-esplora"]
 serde = ["serde_crate", "bp-wallet/serde"]

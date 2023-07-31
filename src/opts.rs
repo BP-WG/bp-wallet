@@ -23,10 +23,10 @@
 use std::path::PathBuf;
 
 use bp::{Chain, DescriptorStd, TrKey, XpubDescriptor};
-use bp_rt::{Runtime, RuntimeError};
+use bp_rt::{LoadError, Runtime};
 use clap::ValueHint;
 
-use crate::{Command, BP_DATA_DIR};
+use crate::{Command, BP_DATA_DIR, DEFAULT_ESPLORA};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -80,12 +80,30 @@ pub struct Opts {
     pub tr_key_only: Option<XpubDescriptor>,
 
     /// Esplora server to use.
-    #[clap(short, long, global = true, env = "BP_ELECTRUM_SERVER")]
-    pub esplora: Option<String>,
+    #[clap(
+        short,
+        long,
+        global = true,
+        default_value = DEFAULT_ESPLORA,
+        env = "BP_ELECTRUM_SERVER"
+    )]
+    pub esplora: String,
+
+    #[clap(long, global = true)]
+    pub sync: bool,
 
     /// Command to execute.
     #[clap(subcommand)]
     pub command: Command,
+}
+
+#[derive(Debug, Display, Error, From)]
+#[display(inner)]
+pub enum BoostrapError {
+    #[from]
+    Load(LoadError),
+    #[from]
+    Explora(esplora::Error),
 }
 
 impl Opts {
@@ -96,8 +114,8 @@ impl Opts {
         });
     }
 
-    pub fn runtime(&self) -> Result<Runtime, RuntimeError> {
-        if let Some(d) = self.tr_key_only.clone() {
+    pub fn runtime(&self) -> Result<Runtime, BoostrapError> {
+        let mut runtime: Runtime<DescriptorStd, ()> = if let Some(d) = self.tr_key_only.clone() {
             let network = self.chain.expect("chain must be present in data director is given");
             Ok(Runtime::new(TrKey::from(d).into(), network))
         } else if let Some(wallet_path) = self.wallet_path.clone() {
@@ -108,6 +126,18 @@ impl Opts {
             Runtime::load(data_dir)
         } else {
             unreachable!()
+        }?;
+
+        if self.sync || self.tr_key_only.is_some() {
+            let indexer = esplora::Builder::new(&self.esplora).build_blocking()?;
+            if let Err(errors) = runtime.sync(&indexer) {
+                eprintln!("Errors synching wallet with blockchain:");
+                for err in errors {
+                    eprintln!("- {err}");
+                }
+            }
         }
+
+        Ok(runtime)
     }
 }

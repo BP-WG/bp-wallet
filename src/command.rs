@@ -20,8 +20,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::{AddrInfo, DeriveSpk, DerivedAddr, UtxoInfo};
-use bp_rt::{Runtime, RuntimeError};
+use bp::DeriveSpk;
+use bp_rt::{AddrInfo, Runtime, UtxoInfo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
@@ -37,10 +37,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn exec<D: DeriveSpk, L2: Default>(
-        self,
-        runtime: &mut Runtime<D, L2>,
-    ) -> Result<(), RuntimeError> {
+    pub fn exec<D: DeriveSpk, L2: Default>(self, runtime: &mut Runtime<D, L2>) {
         match self {
             Command::Addresses { count } => {
                 println!();
@@ -77,6 +74,5 @@ impl Command {
         };
 
         println!();
-        Ok(())
     }
 }
