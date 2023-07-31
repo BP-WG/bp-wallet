@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::{DeriveSpk, DerivedAddr};
+use bp::{AddrInfo, DeriveSpk, DerivedAddr, UtxoInfo};
 use bp_rt::{Runtime, RuntimeError};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
@@ -31,6 +31,9 @@ pub enum Command {
         #[clap(short, default_value = "20")]
         count: u16,
     },
+
+    /// List available coins (unspent transaction outputs).
+    Coins,
 }
 
 impl Command {
@@ -42,13 +45,33 @@ impl Command {
             Command::Addresses { count } => {
                 println!();
                 println!("Addresses (outer):");
-                for derived in runtime.addresses().take(count as usize) {
-                    let DerivedAddr {
+                println!();
+                println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
+                for info in runtime.address_all().take(count as usize) {
+                    let AddrInfo {
                         addr,
-                        keychain,
-                        index,
-                    } = derived;
-                    println!("/{keychain}/{index}\t{addr}");
+                        terminal,
+                        used,
+                        volume,
+                        balance,
+                    } = info;
+                    println!("{terminal}\t{addr}\t{used}\t{volume}\t{balance}");
+                }
+            }
+            Command::Coins => {
+                println!();
+                println!("Coins (UTXOs):");
+                println!();
+                println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
+                for (addr, coins) in runtime.address_coins() {
+                    println!("{addr}");
+                    for utxo in coins {
+                        let UtxoInfo {
+                            outpoint, value, ..
+                        } = utxo;
+                        println!("{value}ṩ\t{outpoint}");
+                        //₿
+                    }
                 }
             }
         };
