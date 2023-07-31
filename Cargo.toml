@@ -21,7 +21,7 @@ serde_crate = { package = "serde", version = "1", features = ["derive"] }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
 
 [package]
-name = "bp-tools"
+name = "bp-wallet"
 version = { workspace = true }
 description = "Modern, minimalistic & standard-compliant cold wallet library"
 keywords = { workspace = true }

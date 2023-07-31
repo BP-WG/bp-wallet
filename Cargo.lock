@@ -262,7 +262,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-tools"
+name = "bp-wallet"
 version = "0.11.0"
 dependencies = [
  "amplify",

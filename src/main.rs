@@ -53,7 +53,7 @@ pub const BP_DATA_DIR: &str = "~/Documents";
 #[cfg(target_os = "android")]
 pub const BP_DATA_DIR: &str = ".";
 
-pub const DEFAULT_ESPLORA: &str = "https://blockstream.info";
+pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
 
 fn main() -> ExitCode {
     if let Err(err) = run() {
