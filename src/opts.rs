@@ -85,7 +85,7 @@ pub struct Opts {
         long,
         global = true,
         default_value = DEFAULT_ESPLORA,
-        env = "BP_ELECTRUM_SERVER"
+        env = "BP_ESPLORA_SERVER"
     )]
     pub esplora: String,
 
@@ -118,7 +118,7 @@ impl Opts {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<DescriptorStd, ()> = if let Some(d) = self.tr_key_only.clone() {
             eprint!(" from command-line argument ...");
-            let network = self.chain.expect("chain must be present in data director is given");
+            let network = self.chain.expect("chain must be present in data directory is given");
             Ok(Runtime::new(TrKey::from(d).into(), network))
         } else if let Some(wallet_path) = self.wallet_path.clone() {
             eprint!(" from specified wallet directory ...");

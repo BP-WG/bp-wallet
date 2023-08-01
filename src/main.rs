@@ -70,8 +70,6 @@ fn run() -> Result<(), BoostrapError> {
     LogLevel::from_verbosity_flag_count(opts.verbose).apply();
     trace!("Command-line arguments: {:#?}", &opts);
 
-    // let esplora = opts.esplora.unwrap_or_else(|| DEFAULT_ESPLORA.to_owned());
-
     eprintln!("\nBP: command-line wallet for bitcoin protocol");
     eprintln!("    by LNP/BP Standards Association\n");
     let mut runtime = opts.runtime()?;
