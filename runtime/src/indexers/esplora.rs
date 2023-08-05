@@ -46,7 +46,7 @@ impl Indexer for BlockingClient {
                 let script = descriptor.derive(keychain, index);
 
                 let address =
-                    Address::with(&script, descriptor.chain.into()).expect("descriptor guarantees");
+                    Address::with(&script, descriptor.chain).expect("descriptor guarantees");
                 eprint!(".");
                 match self.scripthash_txs(&script, None) {
                     Err(err) => errors.push(err),

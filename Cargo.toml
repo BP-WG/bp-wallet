@@ -56,6 +56,5 @@ default = []
 all = []
 
 [patch.crates-io]
-bp-primitives = { git = "https://github.com/BP-WG/bp-core", branch = "primitives" }
 bp-std = { git = "https://github.com/BP-WG/bp-std" }
 bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client" }
