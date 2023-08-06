@@ -41,6 +41,7 @@ pub enum LoadError {
 #[derive(Getters, Debug)]
 pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Default = ()> {
     path: Option<PathBuf>,
+    #[getter(as_mut)]
     wallet: Wallet<D, L2>,
 }
 
