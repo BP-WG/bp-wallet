@@ -22,10 +22,14 @@
 
 #[macro_use]
 extern crate amplify;
-#[macro_use]
+#[cfg(feature = "serde")]
 extern crate serde_crate as serde;
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde_with;
 
 mod indexers;
+#[cfg(feature = "fs")]
 mod runtime;
 mod util;
 mod chain;
@@ -35,6 +39,7 @@ pub use chain::{
     AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, UtxoInfo,
 };
 pub use indexers::Indexer;
+#[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime};
 pub use util::MayError;
 pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};

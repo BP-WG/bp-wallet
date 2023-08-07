@@ -25,21 +25,21 @@ use std::num::NonZeroU32;
 use std::ops::Deref;
 
 use bp::{
-    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Sats,
-    Terminal, Txid,
+    Address, AddressNetwork, Bip32Keychain, Chain, DeriveSpk, DerivedAddr, Idx, Keychain,
+    NormalIndex, Outpoint, Sats, Terminal, Txid,
 };
 
 use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, UtxoInfo};
 
-pub struct AddrIter<'descr, D: DeriveSpk> {
+pub struct AddrIter<'descr, D: DeriveSpk, C: Keychain> {
     script_pubkey: &'descr D,
     network: AddressNetwork,
-    keychain: NormalIndex,
+    keychain: C,
     index: NormalIndex,
 }
 
-impl<'descr, D: DeriveSpk> Iterator for AddrIter<'descr, D> {
-    type Item = DerivedAddr;
+impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
+    type Item = DerivedAddr<C>;
     fn next(&mut self) -> Option<Self::Item> {
         let addr =
             self.script_pubkey.derive_address(self.network, self.keychain, self.index).ok()?;
@@ -50,29 +50,27 @@ impl<'descr, D: DeriveSpk> Iterator for AddrIter<'descr, D> {
 }
 
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
-pub struct WalletDescr<D>
-where D: DeriveSpk
+pub struct WalletDescr<D, C = Bip32Keychain>
+where
+    D: DeriveSpk,
+    C: Keychain,
 {
     pub(crate) script_pubkey: D,
-    pub(crate) keychains: BTreeSet<NormalIndex>,
+    pub(crate) keychains: BTreeSet<C>,
     #[getter(as_copy)]
     pub(crate) chain: Chain,
 }
 
-impl<D: DeriveSpk> WalletDescr<D> {
+impl<D: DeriveSpk, C: Keychain> WalletDescr<D, C> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         WalletDescr {
             script_pubkey: descr,
-            keychains: bset! { NormalIndex::ZERO, NormalIndex::ONE },
+            keychains: C::STANDARD_SET.iter().copied().collect(),
             chain: network,
         }
     }
 
-    pub fn with_keychains(
-        descr: D,
-        network: Chain,
-        keychain: impl IntoIterator<Item = NormalIndex>,
-    ) -> Self {
+    pub fn with_keychains(descr: D, network: Chain, keychain: impl IntoIterator<Item = C>) -> Self {
         WalletDescr {
             script_pubkey: descr,
             keychains: keychain.into_iter().collect(),
@@ -80,7 +78,7 @@ impl<D: DeriveSpk> WalletDescr<D> {
         }
     }
 
-    pub fn addresses(&self) -> AddrIter<D> {
+    pub fn addresses(&self) -> AddrIter<D, C> {
         AddrIter {
             script_pubkey: &self.script_pubkey,
             network: self.chain.into(),
@@ -90,7 +88,7 @@ impl<D: DeriveSpk> WalletDescr<D> {
     }
 }
 
-impl<D: DeriveSpk> Deref for WalletDescr<D> {
+impl<D: DeriveSpk, C: Keychain> Deref for WalletDescr<D, C> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.script_pubkey }
@@ -107,29 +105,29 @@ pub struct WalletData {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct WalletCache {
+pub struct WalletCache<C: Keychain> {
     pub(crate) last_height: u32,
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
-    pub(crate) tx: HashMap<Txid, TxInfo>,
-    pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo>>,
-    pub(crate) addr: HashMap<Terminal, AddrInfo>,
+    pub(crate) tx: HashMap<Txid, TxInfo<C>>,
+    pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo<C>>>,
+    pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
     pub(crate) max_known: HashMap<NormalIndex, NormalIndex>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<D: DeriveSpk> {
-    pub(crate) descr: WalletDescr<D>,
+pub struct Wallet<D: DeriveSpk, C: Keychain = Bip32Keychain> {
+    pub(crate) descr: WalletDescr<D, C>,
     pub(crate) data: WalletData,
-    pub(crate) cache: WalletCache,
+    pub(crate) cache: WalletCache<C>,
 }
 
-impl<D: DeriveSpk> Deref for Wallet<D> {
-    type Target = WalletDescr<D>;
+impl<D: DeriveSpk, C: Keychain> Deref for Wallet<D, C> {
+    type Target = WalletDescr<D, C>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<D: DeriveSpk> Wallet<D> {
+impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
     pub fn new(descr: D, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
@@ -147,7 +145,7 @@ impl<D: DeriveSpk> Wallet<D> {
         wallet.update(indexer).map(|_| wallet)
     }
 
-    pub fn restore(descr: WalletDescr<D>, data: WalletData, cache: WalletCache) -> Self {
+    pub fn restore(descr: WalletDescr<D, C>, data: WalletData, cache: WalletCache<C>) -> Self {
         Wallet { descr, data, cache }
     }
 
@@ -159,17 +157,17 @@ impl<D: DeriveSpk> Wallet<D> {
         self.cache.utxo.values().flatten().map(|utxo| utxo.value).sum::<Sats>()
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = UtxoInfo> + '_ {
+    pub fn coins(&self) -> impl Iterator<Item = UtxoInfo<C>> + '_ {
         self.cache.utxo.values().flatten().copied()
     }
 
     pub fn address_coins(
         &self,
-    ) -> impl Iterator<Item = (Address, impl Iterator<Item = UtxoInfo> + '_)> + '_ {
+    ) -> impl Iterator<Item = (Address, impl Iterator<Item = UtxoInfo<C>> + '_)> + '_ {
         self.cache.utxo.iter().map(|(k, v)| (*k, v.iter().copied()))
     }
 
-    pub fn address_all(&self) -> impl Iterator<Item = AddrInfo> + '_ {
+    pub fn address_all(&self) -> impl Iterator<Item = AddrInfo<C>> + '_ {
         self.descr.addresses().map(|derived| match self.cache.addr.get(&derived.terminal) {
             None => AddrInfo::from(derived),
             Some(info) => *info,
@@ -186,7 +184,7 @@ impl<D: DeriveSpk> Wallet<D> {
     }
 }
 
-impl WalletCache {
+impl<C: Keychain> WalletCache<C> {
     pub(crate) fn new() -> Self {
         WalletCache {
             last_height: 0,
@@ -199,9 +197,9 @@ impl WalletCache {
     }
 }
 
-impl WalletCache {
+impl<C: Keychain> WalletCache<C> {
     pub fn with<I: Indexer, D: DeriveSpk>(
-        descriptor: &WalletDescr<D>,
+        descriptor: &WalletDescr<D, C>,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
         indexer.create(descriptor)
@@ -209,7 +207,7 @@ impl WalletCache {
 
     pub fn update<I: Indexer, D: DeriveSpk>(
         &mut self,
-        descriptor: &WalletDescr<D>,
+        descriptor: &WalletDescr<D, C>,
         indexer: &I,
     ) -> (usize, Vec<I::Error>) {
         indexer.update(descriptor, self)

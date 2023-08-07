@@ -20,9 +20,11 @@ amplify = { workspace = true }
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 serde_crate = { workspace = true, optional = true }
+serde_with = { workspace = true, optional = true }
 
 [features]
 default = ["esplora"]
-all = ["esplora",  "serde"]
+all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
-serde = ["serde_crate", "bp-std/serde"]
+fs = ["serde"]
+serde = ["serde_crate", "serde_with", "bp-std/serde"]

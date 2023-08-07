@@ -20,11 +20,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Display;
 use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use bp::{Chain, DeriveSpk, DescriptorStd};
+use bp::{Chain, DeriveSpk, DescriptorStd, KeyTranslate, Keychain, XpubDescriptor};
+use serde_with::DisplayFromStr;
 
 use crate::{Indexer, Wallet};
 
@@ -62,7 +66,12 @@ impl<D: DeriveSpk> Runtime<D> {
         }
     }
 
-    pub fn load(_path: PathBuf) -> Result<Self, LoadError> {
+    pub fn load(path: PathBuf, chain: Chain) -> Result<Self, LoadError> {
+        let mut descr_file = path.clone();
+        descr_file.push("descriptor.txt");
+
+        let descr_file = path.clone().push("descriptor.txt");
+
         Err(LoadError::Custom(s!("not implemented")))
         // TODO: implement wallet loading
     }
@@ -75,7 +84,7 @@ impl<D: DeriveSpk> Runtime<D> {
     where
         LoadError: From<E>,
     {
-        Self::load(data_dir).or_else(|err| {
+        Self::load(data_dir, chain).or_else(|err| {
             let descriptor = init(err)?;
             Ok(Self::new(descriptor, chain))
         })

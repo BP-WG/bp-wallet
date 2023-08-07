@@ -263,12 +263,13 @@ dependencies = [
  "bp-esplora",
  "bp-std",
  "serde",
+ "serde_with",
 ]
 
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#32613331e8c5a331fbe1ae610707e486f8db08f9"
+source = "git+https://github.com/BP-WG/bp-std#b8c3ec02c2a6dc6457a3e0994260a6ee00fb3b70"
 dependencies = [
  "amplify",
  "bech32",

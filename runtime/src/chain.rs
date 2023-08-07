@@ -23,8 +23,8 @@
 use std::num::NonZeroU32;
 
 use bp::{
-    Address, BlockHash, BlockHeader, DerivedAddr, LockTime, Outpoint, Sats, SeqNo, SigScript,
-    Terminal, Txid, Witness,
+    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, Outpoint, Sats, SeqNo,
+    SigScript, Terminal, Txid, Witness,
 };
 
 pub type BlockHeight = NonZeroU32;
@@ -55,11 +55,11 @@ pub enum TxStatus {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxInfo {
+pub struct TxInfo<C: Keychain> {
     pub txid: Txid,
     pub status: TxStatus,
     pub inputs: Vec<TxInInfo>,
-    pub outputs: Vec<TxOutInfo>,
+    pub outputs: Vec<TxOutInfo<C>>,
     pub fee: Sats,
     pub size: u32,
     pub weight: u32,
@@ -78,31 +78,31 @@ pub struct TxInInfo {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxOutInfo {
+pub struct TxOutInfo<C: Keychain> {
     pub outpoint: Outpoint,
     pub value: Sats,
-    pub derivation: Option<Terminal>,
+    pub derivation: Option<Terminal<C>>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct UtxoInfo {
+pub struct UtxoInfo<C: Keychain> {
     pub outpoint: Outpoint,
-    pub terminal: Terminal,
+    pub terminal: Terminal<C>,
     pub address: Address,
     pub value: Sats,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct AddrInfo {
+pub struct AddrInfo<C: Keychain> {
     pub addr: Address,
-    pub terminal: Terminal,
+    pub terminal: Terminal<C>,
     pub used: u32,
     pub volume: Sats,
     pub balance: Sats,
 }
 
-impl From<DerivedAddr> for AddrInfo {
-    fn from(derived: DerivedAddr) -> Self {
+impl<C: Keychain> From<DerivedAddr<C>> for AddrInfo<C> {
+    fn from(derived: DerivedAddr<C>) -> Self {
         AddrInfo {
             addr: derived.addr,
             terminal: derived.terminal,

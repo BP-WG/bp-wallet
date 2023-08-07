@@ -22,7 +22,7 @@
 
 use std::cmp::max;
 
-use bp::{Address, DeriveSpk, Idx, NormalIndex, Outpoint, Terminal};
+use bp::{Address, DeriveSpk, Idx, Keychain, NormalIndex, Outpoint, Terminal};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
@@ -31,19 +31,19 @@ use crate::{Indexer, MayError, UtxoInfo, WalletCache, WalletDescr};
 impl Indexer for BlockingClient {
     type Error = Error;
 
-    fn create<D: DeriveSpk>(
+    fn create<D: DeriveSpk, C: Keychain>(
         &self,
-        descriptor: &WalletDescr<D>,
-    ) -> MayError<WalletCache, Vec<Self::Error>> {
+        descriptor: &WalletDescr<D, C>,
+    ) -> MayError<WalletCache<C>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
 
         for keychain in &descriptor.keychains {
             let mut index = NormalIndex::ZERO;
-            let max_known = cache.max_known.entry(*keychain).or_default();
+            let max_known = cache.max_known.entry(keychain.derivation()).or_default();
             let mut empty_count = 0usize;
             loop {
-                let script = descriptor.derive(keychain, index);
+                let script = descriptor.derive(*keychain, index);
 
                 let address =
                     Address::with(&script, descriptor.chain).expect("descriptor guarantees");
@@ -92,10 +92,10 @@ impl Indexer for BlockingClient {
         }
     }
 
-    fn update<D: DeriveSpk>(
+    fn update<D: DeriveSpk, C: Keychain>(
         &self,
-        descr: &WalletDescr<D>,
-        cache: &mut WalletCache,
+        descr: &WalletDescr<D, C>,
+        cache: &mut WalletCache<C>,
     ) -> (usize, Vec<Self::Error>) {
         todo!()
     }
