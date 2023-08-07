@@ -30,7 +30,7 @@ use std::str::FromStr;
 use bp::{Chain, DeriveSpk, DescriptorStd, KeyTranslate, Keychain, XpubDescriptor};
 use serde_with::DisplayFromStr;
 
-use crate::{Indexer, Wallet};
+use crate::{Indexer, Wallet, WalletDescr};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
@@ -40,6 +40,36 @@ pub enum LoadError {
 
     #[from]
     Custom(String),
+}
+
+#[serde_as]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(crate = "serde_crate")]
+pub struct DescriptorCoder<D: KeyTranslate<String>, C: Keychain>
+where <C as FromStr>::Err: Display
+{
+    #[serde_as(as = "BTreeMap<_, DisplayFromStr>")]
+    pub signers: BTreeMap<String, XpubDescriptor>,
+    pub script_pubkey: D,
+    #[serde_as(as = "BTreeSet<DisplayFromStr>")]
+    pub keychains: BTreeSet<C>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub chain: Chain,
+}
+
+impl<C: Keychain, D: KeyTranslate<String, Dest<XpubDescriptor> = D2>, D2: DeriveSpk>
+    From<DescriptorCoder<D, C>> for WalletDescr<D2, C>
+where <C as FromStr>::Err: Display
+{
+    fn from(coder: DescriptorCoder<D, C>) -> Self {
+        let script_pubkey =
+            coder.script_pubkey.translate(|name| coder.signers.get(&name).unwrap().clone());
+        WalletDescr {
+            script_pubkey,
+            keychains: coder.keychains,
+            chain: coder.chain,
+        }
+    }
 }
 
 #[derive(Getters, Debug)]
@@ -66,7 +96,7 @@ impl<D: DeriveSpk> Runtime<D> {
         }
     }
 
-    pub fn load(path: PathBuf, chain: Chain) -> Result<Self, LoadError> {
+    pub fn load(path: PathBuf) -> Result<Self, LoadError> {
         let mut descr_file = path.clone();
         descr_file.push("descriptor.txt");
 
@@ -84,7 +114,7 @@ impl<D: DeriveSpk> Runtime<D> {
     where
         LoadError: From<E>,
     {
-        Self::load(data_dir, chain).or_else(|err| {
+        Self::load(data_dir).or_else(|err| {
             let descriptor = init(err)?;
             Ok(Self::new(descriptor, chain))
         })
