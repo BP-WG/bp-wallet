@@ -25,8 +25,8 @@ use std::num::NonZeroU32;
 use std::ops::Deref;
 
 use bp::{
-    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Terminal,
-    Txid,
+    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Sats,
+    Terminal, Txid,
 };
 
 use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, UtxoInfo};
@@ -125,6 +125,10 @@ impl<D: DeriveSpk, L2: Default> Wallet<D, L2> {
             cache: WalletCache::new(),
             layer2: default!(),
         }
+    }
+
+    pub fn balance(&self) -> Sats {
+        self.cache.utxo.values().flatten().map(|utxo| utxo.value).sum::<Sats>()
     }
 
     pub fn coins(&self) -> impl Iterator<Item = UtxoInfo> + '_ {
