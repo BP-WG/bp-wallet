@@ -37,7 +37,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn exec<D: DeriveSpk, L2: Default>(self, runtime: &mut Runtime<D, L2>) {
+    pub fn exec<D: DeriveSpk>(self, runtime: &mut Runtime<D>) {
         match self {
             Command::Addresses { count } => {
                 println!();

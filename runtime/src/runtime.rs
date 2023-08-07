@@ -39,22 +39,22 @@ pub enum LoadError {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Default = ()> {
+pub struct Runtime<D: DeriveSpk = DescriptorStd> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
-    wallet: Wallet<D, L2>,
+    wallet: Wallet<D>,
 }
 
-impl<D: DeriveSpk, L2: Default> Deref for Runtime<D, L2> {
-    type Target = Wallet<D, L2>;
+impl<D: DeriveSpk> Deref for Runtime<D> {
+    type Target = Wallet<D>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<D: DeriveSpk, L2: Default> DerefMut for Runtime<D, L2> {
+impl<D: DeriveSpk> DerefMut for Runtime<D> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<D: DeriveSpk, L2: Default> Runtime<D, L2> {
+impl<D: DeriveSpk> Runtime<D> {
     pub fn new(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,

@@ -105,26 +105,24 @@ pub struct WalletCache {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<D: DeriveSpk, L2: Default = ()> {
+pub struct Wallet<D: DeriveSpk> {
     pub(crate) descr: WalletDescr<D>,
     pub(crate) data: WalletData,
     pub(crate) cache: WalletCache,
-    pub(crate) layer2: L2,
 }
 
-impl<D: DeriveSpk, L2: Default> Deref for Wallet<D, L2> {
+impl<D: DeriveSpk> Deref for Wallet<D> {
     type Target = WalletDescr<D>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<D: DeriveSpk, L2: Default> Wallet<D, L2> {
+impl<D: DeriveSpk> Wallet<D> {
     pub fn new(descr: D, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
             cache: WalletCache::new(),
-            layer2: default!(),
         }
     }
 
@@ -172,7 +170,7 @@ impl WalletCache {
     }
 }
 
-impl<D: DeriveSpk, L2: Default> Wallet<D, L2> {
+impl<D: DeriveSpk> Wallet<D> {
     pub fn with<I: Indexer>(
         descr: D,
         network: Chain,

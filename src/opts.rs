@@ -116,7 +116,7 @@ impl Opts {
 
     pub fn runtime(&self) -> Result<Runtime, BoostrapError> {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<DescriptorStd, ()> = if let Some(d) = self.tr_key_only.clone() {
+        let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.tr_key_only.clone() {
             eprint!(" from command-line argument ...");
             let network = self.chain.expect("chain must be present in data directory is given");
             Ok(Runtime::new(TrKey::from(d).into(), network))
