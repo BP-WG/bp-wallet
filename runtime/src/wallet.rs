@@ -41,7 +41,8 @@ pub struct AddrIter<'descr, D: DeriveSpk> {
 impl<'descr, D: DeriveSpk> Iterator for AddrIter<'descr, D> {
     type Item = DerivedAddr;
     fn next(&mut self) -> Option<Self::Item> {
-        let addr = self.script_pubkey.derive_address(self.network, self.keychain, self.index);
+        let addr =
+            self.script_pubkey.derive_address(self.network, self.keychain, self.index).ok()?;
         let derived = DerivedAddr::new(addr, self.keychain, self.index);
         self.index.wrapping_inc_assign();
         Some(derived)
