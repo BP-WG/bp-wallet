@@ -95,7 +95,7 @@ pub struct WalletData {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache {
-    pub(crate) tip: u32,
+    pub(crate) last_height: u32,
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
     pub(crate) tx: HashMap<Txid, TxInfo>,
     pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo>>,
@@ -147,12 +147,21 @@ impl<D: DeriveSpk, L2: Default> Wallet<D, L2> {
             Some(info) => *info,
         })
     }
+
+    pub fn derivation_index_tip(&self, keychain: NormalIndex) -> NormalIndex {
+        let last_known = self.cache.max_known.get(&keychain).copied().unwrap_or_default();
+        if keychain == NormalIndex::ZERO {
+            self.data.last_used.max(last_known)
+        } else {
+            last_known
+        }
+    }
 }
 
 impl WalletCache {
     pub(crate) fn new() -> Self {
         WalletCache {
-            tip: 0,
+            last_height: 0,
             headers: none!(),
             tx: none!(),
             utxo: none!(),
