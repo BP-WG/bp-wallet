@@ -68,6 +68,18 @@ impl<D: DeriveSpk> WalletDescr<D> {
         }
     }
 
+    pub fn with_keychains(
+        descr: D,
+        network: Chain,
+        keychain: impl IntoIterator<Item = NormalIndex>,
+    ) -> Self {
+        WalletDescr {
+            script_pubkey: descr,
+            keychains: keychain.into_iter().collect(),
+            chain: network,
+        }
+    }
+
     pub fn addresses(&self) -> AddrIter<D> {
         AddrIter {
             script_pubkey: &self.script_pubkey,
@@ -126,6 +138,23 @@ impl<D: DeriveSpk> Wallet<D> {
         }
     }
 
+    pub fn with<I: Indexer>(
+        descr: D,
+        network: Chain,
+        indexer: &I,
+    ) -> MayError<Self, Vec<I::Error>> {
+        let mut wallet = Wallet::new(descr, network);
+        wallet.update(indexer).map(|_| wallet)
+    }
+
+    pub fn restore(descr: WalletDescr<D>, data: WalletData, cache: WalletCache) -> Self {
+        Wallet { descr, data, cache }
+    }
+
+    pub fn update<B: Indexer>(&mut self, blockchain: &B) -> MayError<(), Vec<B::Error>> {
+        WalletCache::with(&self.descr, blockchain).map(|cache| self.cache = cache)
+    }
+
     pub fn balance(&self) -> Sats {
         self.cache.utxo.values().flatten().map(|utxo| utxo.value).sum::<Sats>()
     }
@@ -167,21 +196,6 @@ impl WalletCache {
             addr: none!(),
             max_known: none!(),
         }
-    }
-}
-
-impl<D: DeriveSpk> Wallet<D> {
-    pub fn with<I: Indexer>(
-        descr: D,
-        network: Chain,
-        indexer: &I,
-    ) -> MayError<Self, Vec<I::Error>> {
-        let mut wallet = Wallet::new(descr, network);
-        wallet.update(indexer).map(|_| wallet)
-    }
-
-    pub fn update<B: Indexer>(&mut self, blockchain: &B) -> MayError<(), Vec<B::Error>> {
-        WalletCache::with(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 }
 
