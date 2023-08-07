@@ -62,7 +62,24 @@ impl<D: DeriveSpk, L2: Default> Runtime<D, L2> {
         }
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, LoadError> { todo!() }
+    pub fn load(_path: PathBuf) -> Result<Self, LoadError> {
+        Err(LoadError::Custom(s!("not implemented")))
+        // TODO: implement wallet loading
+    }
+
+    pub fn load_or_init<E>(
+        data_dir: PathBuf,
+        chain: Chain,
+        init: impl FnOnce(LoadError) -> Result<D, E>,
+    ) -> Result<Self, LoadError>
+    where
+        LoadError: From<E>,
+    {
+        Self::load(data_dir).or_else(|err| {
+            let descriptor = init(err)?;
+            Ok(Self::new(descriptor, chain))
+        })
+    }
 
     pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
         self.wallet.update(indexer).into_result()
