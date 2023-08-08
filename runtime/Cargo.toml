@@ -21,10 +21,11 @@ bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 serde_crate = { workspace = true, optional = true }
 serde_with = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
 
 [features]
 default = ["esplora"]
 all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
-serde = ["serde_crate", "serde_with", "bp-std/serde"]
+serde = ["serde_crate", "serde_with", "toml", "bp-std/serde"]

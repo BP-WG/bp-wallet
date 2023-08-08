@@ -22,10 +22,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Display;
-use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::{fs, io};
 
 use bp::{Chain, DeriveSpk, DescriptorStd, KeyTranslate, Keychain, XpubDescriptor};
 use serde_with::DisplayFromStr;
@@ -37,6 +37,9 @@ use crate::{Indexer, Wallet, WalletDescr};
 pub enum LoadError {
     #[from]
     Io(io::Error),
+
+    #[from]
+    Toml(toml::de::Error),
 
     #[from]
     Custom(String),
@@ -96,14 +99,30 @@ impl<D: DeriveSpk> Runtime<D> {
         }
     }
 
+    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
+        self.wallet.update(indexer).into_result()
+    }
+}
+
+impl<D: DeriveSpk> Runtime<D>
+where for<'de> WalletDescr<D>: serde::Deserialize<'de>
+{
     pub fn load(path: PathBuf) -> Result<Self, LoadError> {
         let mut descr_file = path.clone();
         descr_file.push("descriptor.txt");
+        let descr = fs::read_to_string(descr_file)?;
+        let descr = toml::from_str(&descr)?;
 
-        let descr_file = path.clone().push("descriptor.txt");
+        // TODO: Load data and cache
 
-        Err(LoadError::Custom(s!("not implemented")))
-        // TODO: implement wallet loading
+        Ok(Runtime {
+            path: Some(path),
+            wallet: Wallet {
+                descr,
+                data: default!(),
+                cache: none!(),
+            },
+        })
     }
 
     pub fn load_or_init<E>(
@@ -118,9 +137,5 @@ impl<D: DeriveSpk> Runtime<D> {
             let descriptor = init(err)?;
             Ok(Self::new(descriptor, chain))
         })
-    }
-
-    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
-        self.wallet.update(indexer).into_result()
     }
 }

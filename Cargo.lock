@@ -264,6 +264,7 @@ dependencies = [
  "bp-std",
  "serde",
  "serde_with",
+ "toml 0.7.6",
 ]
 
 [[package]]

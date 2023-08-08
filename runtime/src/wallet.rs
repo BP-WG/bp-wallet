@@ -114,6 +114,19 @@ pub struct WalletCache<C: Keychain> {
     pub(crate) max_known: HashMap<NormalIndex, NormalIndex>,
 }
 
+impl<C: Keychain> Default for WalletCache<C> {
+    fn default() -> Self {
+        WalletCache {
+            last_height: 0,
+            headers: empty!(),
+            tx: empty!(),
+            utxo: empty!(),
+            addr: empty!(),
+            max_known: empty!(),
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Wallet<D: DeriveSpk, C: Keychain = Bip32Keychain> {
     pub(crate) descr: WalletDescr<D, C>,
