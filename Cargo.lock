@@ -262,6 +262,7 @@ dependencies = [
  "amplify",
  "bp-esplora",
  "bp-std",
+ "cfg_eval",
  "serde",
  "serde_with",
  "toml 0.7.6",
@@ -270,13 +271,14 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#b8c3ec02c2a6dc6457a3e0994260a6ee00fb3b70"
+source = "git+https://github.com/BP-WG/bp-std#f1fe57d2bc753086d2b09d7942a5e943ab0f68d5"
 dependencies = [
  "amplify",
  "bech32",
  "bitcoin_hashes",
  "bp-primitives",
  "serde",
+ "serde_with",
 ]
 
 [[package]]
@@ -330,6 +332,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "cfg_eval"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45565fc9416b9896014f5732ac776f810ee53a66730c17e4020c3ec064a8f88f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.28",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -344,9 +357,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.19"
+version = "4.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd304a20bff958a57f04c4e96a2e7594cc4490a0e809cbd48bb6437edaa452d"
+checksum = "c27cdf28c0f604ba3f512b0c9a409f8de8513e4816705deb0498b627e7c3a3fd"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -355,9 +368,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.19"
+version = "4.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01c6a3f08f1fe5662a35cfe393aec09c4df95f60ee93b7556505260f75eee9e1"
+checksum = "08a9f1ab5e9f01a9b81f202e8562eb9a10de70abf9eaeac1be465c28b75aa4aa"
 dependencies = [
  "anstream",
  "anstyle",

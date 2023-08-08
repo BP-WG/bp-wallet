@@ -21,13 +21,16 @@
 // limitations under the License.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt::Display;
 use std::num::NonZeroU32;
 use std::ops::Deref;
 
 use bp::{
-    Address, AddressNetwork, Bip32Keychain, Chain, DeriveSpk, DerivedAddr, Idx, Keychain,
-    NormalIndex, Outpoint, Sats, Terminal, Txid,
+    Address, AddressNetwork, Bip32Keychain, Chain, DeriveSpk, DerivedAddr, Descriptor, Idx,
+    Keychain, NormalIndex, Outpoint, Sats, Terminal, Txid, XpubDescriptor,
 };
+#[cfg(feature = "serde")]
+use serde_with::DisplayFromStr;
 
 use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, UtxoInfo};
 
@@ -49,29 +52,51 @@ impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval::cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate")
+)]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
 pub struct WalletDescr<D, C = Bip32Keychain>
 where
-    D: DeriveSpk,
+    D: DeriveSpk + Descriptor<XpubDescriptor>,
     C: Keychain,
 {
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<_, DisplayFromStr>"))]
+    pub signers: BTreeMap<String, XpubDescriptor>,
     pub(crate) script_pubkey: D,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeSet<DisplayFromStr>"))]
     pub(crate) keychains: BTreeSet<C>,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     #[getter(as_copy)]
     pub(crate) chain: Chain,
 }
 
-impl<D: DeriveSpk, C: Keychain> WalletDescr<D, C> {
-    pub fn new_standard(descr: D, network: Chain) -> Self {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> WalletDescr<D, C> {
+    pub fn new_standard(
+        signers: impl IntoIterator<Item = (String, XpubDescriptor)>,
+        descr: D,
+        network: Chain,
+    ) -> Self {
         WalletDescr {
+            signers: signers.collect(),
             script_pubkey: descr,
             keychains: C::STANDARD_SET.iter().copied().collect(),
             chain: network,
         }
     }
 
-    pub fn with_keychains(descr: D, network: Chain, keychain: impl IntoIterator<Item = C>) -> Self {
+    pub fn with_keychains(
+        signers: impl IntoIterator<Item = (String, XpubDescriptor)>,
+        descr: D,
+        network: Chain,
+        keychain: impl IntoIterator<Item = C>,
+    ) -> Self {
         WalletDescr {
+            signers: signers.collect(),
             script_pubkey: descr,
             keychains: keychain.into_iter().collect(),
             chain: network,
@@ -88,7 +113,7 @@ impl<D: DeriveSpk, C: Keychain> WalletDescr<D, C> {
     }
 }
 
-impl<D: DeriveSpk, C: Keychain> Deref for WalletDescr<D, C> {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> Deref for WalletDescr<D, C> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.script_pubkey }
@@ -128,19 +153,19 @@ impl<C: Keychain> Default for WalletCache<C> {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<D: DeriveSpk, C: Keychain = Bip32Keychain> {
+pub struct Wallet<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain = Bip32Keychain> {
     pub(crate) descr: WalletDescr<D, C>,
     pub(crate) data: WalletData,
     pub(crate) cache: WalletCache<C>,
 }
 
-impl<D: DeriveSpk, C: Keychain> Deref for Wallet<D, C> {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> Deref for Wallet<D, C> {
     type Target = WalletDescr<D, C>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> Wallet<D, C> {
     pub fn new(descr: D, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
@@ -211,14 +236,14 @@ impl<C: Keychain> WalletCache<C> {
 }
 
 impl<C: Keychain> WalletCache<C> {
-    pub fn with<I: Indexer, D: DeriveSpk>(
+    pub fn with<I: Indexer, D: DeriveSpk + Descriptor<XpubDescriptor>>(
         descriptor: &WalletDescr<D, C>,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
         indexer.create(descriptor)
     }
 
-    pub fn update<I: Indexer, D: DeriveSpk>(
+    pub fn update<I: Indexer, D: DeriveSpk + Descriptor<XpubDescriptor>>(
         &mut self,
         descriptor: &WalletDescr<D, C>,
         indexer: &I,

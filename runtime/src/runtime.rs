@@ -20,15 +20,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Display;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, io};
 
-use bp::{Chain, DeriveSpk, DescriptorStd, KeyTranslate, Keychain, XpubDescriptor};
-use serde_with::DisplayFromStr;
+use bp::{Bip32Keychain, Chain, DeriveSpk, Descriptor, DescriptorStd, Keychain, XpubDescriptor};
 
 use crate::{Indexer, Wallet, WalletDescr};
 
@@ -45,53 +43,26 @@ pub enum LoadError {
     Custom(String),
 }
 
-#[serde_as]
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(crate = "serde_crate")]
-pub struct DescriptorCoder<D: KeyTranslate<String>, C: Keychain>
-where <C as FromStr>::Err: Display
-{
-    #[serde_as(as = "BTreeMap<_, DisplayFromStr>")]
-    pub signers: BTreeMap<String, XpubDescriptor>,
-    pub script_pubkey: D,
-    #[serde_as(as = "BTreeSet<DisplayFromStr>")]
-    pub keychains: BTreeSet<C>,
-    #[serde_as(as = "DisplayFromStr")]
-    pub chain: Chain,
-}
-
-impl<C: Keychain, D: KeyTranslate<String, Dest<XpubDescriptor> = D2>, D2: DeriveSpk>
-    From<DescriptorCoder<D, C>> for WalletDescr<D2, C>
-where <C as FromStr>::Err: Display
-{
-    fn from(coder: DescriptorCoder<D, C>) -> Self {
-        let script_pubkey =
-            coder.script_pubkey.translate(|name| coder.signers.get(&name).unwrap().clone());
-        WalletDescr {
-            script_pubkey,
-            keychains: coder.keychains,
-            chain: coder.chain,
-        }
-    }
-}
-
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd> {
+pub struct Runtime<
+    D: DeriveSpk + Descriptor<XpubDescriptor> = DescriptorStd,
+    C: Keychain = Bip32Keychain,
+> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
-    wallet: Wallet<D>,
+    wallet: Wallet<D, C>,
 }
 
-impl<D: DeriveSpk> Deref for Runtime<D> {
-    type Target = Wallet<D>;
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> Deref for Runtime<D, C> {
+    type Target = Wallet<D, C>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<D: DeriveSpk> DerefMut for Runtime<D> {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> DerefMut for Runtime<D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<D: DeriveSpk> Runtime<D> {
+impl<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain> Runtime<D, C> {
     pub fn new(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -99,26 +70,18 @@ impl<D: DeriveSpk> Runtime<D> {
         }
     }
 
-    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
-        self.wallet.update(indexer).into_result()
-    }
-}
-
-impl<D: DeriveSpk> Runtime<D>
-where for<'de> WalletDescr<D>: serde::Deserialize<'de>
-{
     pub fn load(path: PathBuf) -> Result<Self, LoadError> {
         let mut descr_file = path.clone();
         descr_file.push("descriptor.txt");
         let descr = fs::read_to_string(descr_file)?;
-        let descr = toml::from_str(&descr)?;
+        let descr: WalletDescr<D, C> = toml::from_str(&descr)?;
 
         // TODO: Load data and cache
 
         Ok(Runtime {
             path: Some(path),
             wallet: Wallet {
-                descr,
+                descr: descr.into(),
                 data: default!(),
                 cache: none!(),
             },
@@ -137,5 +100,9 @@ where for<'de> WalletDescr<D>: serde::Deserialize<'de>
             let descriptor = init(err)?;
             Ok(Self::new(descriptor, chain))
         })
+    }
+
+    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
+        self.wallet.update(indexer).into_result()
     }
 }

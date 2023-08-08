@@ -22,7 +22,9 @@
 
 use std::cmp::max;
 
-use bp::{Address, DeriveSpk, Idx, Keychain, NormalIndex, Outpoint, Terminal};
+use bp::{
+    Address, DeriveSpk, Descriptor, Idx, Keychain, NormalIndex, Outpoint, Terminal, XpubDescriptor,
+};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
@@ -31,7 +33,7 @@ use crate::{Indexer, MayError, UtxoInfo, WalletCache, WalletDescr};
 impl Indexer for BlockingClient {
     type Error = Error;
 
-    fn create<D: DeriveSpk, C: Keychain>(
+    fn create<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain>(
         &self,
         descriptor: &WalletDescr<D, C>,
     ) -> MayError<WalletCache<C>, Vec<Self::Error>> {
@@ -92,7 +94,7 @@ impl Indexer for BlockingClient {
         }
     }
 
-    fn update<D: DeriveSpk, C: Keychain>(
+    fn update<D: DeriveSpk + Descriptor<XpubDescriptor>, C: Keychain>(
         &self,
         descr: &WalletDescr<D, C>,
         cache: &mut WalletCache<C>,
