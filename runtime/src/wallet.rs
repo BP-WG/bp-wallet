@@ -28,6 +28,8 @@ use bp::{
     Address, AddressNetwork, Bip32Keychain, Chain, DeriveSpk, DerivedAddr, Idx, Keychain,
     NormalIndex, Outpoint, Sats, Terminal, Txid,
 };
+#[cfg(feature = "serde")]
+use serde_with::DisplayFromStr;
 
 use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, UtxoInfo};
 
@@ -49,6 +51,13 @@ impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate")
+)]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
 pub struct WalletDescr<D, C = Bip32Keychain>
 where
@@ -56,8 +65,10 @@ where
     C: Keychain,
 {
     pub(crate) script_pubkey: D,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeSet<DisplayFromStr>"))]
     pub(crate) keychains: BTreeSet<C>,
     #[getter(as_copy)]
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub(crate) chain: Chain,
 }
 
