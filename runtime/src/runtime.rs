@@ -24,7 +24,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::{fs, io};
 
-use bp::{Chain, DeriveSpk, DescriptorStd};
+use bp::{Bip32Keychain, Chain, DeriveSpk, DescriptorStd, Keychain};
 
 use crate::{Indexer, Wallet, WalletDescr};
 
@@ -42,22 +42,22 @@ pub enum LoadError {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd> {
+pub struct Runtime<D: DeriveSpk = DescriptorStd, C: Keychain = Bip32Keychain> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
-    wallet: Wallet<D>,
+    wallet: Wallet<D, C>,
 }
 
-impl<D: DeriveSpk> Deref for Runtime<D> {
-    type Target = Wallet<D>;
+impl<D: DeriveSpk, C: Keychain> Deref for Runtime<D, C> {
+    type Target = Wallet<D, C>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<D: DeriveSpk> DerefMut for Runtime<D> {
+impl<D: DeriveSpk, C: Keychain> DerefMut for Runtime<D, C> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<D: DeriveSpk> Runtime<D> {
+impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
     pub fn new(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -70,8 +70,8 @@ impl<D: DeriveSpk> Runtime<D> {
     }
 }
 
-impl<D: DeriveSpk> Runtime<D>
-where for<'de> WalletDescr<D>: serde::Deserialize<'de>
+impl<D: DeriveSpk, C: Keychain> Runtime<D, C>
+where for<'de> WalletDescr<D, C>: serde::Deserialize<'de>
 {
     pub fn load(path: PathBuf) -> Result<Self, LoadError> {
         let mut descr_file = path.clone();
