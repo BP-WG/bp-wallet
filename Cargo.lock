@@ -296,6 +296,7 @@ dependencies = [
  "serde",
  "serde_yaml",
  "shellexpand",
+ "strict_encoding",
  "toml 0.7.6",
 ]
 

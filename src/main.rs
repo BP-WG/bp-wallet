@@ -40,20 +40,19 @@ pub use crate::loglevel::LogLevel;
 use crate::opts::BoostrapError;
 pub use crate::opts::Opts;
 
+pub const DATA_DIR_ENV: &str = "BP_DATA_DIR";
 #[cfg(any(target_os = "linux"))]
-pub const BP_DATA_DIR: &str = "~/.bp";
+pub const DATA_DIR: &str = "~/.bp";
 #[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
-pub const BP_DATA_DIR: &str = "~/.bp";
+pub const DATA_DIR: &str = "~/.bp";
 #[cfg(target_os = "macos")]
-pub const BP_DATA_DIR: &str = "~/Library/Application Support/BP Wallets";
+pub const DATA_DIR: &str = "~/Library/Application Support/BP Wallets";
 #[cfg(target_os = "windows")]
-pub const BP_DATA_DIR: &str = "~\\AppData\\Local\\BP Wallets";
+pub const DATA_DIR: &str = "~\\AppData\\Local\\BP Wallets";
 #[cfg(target_os = "ios")]
-pub const BP_DATA_DIR: &str = "~/Documents";
+pub const DATA_DIR: &str = "~/Documents";
 #[cfg(target_os = "android")]
-pub const BP_DATA_DIR: &str = ".";
-
-pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
+pub const DATA_DIR: &str = ".";
 
 fn main() -> ExitCode {
     if let Err(err) = run() {

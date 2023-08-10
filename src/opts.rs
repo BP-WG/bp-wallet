@@ -25,8 +25,75 @@ use std::path::PathBuf;
 use bp::{Chain, DescriptorStd, TrKey, XpubDescriptor};
 use bp_rt::{LoadError, Runtime};
 use clap::ValueHint;
+use strict_encoding::Ident;
 
-use crate::{Command, BP_DATA_DIR, DEFAULT_ESPLORA};
+pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
+use crate::{Command, DATA_DIR, DATA_DIR_ENV};
+
+#[derive(Args, Clone, PartialEq, Eq, Debug)]
+pub struct ResolverOpt {
+    /// Esplora server to use.
+    #[arg(
+        short,
+        long,
+        global = true,
+        default_value = DEFAULT_ESPLORA,
+        env = "ESPLORA_SERVER",
+        value_hint = ValueHint::Url,
+        value_name = "URL"
+    )]
+    pub esplora: String,
+
+    #[clap(long, global = true)]
+    pub sync: bool,
+}
+
+#[derive(Args, Clone, PartialEq, Eq, Debug)]
+#[group(multiple = false)]
+pub struct WalletOpts {
+    #[arg(short = 'w', long = "wallet", global = true)]
+    pub name: Option<Ident>,
+
+    /// Path to wallet directory.
+    #[arg(
+        short = 'W',
+        long,
+        global = true,
+        value_hint = ValueHint::DirPath,
+    )]
+    pub wallet_path: Option<PathBuf>,
+
+    /// Use tr(KEY) descriptor as wallet.
+    #[arg(long, global = true)]
+    pub tr_key_only: Option<XpubDescriptor>,
+}
+
+#[derive(Args, Clone, PartialEq, Eq, Debug)]
+pub struct Config {
+    /// Data directory path.
+    ///
+    /// Path to the directory that contains RGB stored data.
+    #[arg(
+        short,
+        long,
+        global = true,
+        default_value = DATA_DIR,
+        env = DATA_DIR_ENV,
+        value_hint = ValueHint::DirPath
+    )]
+    pub data_dir: PathBuf,
+
+    /// Blockchain to use.
+    #[arg(
+        short = 'n',
+        long,
+        global = true,
+        alias = "network",
+        default_value = "testnet",
+        env = "RGB_NETWORK"
+    )]
+    pub chain: Chain,
+}
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -39,58 +106,14 @@ pub struct Opts {
     #[clap(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
-    /// Data directory path.
-    ///
-    /// Path to the directory that contains RGB stored data.
-    #[clap(
-        short,
-        long,
-        global = true,
-        default_value = BP_DATA_DIR,
-        env = "BP_DATA_DIR",
-        value_hint = ValueHint::DirPath,
-        conflicts_with_all = ["wallet_path", "tr_key_only"],
-    )]
-    pub data_dir: Option<PathBuf>,
+    #[command(flatten)]
+    pub wallet: WalletOpts,
 
-    /// Blockchain to use.
-    #[clap(
-        short = 'n',
-        long,
-        global = true,
-        alias = "network",
-        default_value = "testnet",
-        env = "BP_NETWORK",
-        conflicts_with = "wallet_path"
-    )]
-    pub chain: Option<Chain>,
+    #[command(flatten)]
+    pub resolver: ResolverOpt,
 
-    /// Path to wallet directory.
-    #[clap(
-        short,
-        long,
-        global = true,
-        value_hint = ValueHint::DirPath,
-        conflicts_with = "tr_key_only",
-    )]
-    pub wallet_path: Option<PathBuf>,
-
-    /// Use tr(KEY) descriptor as wallet.
-    #[clap(long, global = true)]
-    pub tr_key_only: Option<XpubDescriptor>,
-
-    /// Esplora server to use.
-    #[clap(
-        short,
-        long,
-        global = true,
-        default_value = DEFAULT_ESPLORA,
-        env = "BP_ESPLORA_SERVER"
-    )]
-    pub esplora: String,
-
-    #[clap(long, global = true)]
-    pub sync: bool,
+    #[command(flatten)]
+    pub config: Config,
 
     /// Command to execute.
     #[clap(subcommand)]
@@ -108,34 +131,32 @@ pub enum BoostrapError {
 
 impl Opts {
     pub fn process(&mut self) {
-        self.data_dir.as_mut().map(|data_dir| {
-            *data_dir =
-                PathBuf::from(shellexpand::tilde(&data_dir.display().to_string()).to_string())
-        });
+        self.config.data_dir = PathBuf::from(
+            shellexpand::tilde(&self.config.data_dir.display().to_string()).to_string(),
+        );
     }
 
-    pub fn runtime(&self) -> Result<Runtime, BoostrapError> {
+    pub fn runtime(&self) -> Result<Runtime<DescriptorStd>, BoostrapError> {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.tr_key_only.clone() {
+        let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
             eprint!(" from command-line argument ...");
-            let network = self.chain.expect("chain must be present in data directory is given");
-            Ok(Runtime::new(TrKey::from(d).into(), network))
-        } else if let Some(wallet_path) = self.wallet_path.clone() {
+            let network = self.config.chain;
+            Runtime::new(TrKey::from(d).into(), network)
+        } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
             eprint!(" from specified wallet directory ...");
-            Runtime::load(wallet_path)
-        } else if let Some(mut data_dir) = self.data_dir.clone() {
-            eprint!(" from wallet ...");
-            let network = self.chain.expect("chain must be present in data director is given");
-            data_dir.push(network.to_string());
-            Runtime::load(data_dir)
+            Runtime::load(wallet_path)?
         } else {
-            unreachable!()
-        }?;
+            eprint!(" from wallet ...");
+            let network = self.config.chain;
+            let mut data_dir = self.config.data_dir.clone();
+            data_dir.push(network.to_string());
+            Runtime::load(data_dir)?
+        };
         eprintln!(" success");
 
-        if self.sync || self.tr_key_only.is_some() {
+        if self.resolver.sync || self.wallet.tr_key_only.is_some() {
             eprint!("Syncing ...");
-            let indexer = esplora::Builder::new(&self.esplora).build_blocking()?;
+            let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
             if let Err(errors) = runtime.sync(&indexer) {
                 eprintln!(" partial, some requests has failed:");
                 for err in errors {
