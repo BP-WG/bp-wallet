@@ -20,17 +20,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::path::PathBuf;
+
 use bp::{DescriptorStd, TrKey};
 use bp_rt::Runtime;
-use bpw::{BoostrapError, Config, ResolverOpt, WalletOpts};
+use bpw::{BoostrapError, GeneralOpts, ResolverOpt, WalletOpts};
+use strict_encoding::Ident;
 
 use crate::command::Command;
+use crate::Config;
 
 /// Command-line arguments
 #[derive(Parser)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[command(author, version, about)]
-pub struct Opts {
+pub struct Args {
     /// Set verbosity level.
     ///
     /// Can be used multiple times to increase verbosity.
@@ -44,34 +48,39 @@ pub struct Opts {
     pub resolver: ResolverOpt,
 
     #[command(flatten)]
-    pub config: Config,
+    pub general: GeneralOpts,
 
     /// Command to execute.
     #[clap(subcommand)]
     pub command: Command,
 }
 
-impl Opts {
-    pub fn process(&mut self) { self.config.process(); }
+impl Args {
+    pub fn process(&mut self) { self.general.process(); }
 
-    pub fn runtime(&self) -> Result<Runtime<DescriptorStd>, BoostrapError> {
+    pub fn conf_path(&self) -> PathBuf {
+        let mut conf_path = self.general.base_dir();
+        conf_path.push("bp.toml");
+        conf_path
+    }
+
+    pub fn runtime(&self, conf: &Config) -> Result<Runtime<DescriptorStd>, BoostrapError> {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
             eprint!(" from command-line argument ... ");
-            let network = self.config.chain;
-            Runtime::new(TrKey::from(d).into(), network)
+            Runtime::new(TrKey::from(d).into(), self.general.chain)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
             eprint!(" from specified wallet directory ... ");
             Runtime::load(wallet_path)?
-        } else if let Some(wallet_name) = self.wallet.name.clone() {
-            eprint!(" from wallet {wallet_name} ... ");
-            let network = self.config.chain;
-            let mut data_dir = self.config.data_dir.clone();
-            data_dir.push(network.to_string());
-            data_dir.push(wallet_name.to_string());
-            Runtime::load(data_dir)?
         } else {
-            unreachable!()
+            let wallet_name = self
+                .wallet
+                .name
+                .as_ref()
+                .map(Ident::to_string)
+                .unwrap_or(conf.default_wallet.clone());
+            eprint!(" from wallet {wallet_name} ... ");
+            Runtime::load(self.general.wallet_dir(wallet_name))?
         };
         eprintln!("success");
 

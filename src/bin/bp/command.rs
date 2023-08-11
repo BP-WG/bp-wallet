@@ -20,22 +20,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::{DeriveSpk, Keychain};
-use bp_rt::{AddrInfo, Runtime, UtxoInfo, WalletDescr};
-use bpw::Config;
+use std::fs;
+
+use bp_rt::{AddrInfo, UtxoInfo};
+use bpw::BoostrapError;
 use strict_encoding::Ident;
+
+use crate::args::Args;
+use crate::Config;
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
 pub enum Command {
-    /// Creates a wallet
+    /// List known wallets.
+    List,
+
+    /// Get or set default wallet.
+    #[display("default")]
+    Default {
+        /// Name of the wallet to make it default.
+        default: Option<Ident>,
+    },
+
+    /// Create a wallet.
     Create {
-        /// The name for the new wallet
+        /// The name for the new wallet.
         name: Ident,
     },
 
     /// List addresses for the wallet descriptor.
     Addresses {
+        /// Number of addresses to generate.
         #[clap(short, default_value = "20")]
         count: u16,
     },
@@ -44,16 +59,56 @@ pub enum Command {
     Coins,
 }
 
-impl Command {
-    pub fn exec<D: DeriveSpk, C: Keychain>(self, config: &Config, runtime: &mut Runtime<D, C>)
-    where for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de> {
-        match self {
+impl Args {
+    pub fn exec(self, mut config: Config) -> Result<(), BoostrapError> {
+        println!();
+
+        match &self.command {
+            Command::List => {
+                let dir = self.general.base_dir();
+                let Ok(dir) = fs::read_dir(dir).map_err(|err| {
+                    error!("Error reading wallet directory: {err:?}");
+                    eprintln!("System directory is not initialized");
+                }) else {
+                    return Ok(());
+                };
+                println!("Known wallets:");
+                let mut count = 0usize;
+                for wallet in dir {
+                    let Ok(wallet) = wallet else {
+                        continue;
+                    };
+                    let Ok(meta) = wallet.metadata() else {
+                        continue;
+                    };
+                    if !meta.is_dir() {
+                        continue;
+                    }
+                    let name = wallet.file_name().into_string().expect("invalid directory name");
+                    println!(
+                        "{name}{}",
+                        if config.default_wallet == name { "\t[default]" } else { "" }
+                    );
+                    count += 1;
+                }
+                if count == 0 {
+                    println!("no wallets found");
+                }
+            }
+            Command::Default { default } => {
+                if let Some(default) = default {
+                    config.default_wallet = default.to_string();
+                    config.store(&self.conf_path());
+                } else {
+                    println!("Default wallet is '{}'", config.default_wallet);
+                }
+            }
             Command::Create { name } => {
-                println!();
+                let mut runtime = self.runtime(&config)?;
+                let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
-                let mut dir = config.data_dir.clone();
-                dir.push(config.chain.to_string());
-                dir.push(name.to_string());
+                let dir = self.general.wallet_dir(&name);
+                runtime.set_name(name);
                 if let Err(err) = runtime.store(&dir) {
                     println!("error: {err}");
                 } else {
@@ -61,11 +116,11 @@ impl Command {
                 }
             }
             Command::Addresses { count } => {
-                println!();
+                let runtime = self.runtime(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
-                for info in runtime.address_all().take(count as usize) {
+                for info in runtime.address_all().take(*count as usize) {
                     let AddrInfo {
                         addr,
                         terminal,
@@ -77,7 +132,7 @@ impl Command {
                 }
             }
             Command::Coins => {
-                println!();
+                let runtime = self.runtime(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");
@@ -96,5 +151,7 @@ impl Command {
         };
 
         println!();
+
+        Ok(())
     }
 }

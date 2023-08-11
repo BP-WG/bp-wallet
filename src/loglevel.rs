@@ -27,11 +27,14 @@ use log::LevelFilter;
 /// Represents desired logging verbosity level
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Display)]
 pub enum LogLevel {
+    #[display("none")]
+    None = 0,
+
     /// Report only errors to `stderr` and normal program output to stdin
     /// (if it is not directed to a file). Corresponds to zero verbosity
     /// flags.
     #[display("error")]
-    Error = 0,
+    Error,
 
     /// Report warning messages and errors, plus standard program output.
     /// Corresponds to a single `-v` verbosity flag.
@@ -65,23 +68,16 @@ impl From<LogLevel> for u8 {
 
 impl LogLevel {
     /// Indicates number of required verbosity flags
-    pub fn verbosity_flag_count(&self) -> u8 {
-        match self {
-            LogLevel::Error => 0,
-            LogLevel::Warn => 1,
-            LogLevel::Info => 2,
-            LogLevel::Debug => 3,
-            LogLevel::Trace => 4,
-        }
-    }
+    pub fn verbosity_flag_count(&self) -> u8 { *self as u8 }
 
     /// Constructs enum value from a given number of verbosity flags
     pub fn from_verbosity_flag_count(level: u8) -> Self {
         match level {
-            0 => LogLevel::Error,
-            1 => LogLevel::Warn,
-            2 => LogLevel::Info,
-            3 => LogLevel::Debug,
+            0 => LogLevel::None,
+            1 => LogLevel::Error,
+            2 => LogLevel::Warn,
+            3 => LogLevel::Info,
+            4 => LogLevel::Debug,
             _ => LogLevel::Trace,
         }
     }

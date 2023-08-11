@@ -78,6 +78,8 @@ impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
         }
     }
 
+    pub fn set_name(&mut self, name: String) { self.wallet.set_name(name) }
+
     pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
         self.wallet.update(indexer).into_result()
     }

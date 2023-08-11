@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bp::{Chain, XpubDescriptor};
 use bp_rt::LoadError;
@@ -82,7 +82,7 @@ pub struct WalletOpts {
 }
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
-pub struct Config {
+pub struct GeneralOpts {
     /// Data directory path.
     ///
     /// Path to the directory that contains RGB stored data.
@@ -117,9 +117,21 @@ pub enum BoostrapError {
     Explora(esplora::Error),
 }
 
-impl Config {
+impl GeneralOpts {
     pub fn process(&mut self) {
         self.data_dir =
             PathBuf::from(shellexpand::tilde(&self.data_dir.display().to_string()).to_string());
+    }
+
+    pub fn base_dir(&self) -> PathBuf {
+        let mut dir = self.data_dir.clone();
+        dir.push(self.chain.to_string());
+        dir
+    }
+
+    pub fn wallet_dir(&self, wallet_name: impl AsRef<Path>) -> PathBuf {
+        let mut dir = self.base_dir();
+        dir.push(wallet_name);
+        dir
     }
 }

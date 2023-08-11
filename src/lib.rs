@@ -26,9 +26,9 @@ extern crate amplify;
 extern crate clap;
 
 mod loglevel;
-mod config;
+mod opts;
 
-pub use config::{
-    BoostrapError, Config, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV, DEFAULT_ESPLORA,
-};
 pub use loglevel::LogLevel;
+pub use opts::{
+    BoostrapError, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV, DEFAULT_ESPLORA,
+};

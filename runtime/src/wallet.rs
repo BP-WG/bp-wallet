@@ -201,6 +201,8 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
         Wallet { descr, data, cache }
     }
 
+    pub fn set_name(&mut self, name: String) { self.data.name = name; }
+
     pub fn update<B: Indexer>(&mut self, blockchain: &B) -> MayError<(), Vec<B::Error>> {
         WalletCache::with(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
