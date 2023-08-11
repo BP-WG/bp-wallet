@@ -29,9 +29,9 @@ use strict_encoding::Ident;
 
 pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";
 #[cfg(any(target_os = "linux"))]
-pub const DATA_DIR: &str = "~/.lnpbp";
+pub const DATA_DIR: &str = "~/.lnp-bp";
 #[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
-pub const DATA_DIR: &str = "~/.lnpbp";
+pub const DATA_DIR: &str = "~/.lnp-bp";
 #[cfg(target_os = "macos")]
 pub const DATA_DIR: &str = "~/Library/Application Support/LNP-BP Suite";
 #[cfg(target_os = "windows")]
