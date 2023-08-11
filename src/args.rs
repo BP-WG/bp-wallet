@@ -20,21 +20,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 use bp::{DescriptorStd, TrKey};
 use bp_rt::Runtime;
-use bpw::{BoostrapError, GeneralOpts, ResolverOpt, WalletOpts};
+use clap::Subcommand;
 use strict_encoding::Ident;
 
-use crate::command::Command;
-use crate::Config;
+use crate::{BoostrapError, Config, GeneralOpts, ResolverOpt, WalletOpts};
 
 /// Command-line arguments
 #[derive(Parser)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[command(author, version, about)]
-pub struct Args {
+pub struct Args<C: Clone + Eq + Debug + Subcommand> {
     /// Set verbosity level.
     ///
     /// Can be used multiple times to increase verbosity.
@@ -52,10 +52,10 @@ pub struct Args {
 
     /// Command to execute.
     #[clap(subcommand)]
-    pub command: Command,
+    pub command: C,
 }
 
-impl Args {
+impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
     pub fn process(&mut self) { self.general.process(); }
 
     pub fn conf_path(&self) -> PathBuf {
@@ -64,7 +64,7 @@ impl Args {
         conf_path
     }
 
-    pub fn runtime(&self, conf: &Config) -> Result<Runtime<DescriptorStd>, BoostrapError> {
+    pub fn bp_runtime(&self, conf: &Config) -> Result<Runtime<DescriptorStd>, BoostrapError> {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
             eprint!(" from command-line argument ... ");

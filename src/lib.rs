@@ -31,9 +31,13 @@ extern crate serde_crate as serde;
 
 mod loglevel;
 mod opts;
+mod args;
 mod config;
+mod command;
 
+pub use args::Args;
 pub use bp_rt::*;
+pub use command::Command;
 pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{

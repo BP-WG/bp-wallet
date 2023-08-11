@@ -39,7 +39,7 @@ license = { workspace = true }
 
 [[bin]]
 name = "bp"
-path = "src/bin/bp/main.rs"
+path = "src/bin/bp.rs"
 
 [lib]
 name = "bpw"

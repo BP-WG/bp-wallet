@@ -23,11 +23,9 @@
 use std::fs;
 
 use bp_rt::{AddrInfo, UtxoInfo};
-use bpw::BoostrapError;
 use strict_encoding::Ident;
 
-use crate::args::Args;
-use crate::Config;
+use crate::{Args, BoostrapError, Config};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
@@ -59,7 +57,7 @@ pub enum Command {
     Coins,
 }
 
-impl Args {
+impl Args<Command> {
     pub fn exec(self, mut config: Config) -> Result<(), BoostrapError> {
         println!();
 
@@ -104,7 +102,7 @@ impl Args {
                 }
             }
             Command::Create { name } => {
-                let mut runtime = self.runtime(&config)?;
+                let mut runtime = self.bp_runtime(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -116,7 +114,7 @@ impl Args {
                 }
             }
             Command::Addresses { count } => {
-                let runtime = self.runtime(&config)?;
+                let runtime = self.bp_runtime(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
@@ -132,7 +130,7 @@ impl Args {
                 }
             }
             Command::Coins => {
-                let runtime = self.runtime(&config)?;
+                let runtime = self.bp_runtime(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");

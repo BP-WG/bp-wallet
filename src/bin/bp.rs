@@ -21,22 +21,13 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate amplify;
-#[macro_use]
 extern crate log;
-#[macro_use]
-extern crate clap;
 extern crate serde_crate as serde;
-
-mod command;
-mod args;
 
 use std::process::ExitCode;
 
-use bpw::{BoostrapError, Config, LogLevel};
+use bpw::{Args, BoostrapError, Config, LogLevel};
 use clap::Parser;
-
-use crate::args::Args;
 
 fn main() -> ExitCode {
     if let Err(err) = run() {
