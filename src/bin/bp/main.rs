@@ -27,32 +27,15 @@ extern crate log;
 #[macro_use]
 extern crate clap;
 
-mod loglevel;
-mod opts;
 mod command;
+mod opts;
 
 use std::process::ExitCode;
 
+use bpw::{BoostrapError, LogLevel};
 use clap::Parser;
 
-pub use crate::command::Command;
-pub use crate::loglevel::LogLevel;
-use crate::opts::BoostrapError;
-pub use crate::opts::Opts;
-
-pub const DATA_DIR_ENV: &str = "BP_DATA_DIR";
-#[cfg(any(target_os = "linux"))]
-pub const DATA_DIR: &str = "~/.bp";
-#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
-pub const DATA_DIR: &str = "~/.bp";
-#[cfg(target_os = "macos")]
-pub const DATA_DIR: &str = "~/Library/Application Support/BP Wallets";
-#[cfg(target_os = "windows")]
-pub const DATA_DIR: &str = "~\\AppData\\Local\\BP Wallets";
-#[cfg(target_os = "ios")]
-pub const DATA_DIR: &str = "~/Documents";
-#[cfg(target_os = "android")]
-pub const DATA_DIR: &str = ".";
+use crate::opts::Opts;
 
 fn main() -> ExitCode {
     if let Err(err) = run() {

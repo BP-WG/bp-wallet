@@ -39,7 +39,10 @@ license = { workspace = true }
 
 [[bin]]
 name = "bp"
-path = "src/main.rs"
+path = "src/bin/bp/main.rs"
+
+[lib]
+name = "bpw"
 
 [dependencies]
 amplify = { workspace = true, features = ["serde"] }

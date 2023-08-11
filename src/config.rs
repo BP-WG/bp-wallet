@@ -22,13 +22,26 @@
 
 use std::path::PathBuf;
 
-use bp::{Chain, DescriptorStd, TrKey, XpubDescriptor};
-use bp_rt::{LoadError, Runtime};
+use bp::{Chain, XpubDescriptor};
+use bp_rt::LoadError;
 use clap::ValueHint;
 use strict_encoding::Ident;
 
+pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";
+#[cfg(any(target_os = "linux"))]
+pub const DATA_DIR: &str = "~/.lnpbp";
+#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
+pub const DATA_DIR: &str = "~/.lnpbp";
+#[cfg(target_os = "macos")]
+pub const DATA_DIR: &str = "~/Library/Application Support/LNP-BP Suite";
+#[cfg(target_os = "windows")]
+pub const DATA_DIR: &str = "~\\AppData\\Local\\LNP-BP Suite";
+#[cfg(target_os = "ios")]
+pub const DATA_DIR: &str = "~/Documents";
+#[cfg(target_os = "android")]
+pub const DATA_DIR: &str = ".";
+
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
-use crate::{Command, DATA_DIR, DATA_DIR_ENV};
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 pub struct ResolverOpt {
@@ -90,34 +103,9 @@ pub struct Config {
         global = true,
         alias = "network",
         default_value = "testnet",
-        env = "RGB_NETWORK"
+        env = "LNPBP_NETWORK"
     )]
     pub chain: Chain,
-}
-
-/// Command-line arguments
-#[derive(Parser)]
-#[derive(Clone, Eq, PartialEq, Debug)]
-#[command(author, version, about)]
-pub struct Opts {
-    /// Set verbosity level.
-    ///
-    /// Can be used multiple times to increase verbosity.
-    #[clap(short, long, global = true, action = clap::ArgAction::Count)]
-    pub verbose: u8,
-
-    #[command(flatten)]
-    pub wallet: WalletOpts,
-
-    #[command(flatten)]
-    pub resolver: ResolverOpt,
-
-    #[command(flatten)]
-    pub config: Config,
-
-    /// Command to execute.
-    #[clap(subcommand)]
-    pub command: Command,
 }
 
 #[derive(Debug, Display, Error, From)]
@@ -129,44 +117,9 @@ pub enum BoostrapError {
     Explora(esplora::Error),
 }
 
-impl Opts {
+impl Config {
     pub fn process(&mut self) {
-        self.config.data_dir = PathBuf::from(
-            shellexpand::tilde(&self.config.data_dir.display().to_string()).to_string(),
-        );
-    }
-
-    pub fn runtime(&self) -> Result<Runtime<DescriptorStd>, BoostrapError> {
-        eprint!("Loading descriptor");
-        let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
-            eprint!(" from command-line argument ...");
-            let network = self.config.chain;
-            Runtime::new(TrKey::from(d).into(), network)
-        } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
-            eprint!(" from specified wallet directory ...");
-            Runtime::load(wallet_path)?
-        } else {
-            eprint!(" from wallet ...");
-            let network = self.config.chain;
-            let mut data_dir = self.config.data_dir.clone();
-            data_dir.push(network.to_string());
-            Runtime::load(data_dir)?
-        };
-        eprintln!(" success");
-
-        if self.resolver.sync || self.wallet.tr_key_only.is_some() {
-            eprint!("Syncing ...");
-            let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
-            if let Err(errors) = runtime.sync(&indexer) {
-                eprintln!(" partial, some requests has failed:");
-                for err in errors {
-                    eprintln!("- {err}");
-                }
-            } else {
-                eprintln!(" success");
-            }
-        }
-
-        Ok(runtime)
+        self.data_dir =
+            PathBuf::from(shellexpand::tilde(&self.data_dir.display().to_string()).to_string());
     }
 }
