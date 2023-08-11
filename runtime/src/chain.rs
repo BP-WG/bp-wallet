@@ -26,9 +26,16 @@ use bp::{
     Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, Outpoint, Sats, SeqNo,
     SigScript, Terminal, Txid, Witness,
 };
+#[cfg(feature = "serde")]
+use serde_with::DisplayFromStr;
 
 pub type BlockHeight = NonZeroU32;
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct BlockInfo {
     pub header: BlockHeader,
@@ -39,6 +46,11 @@ pub struct BlockInfo {
     pub mediantime: u32,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct MiningInfo {
     pub height: BlockHeight,
@@ -46,6 +58,11 @@ pub struct MiningInfo {
     pub block_hash: BlockHash,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum TxStatus {
     Mined(MiningInfo),
@@ -54,6 +71,11 @@ pub enum TxStatus {
     Unknown,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+)]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxInfo<C: Keychain> {
     pub txid: Txid,
@@ -67,34 +89,71 @@ pub struct TxInfo<C: Keychain> {
     pub locktime: LockTime,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    serde_as,
+    cfg_eval,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxInInfo {
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
     pub sequence: SeqNo,
     pub coinbase: bool,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub script_sig: SigScript,
     pub witness: Witness,
     pub value: Option<Sats>,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxOutInfo<C: Keychain> {
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
     pub value: Sats,
+    #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
     pub derivation: Option<Terminal<C>>,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct UtxoInfo<C: Keychain> {
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub terminal: Terminal<C>,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub address: Address,
     pub value: Sats,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct AddrInfo<C: Keychain> {
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub addr: Address,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub terminal: Terminal<C>,
     pub used: u32,
     pub volume: Sats,

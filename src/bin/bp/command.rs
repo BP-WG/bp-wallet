@@ -22,10 +22,17 @@
 
 use bp::DeriveSpk;
 use bp_rt::{AddrInfo, Runtime, UtxoInfo};
+use strict_encoding::Ident;
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
 pub enum Command {
+    /// Creates a wallet
+    Create {
+        /// The name for the new wallet
+        name: Ident,
+    },
+
     /// List addresses for the wallet descriptor.
     Addresses {
         #[clap(short, default_value = "20")]
@@ -39,6 +46,7 @@ pub enum Command {
 impl Command {
     pub fn exec<D: DeriveSpk>(self, runtime: &mut Runtime<D>) {
         match self {
+            Command::Create { name } => todo!(),
             Command::Addresses { count } => {
                 println!();
                 println!("Addresses (outer):");

@@ -47,7 +47,7 @@ name = "bpw"
 [dependencies]
 amplify = { workspace = true, features = ["serde"] }
 strict_encoding = { workspace = true }
-bp-runtime = { path = "runtime", features = ["serde"] }
+bp-runtime = { path = "runtime", features = ["serde", "fs"] }
 bp-std = { workspace = true, features = ["serde"] }
 bp-esplora = { workspace = true }
 log = { workspace = true }

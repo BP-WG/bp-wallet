@@ -20,9 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
-use std::{fs, io};
 
 use bp::{Bip32Keychain, Chain, DeriveSpk, DescriptorStd, Keychain};
 
@@ -36,6 +36,19 @@ pub enum LoadError {
 
     #[from]
     Toml(toml::de::Error),
+
+    #[from]
+    Custom(String),
+}
+
+#[derive(Debug, Display, Error, From)]
+#[display(inner)]
+pub enum StoreError {
+    #[from]
+    Io(io::Error),
+
+    #[from]
+    Toml(toml::ser::Error),
 
     #[from]
     Custom(String),
@@ -71,23 +84,12 @@ impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
 }
 
 impl<D: DeriveSpk, C: Keychain> Runtime<D, C>
-where for<'de> WalletDescr<D, C>: serde::Deserialize<'de>
+where for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de>
 {
     pub fn load(path: PathBuf) -> Result<Self, LoadError> {
-        let mut descr_file = path.clone();
-        descr_file.push("descriptor.toml");
-        let descr = fs::read_to_string(descr_file)?;
-        let descr = toml::from_str(&descr)?;
-
-        // TODO: Load data and cache
-
         Ok(Runtime {
-            path: Some(path),
-            wallet: Wallet {
-                descr,
-                data: default!(),
-                cache: none!(),
-            },
+            path: Some(path.clone()),
+            wallet: Wallet::load(&path)?,
         })
     }
 
@@ -103,5 +105,27 @@ where for<'de> WalletDescr<D, C>: serde::Deserialize<'de>
             let descriptor = init(err)?;
             Ok(Self::new(descriptor, chain))
         })
+    }
+
+    pub fn try_store(&self) -> Result<bool, StoreError> {
+        let Some(path) = &self.path else {
+            return Ok(false);
+        };
+
+        self.wallet.store(path)?;
+
+        Ok(true)
+    }
+
+    pub fn store_as(&mut self, path: PathBuf) -> Result<(), StoreError> {
+        self.path = None;
+        self.store_default_path(path)
+    }
+
+    pub fn store_default_path(&mut self, path: PathBuf) -> Result<(), StoreError> {
+        self.path = Some(path);
+        let res = self.try_store()?;
+        debug_assert!(res);
+        Ok(())
     }
 }

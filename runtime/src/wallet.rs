@@ -56,7 +56,7 @@ impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
     cfg_eval,
     serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate")
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
 pub struct WalletDescr<D, C = Bip32Keychain>
@@ -105,23 +105,45 @@ impl<D: DeriveSpk, C: Keychain> Deref for WalletDescr<D, C> {
     fn deref(&self) -> &Self::Target { &self.script_pubkey }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[derive(Clone, Eq, PartialEq, Debug, Default)]
 pub struct WalletData {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub tx_annotations: BTreeMap<Txid, String>,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub txout_annotations: BTreeMap<Outpoint, String>,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub txin_annotations: BTreeMap<Outpoint, String>,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub addr_annotations: BTreeMap<Address, String>,
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub last_used: NormalIndex,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache<C: Keychain> {
     pub(crate) last_height: u32,
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
     pub(crate) tx: HashMap<Txid, TxInfo<C>>,
+    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo<C>>>,
+    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
+    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, DisplayFromStr>"))]
     pub(crate) max_known: HashMap<NormalIndex, NormalIndex>,
 }
 
@@ -204,6 +226,63 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
             self.data.last_used.max(last_known)
         } else {
             last_known
+        }
+    }
+}
+
+#[cfg(feature = "fs")]
+mod fs {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    use super::*;
+
+    struct WalletFiles {
+        pub descr: PathBuf,
+        pub data: PathBuf,
+        pub cache: PathBuf,
+    }
+
+    impl WalletFiles {
+        pub fn new(path: &Path) -> Self {
+            let mut descr = path.to_owned();
+            descr.push("descriptor.toml");
+
+            let mut data = path.to_owned();
+            data.push("data.toml");
+
+            let mut cache = path.to_owned();
+            cache.push("cache.toml");
+
+            WalletFiles { descr, data, cache }
+        }
+    }
+
+    impl<D: DeriveSpk, C: Keychain> Wallet<D, C>
+    where for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de>
+    {
+        pub fn load(path: &Path) -> Result<Self, crate::LoadError> {
+            let files = WalletFiles::new(path);
+
+            let descr = fs::read_to_string(files.descr)?;
+            let descr = toml::from_str(&descr)?;
+
+            let data = fs::read_to_string(files.data)?;
+            let data = toml::from_str(&data)?;
+
+            let cache = fs::read_to_string(files.cache)?;
+            let cache = toml::from_str(&cache)?;
+
+            Ok(Wallet { descr, data, cache })
+        }
+
+        pub fn store(&self, path: &Path) -> Result<(), crate::StoreError> {
+            let files = WalletFiles::new(path);
+            fs::write(files.descr, toml::to_string_pretty(&self.descr)?)?;
+            fs::write(files.data, toml::to_string_pretty(&self.data)?)?;
+            fs::write(files.cache, toml::to_string_pretty(&self.cache)?)?;
+
+            Ok(())
         }
     }
 }

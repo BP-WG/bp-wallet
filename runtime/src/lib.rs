@@ -43,6 +43,6 @@ pub use chain::{
 };
 pub use indexers::Indexer;
 #[cfg(feature = "fs")]
-pub use runtime::{LoadError, Runtime};
+pub use runtime::{LoadError, Runtime, StoreError};
 pub use util::MayError;
 pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
