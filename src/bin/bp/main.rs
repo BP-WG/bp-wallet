@@ -26,6 +26,7 @@ extern crate amplify;
 extern crate log;
 #[macro_use]
 extern crate clap;
+extern crate serde_crate as serde;
 
 mod command;
 mod opts;
@@ -56,6 +57,6 @@ fn run() -> Result<(), BoostrapError> {
     eprintln!("    by LNP/BP Standards Association\n");
     let mut runtime = opts.runtime()?;
     debug!("Executing command: {}", opts.command);
-    opts.command.exec(&mut runtime);
+    opts.command.exec(&opts.config, &mut runtime);
     Ok(())
 }

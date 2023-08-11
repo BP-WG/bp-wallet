@@ -56,7 +56,14 @@ impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
     cfg_eval,
     serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
+    serde(
+        crate = "serde_crate",
+        rename_all = "camelCase",
+        bound(
+            serialize = "C: serde::Serialize, D: serde::Serialize",
+            deserialize = "C: serde::Deserialize<'de>, D: serde::Deserialize<'de>"
+        )
+    )
 )]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
 pub struct WalletDescr<D, C = Bip32Keychain>
@@ -65,7 +72,7 @@ where
     C: Keychain,
 {
     pub(crate) script_pubkey: D,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeSet<DisplayFromStr>"))]
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeSet<_>"))]
     pub(crate) keychains: BTreeSet<C>,
     #[getter(as_copy)]
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
@@ -123,7 +130,6 @@ pub struct WalletData {
     pub txin_annotations: BTreeMap<Outpoint, String>,
     #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub addr_annotations: BTreeMap<Address, String>,
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub last_used: NormalIndex,
 }
 
@@ -143,7 +149,7 @@ pub struct WalletCache<C: Keychain> {
     pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo<C>>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, DisplayFromStr>"))]
+    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) max_known: HashMap<NormalIndex, NormalIndex>,
 }
 
@@ -277,6 +283,7 @@ mod fs {
         }
 
         pub fn store(&self, path: &Path) -> Result<(), crate::StoreError> {
+            fs::create_dir_all(path)?;
             let files = WalletFiles::new(path);
             fs::write(files.descr, toml::to_string_pretty(&self.descr)?)?;
             fs::write(files.data, toml::to_string_pretty(&self.data)?)?;

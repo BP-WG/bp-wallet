@@ -20,8 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::DeriveSpk;
-use bp_rt::{AddrInfo, Runtime, UtxoInfo};
+use bp::{DeriveSpk, Keychain};
+use bp_rt::{AddrInfo, Runtime, UtxoInfo, WalletDescr};
+use bpw::Config;
 use strict_encoding::Ident;
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
@@ -44,9 +45,21 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn exec<D: DeriveSpk>(self, runtime: &mut Runtime<D>) {
+    pub fn exec<D: DeriveSpk, C: Keychain>(self, config: &Config, runtime: &mut Runtime<D, C>)
+    where for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de> {
         match self {
-            Command::Create { name } => todo!(),
+            Command::Create { name } => {
+                println!();
+                print!("Saving the wallet as '{name}' ... ");
+                let mut dir = config.data_dir.clone();
+                dir.push(config.chain.to_string());
+                dir.push(name.to_string());
+                if let Err(err) = runtime.store(&dir) {
+                    println!("error: {err}");
+                } else {
+                    println!("success");
+                }
+            }
             Command::Addresses { count } => {
                 println!();
                 println!("Addresses (outer):");

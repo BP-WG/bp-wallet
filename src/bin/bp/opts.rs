@@ -57,20 +57,23 @@ impl Opts {
     pub fn runtime(&self) -> Result<Runtime<DescriptorStd>, BoostrapError> {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
-            eprint!(" from command-line argument ...");
+            eprint!(" from command-line argument ... ");
             let network = self.config.chain;
             Runtime::new(TrKey::from(d).into(), network)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
-            eprint!(" from specified wallet directory ...");
+            eprint!(" from specified wallet directory ... ");
             Runtime::load(wallet_path)?
-        } else {
-            eprint!(" from wallet ...");
+        } else if let Some(wallet_name) = self.wallet.name.clone() {
+            eprint!(" from wallet {wallet_name} ... ");
             let network = self.config.chain;
             let mut data_dir = self.config.data_dir.clone();
             data_dir.push(network.to_string());
+            data_dir.push(wallet_name.to_string());
             Runtime::load(data_dir)?
+        } else {
+            unreachable!()
         };
-        eprintln!(" success");
+        eprintln!("success");
 
         if self.resolver.sync || self.wallet.tr_key_only.is_some() {
             eprint!("Syncing ...");
