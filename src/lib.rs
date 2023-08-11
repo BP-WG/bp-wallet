@@ -24,10 +24,17 @@
 extern crate amplify;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate serde_crate as serde;
 
 mod loglevel;
 mod opts;
+mod config;
 
+pub use bp_rt::*;
+pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{
     BoostrapError, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV, DEFAULT_ESPLORA,

@@ -26,61 +26,17 @@ extern crate amplify;
 extern crate log;
 #[macro_use]
 extern crate clap;
-#[macro_use]
 extern crate serde_crate as serde;
 
 mod command;
 mod args;
 
-use std::fs;
-use std::path::Path;
 use std::process::ExitCode;
 
-use bpw::{BoostrapError, LogLevel};
+use bpw::{BoostrapError, Config, LogLevel};
 use clap::Parser;
 
 use crate::args::Args;
-
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-pub struct Config {
-    pub default_wallet: String,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            default_wallet: s!("default"),
-        }
-    }
-}
-
-impl Config {
-    pub fn load(conf_path: &Path) -> Self {
-        fs::read_to_string(conf_path)
-            .map_err(|err| {
-                error!("Unable to read config file: {err:?}");
-                ()
-            })
-            .and_then(|s| {
-                toml::from_str(&s).map_err(|err| {
-                    error!("Unable to parse config file: {err}");
-                    ()
-                })
-            })
-            .unwrap_or_else(|_| {
-                eprintln!("Unable to find or parse config file; using config defaults");
-                let conf = Config::default();
-                conf.store(conf_path);
-                conf
-            })
-    }
-
-    pub fn store(&self, conf_path: &Path) {
-        fs::write(conf_path, toml::to_string(self).expect("config must convert to TOML")).ok();
-    }
-}
 
 fn main() -> ExitCode {
     if let Err(err) = run() {
