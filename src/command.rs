@@ -63,7 +63,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     type Error = BoostrapError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec<C: Keychain>(self, mut config: Config) -> Result<(), Self::Error>
+    fn exec<C: Keychain>(self, mut config: Config, name: &'static str) -> Result<(), Self::Error>
     where for<'de> C: serde::Serialize + serde::Deserialize<'de> {
         println!();
 
@@ -102,7 +102,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             Command::Default { default } => {
                 if let Some(default) = default {
                     config.default_wallet = default.to_string();
-                    config.store(&self.conf_path());
+                    config.store(&self.conf_path(name));
                 } else {
                     println!("Default wallet is '{}'", config.default_wallet);
                 }

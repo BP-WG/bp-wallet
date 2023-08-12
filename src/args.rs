@@ -60,22 +60,19 @@ pub trait Exec {
     type Error: std::error::Error;
     const CONF_FILE_NAME: &'static str;
 
-    fn exec<C: Keychain>(self, config: Config) -> Result<(), Self::Error>
+    fn exec<C: Keychain>(self, config: Config, name: &'static str) -> Result<(), Self::Error>
     where for<'de> C: serde::Serialize + serde::Deserialize<'de>;
-}
-
-impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O>
-where Self: Exec
-{
-    pub fn conf_path(&self) -> PathBuf {
-        let mut conf_path = self.general.base_dir();
-        conf_path.push("bp.toml");
-        conf_path
-    }
 }
 
 impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn process(&mut self) { self.general.process(); }
+
+    pub fn conf_path(&self, name: &'static str) -> PathBuf {
+        let mut conf_path = self.general.base_dir();
+        conf_path.push(name);
+        conf_path.set_extension("toml");
+        conf_path
+    }
 
     pub fn bp_runtime<D: DeriveSpk, K: Keychain>(
         &self,

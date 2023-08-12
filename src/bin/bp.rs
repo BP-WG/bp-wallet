@@ -48,7 +48,7 @@ fn run() -> Result<(), BoostrapError> {
     eprintln!("\nBP: command-line wallet for bitcoin protocol");
     eprintln!("    by LNP/BP Standards Association\n");
 
-    let conf = Config::load(&args.conf_path());
+    let conf = Config::load(&args.conf_path("bp"));
     debug!("Executing command: {}", args.command);
-    args.exec::<Bip32Keychain>(conf)
+    args.exec::<Bip32Keychain>(conf, "bp")
 }
