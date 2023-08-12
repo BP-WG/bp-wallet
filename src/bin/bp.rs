@@ -26,7 +26,8 @@ extern crate serde_crate as serde;
 
 use std::process::ExitCode;
 
-use bpw::{Args, BoostrapError, Config, Exec, LogLevel};
+use bp::{Bip32Keychain, DescriptorStd};
+use bpw::{Args, BoostrapError, Command, Config, DescrStdOpts, Exec, LogLevel};
 use clap::Parser;
 
 fn main() -> ExitCode {
@@ -39,7 +40,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), BoostrapError> {
-    let mut args = Args::parse();
+    let mut args = Args::<Command, DescrStdOpts>::parse();
     args.process();
     LogLevel::from_verbosity_flag_count(args.verbose).apply();
     trace!("Command-line arguments: {:#?}", &args);
@@ -49,5 +50,5 @@ fn run() -> Result<(), BoostrapError> {
 
     let conf = Config::load(&args.conf_path());
     debug!("Executing command: {}", args.command);
-    args.exec(conf)
+    args.exec::<DescriptorStd, Bip32Keychain>(conf)
 }

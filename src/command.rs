@@ -22,10 +22,11 @@
 
 use std::fs;
 
-use bp::{Bip32Keychain, DescriptorStd};
+use bp::{DeriveSpk, Keychain};
 use bp_rt::{AddrInfo, UtxoInfo};
 use strict_encoding::Ident;
 
+use crate::opts::DescriptorOpts;
 use crate::{Args, BoostrapError, Config, Exec};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
@@ -58,11 +59,16 @@ pub enum Command {
     Coins,
 }
 
-impl Exec for Args<Command> {
+impl<O: DescriptorOpts> Exec for Args<Command, O> {
+    type InnerDescr = O::Descr;
     type Error = BoostrapError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec(self, mut config: Config) -> Result<(), Self::Error> {
+    fn exec<D: DeriveSpk, C: Keychain>(self, mut config: Config) -> Result<(), Self::Error>
+    where
+        for<'de> D: From<Self::InnerDescr> + serde::Serialize + serde::Deserialize<'de>,
+        for<'de> C: serde::Serialize + serde::Deserialize<'de>,
+    {
         println!();
 
         match &self.command {
@@ -106,7 +112,7 @@ impl Exec for Args<Command> {
                 }
             }
             Command::Create { name } => {
-                let mut runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
+                let mut runtime = self.bp_runtime::<D, C>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -118,7 +124,7 @@ impl Exec for Args<Command> {
                 }
             }
             Command::Addresses { count } => {
-                let runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
+                let runtime = self.bp_runtime::<D, C>(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
@@ -134,7 +140,7 @@ impl Exec for Args<Command> {
                 }
             }
             Command::Coins => {
-                let runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
+                let runtime = self.bp_runtime::<D, C>(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");

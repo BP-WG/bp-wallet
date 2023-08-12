@@ -23,18 +23,19 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp::{DeriveSpk, Keychain, TrKey};
+use bp::{DeriveSpk, Keychain};
 use bp_rt::Runtime;
 use clap::Subcommand;
 use strict_encoding::Ident;
 
+use crate::opts::{DescrStdOpts, DescriptorOpts};
 use crate::{BoostrapError, Config, GeneralOpts, ResolverOpt, WalletOpts};
 
 /// Command-line arguments
 #[derive(Parser)]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[command(author, version, about)]
-pub struct Args<C: Clone + Eq + Debug + Subcommand> {
+pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStdOpts> {
     /// Set verbosity level.
     ///
     /// Can be used multiple times to increase verbosity.
@@ -42,7 +43,7 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand> {
     pub verbose: u8,
 
     #[command(flatten)]
-    pub wallet: WalletOpts,
+    pub wallet: WalletOpts<O>,
 
     #[command(flatten)]
     pub resolver: ResolverOpt,
@@ -56,13 +57,17 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand> {
 }
 
 pub trait Exec {
+    type InnerDescr: DeriveSpk;
     type Error: std::error::Error;
     const CONF_FILE_NAME: &'static str;
 
-    fn exec(self, config: Config) -> Result<(), Self::Error>;
+    fn exec<D: DeriveSpk, C: Keychain>(self, config: Config) -> Result<(), Self::Error>
+    where
+        for<'de> D: From<Self::InnerDescr> + serde::Serialize + serde::Deserialize<'de>,
+        for<'de> C: serde::Serialize + serde::Deserialize<'de>;
 }
 
-impl<C: Clone + Eq + Debug + Subcommand> Args<C>
+impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O>
 where Self: Exec
 {
     pub fn conf_path(&self) -> PathBuf {
@@ -72,7 +77,7 @@ where Self: Exec
     }
 }
 
-impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
+impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn process(&mut self) { self.general.process(); }
 
     pub fn bp_runtime<D: DeriveSpk, K: Keychain>(
@@ -80,13 +85,13 @@ impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
         conf: &Config,
     ) -> Result<Runtime<D, K>, BoostrapError>
     where
-        for<'de> D: From<TrKey> + serde::Serialize + serde::Deserialize<'de>,
+        for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
         for<'de> K: serde::Serialize + serde::Deserialize<'de>,
     {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<D, K> = if let Some(d) = self.wallet.tr_key_only.clone() {
+        let mut runtime: Runtime<D, K> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {
             eprint!(" from command-line argument ... ");
-            Runtime::new(TrKey::from(d).into(), self.general.chain)
+            Runtime::new(d.into(), self.general.chain)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
             eprint!(" from specified wallet directory ... ");
             Runtime::load(wallet_path)?
@@ -102,7 +107,7 @@ impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
         };
         eprintln!("success");
 
-        if self.resolver.sync || self.wallet.tr_key_only.is_some() {
+        if self.resolver.sync || self.wallet.descriptor_opts.is_some() {
             eprint!("Syncing ...");
             let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
             if let Err(errors) = runtime.sync(&indexer) {

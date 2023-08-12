@@ -20,9 +20,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bp::{Chain, XpubDescriptor};
+use bp::{Chain, DeriveSpk, DescriptorStd, TrKey, XpubDescriptor};
 use bp_rt::LoadError;
 use clap::ValueHint;
 use strict_encoding::Ident;
@@ -61,9 +62,32 @@ pub struct ResolverOpt {
     pub sync: bool,
 }
 
+pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
+    type Descr: DeriveSpk;
+    fn is_some(&self) -> bool;
+    fn descriptor(&self) -> Option<Self::Descr>;
+}
+
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(multiple = false)]
-pub struct WalletOpts {
+pub struct DescrStdOpts {
+    /// Use tr(KEY) descriptor as wallet.
+    #[arg(long, global = true)]
+    pub tr_key_only: Option<XpubDescriptor>,
+}
+
+impl DescriptorOpts for DescrStdOpts {
+    type Descr = DescriptorStd;
+
+    fn is_some(&self) -> bool { self.tr_key_only.is_some() }
+    fn descriptor(&self) -> Option<Self::Descr> {
+        self.tr_key_only.clone().map(TrKey::from).map(TrKey::into)
+    }
+}
+
+#[derive(Args, Clone, PartialEq, Eq, Debug)]
+#[group(multiple = false)]
+pub struct WalletOpts<O: DescriptorOpts = DescrStdOpts> {
     #[arg(short = 'w', long = "wallet", global = true)]
     pub name: Option<Ident>,
 
@@ -76,9 +100,8 @@ pub struct WalletOpts {
     )]
     pub wallet_path: Option<PathBuf>,
 
-    /// Use tr(KEY) descriptor as wallet.
-    #[arg(long, global = true)]
-    pub tr_key_only: Option<XpubDescriptor>,
+    #[clap(flatten)]
+    pub descriptor_opts: O,
 }
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
