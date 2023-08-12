@@ -57,14 +57,11 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStd
 }
 
 pub trait Exec {
-    type InnerDescr: DeriveSpk;
     type Error: std::error::Error;
     const CONF_FILE_NAME: &'static str;
 
-    fn exec<D: DeriveSpk, C: Keychain>(self, config: Config) -> Result<(), Self::Error>
-    where
-        for<'de> D: From<Self::InnerDescr> + serde::Serialize + serde::Deserialize<'de>,
-        for<'de> C: serde::Serialize + serde::Deserialize<'de>;
+    fn exec<C: Keychain>(self, config: Config) -> Result<(), Self::Error>
+    where for<'de> C: serde::Serialize + serde::Deserialize<'de>;
 }
 
 impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O>

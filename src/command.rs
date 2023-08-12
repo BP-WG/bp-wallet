@@ -22,7 +22,7 @@
 
 use std::fs;
 
-use bp::{DeriveSpk, Keychain};
+use bp::Keychain;
 use bp_rt::{AddrInfo, UtxoInfo};
 use strict_encoding::Ident;
 
@@ -60,15 +60,11 @@ pub enum Command {
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
-    type InnerDescr = O::Descr;
     type Error = BoostrapError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec<D: DeriveSpk, C: Keychain>(self, mut config: Config) -> Result<(), Self::Error>
-    where
-        for<'de> D: From<Self::InnerDescr> + serde::Serialize + serde::Deserialize<'de>,
-        for<'de> C: serde::Serialize + serde::Deserialize<'de>,
-    {
+    fn exec<C: Keychain>(self, mut config: Config) -> Result<(), Self::Error>
+    where for<'de> C: serde::Serialize + serde::Deserialize<'de> {
         println!();
 
         match &self.command {
@@ -112,7 +108,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Create { name } => {
-                let mut runtime = self.bp_runtime::<D, C>(&config)?;
+                let mut runtime = self.bp_runtime::<O::Descr, C>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -124,7 +120,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Addresses { count } => {
-                let runtime = self.bp_runtime::<D, C>(&config)?;
+                let runtime = self.bp_runtime::<O::Descr, C>(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
@@ -140,7 +136,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Coins => {
-                let runtime = self.bp_runtime::<D, C>(&config)?;
+                let runtime = self.bp_runtime::<O::Descr, C>(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");
