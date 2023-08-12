@@ -35,7 +35,7 @@ mod args;
 mod config;
 mod command;
 
-pub use args::Args;
+pub use args::{Args, Exec};
 pub use bp_rt::*;
 pub use command::Command;
 pub use config::Config;

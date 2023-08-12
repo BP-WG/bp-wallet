@@ -26,7 +26,7 @@ extern crate serde_crate as serde;
 
 use std::process::ExitCode;
 
-use bpw::{Args, BoostrapError, Config, LogLevel};
+use bpw::{Args, BoostrapError, Config, Exec, LogLevel};
 use clap::Parser;
 
 fn main() -> ExitCode {

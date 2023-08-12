@@ -22,10 +22,11 @@
 
 use std::fs;
 
+use bp::{Bip32Keychain, DescriptorStd};
 use bp_rt::{AddrInfo, UtxoInfo};
 use strict_encoding::Ident;
 
-use crate::{Args, BoostrapError, Config};
+use crate::{Args, BoostrapError, Config, Exec};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
@@ -57,8 +58,11 @@ pub enum Command {
     Coins,
 }
 
-impl Args<Command> {
-    pub fn exec(self, mut config: Config) -> Result<(), BoostrapError> {
+impl Exec for Args<Command> {
+    type Error = BoostrapError;
+    const CONF_FILE_NAME: &'static str = "bp.toml";
+
+    fn exec(self, mut config: Config) -> Result<(), Self::Error> {
         println!();
 
         match &self.command {
@@ -102,7 +106,7 @@ impl Args<Command> {
                 }
             }
             Command::Create { name } => {
-                let mut runtime = self.bp_runtime(&config)?;
+                let mut runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -114,7 +118,7 @@ impl Args<Command> {
                 }
             }
             Command::Addresses { count } => {
-                let runtime = self.bp_runtime(&config)?;
+                let runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
@@ -130,7 +134,7 @@ impl Args<Command> {
                 }
             }
             Command::Coins => {
-                let runtime = self.bp_runtime(&config)?;
+                let runtime = self.bp_runtime::<DescriptorStd, Bip32Keychain>(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");

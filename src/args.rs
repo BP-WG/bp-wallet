@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp::{DescriptorStd, TrKey};
+use bp::{DeriveSpk, Keychain, TrKey};
 use bp_rt::Runtime;
 use clap::Subcommand;
 use strict_encoding::Ident;
@@ -55,18 +55,36 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand> {
     pub command: C,
 }
 
-impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
-    pub fn process(&mut self) { self.general.process(); }
+pub trait Exec {
+    type Error: std::error::Error;
+    const CONF_FILE_NAME: &'static str;
 
+    fn exec(self, config: Config) -> Result<(), Self::Error>;
+}
+
+impl<C: Clone + Eq + Debug + Subcommand> Args<C>
+where Self: Exec
+{
     pub fn conf_path(&self) -> PathBuf {
         let mut conf_path = self.general.base_dir();
         conf_path.push("bp.toml");
         conf_path
     }
+}
 
-    pub fn bp_runtime(&self, conf: &Config) -> Result<Runtime<DescriptorStd>, BoostrapError> {
+impl<C: Clone + Eq + Debug + Subcommand> Args<C> {
+    pub fn process(&mut self) { self.general.process(); }
+
+    pub fn bp_runtime<D: DeriveSpk, K: Keychain>(
+        &self,
+        conf: &Config,
+    ) -> Result<Runtime<D, K>, BoostrapError>
+    where
+        for<'de> D: From<TrKey> + serde::Serialize + serde::Deserialize<'de>,
+        for<'de> K: serde::Serialize + serde::Deserialize<'de>,
+    {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<DescriptorStd> = if let Some(d) = self.wallet.tr_key_only.clone() {
+        let mut runtime: Runtime<D, K> = if let Some(d) = self.wallet.tr_key_only.clone() {
             eprint!(" from command-line argument ... ");
             Runtime::new(TrKey::from(d).into(), self.general.chain)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
