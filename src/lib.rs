@@ -41,6 +41,6 @@ pub use command::Command;
 pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{
-    BoostrapError, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR,
+    BootstrapError, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR,
     DATA_DIR_ENV, DEFAULT_ESPLORA,
 };

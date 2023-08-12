@@ -29,7 +29,7 @@ use clap::Subcommand;
 use strict_encoding::Ident;
 
 use crate::opts::{DescrStdOpts, DescriptorOpts};
-use crate::{BoostrapError, Config, GeneralOpts, ResolverOpt, WalletOpts};
+use crate::{BootstrapError, Config, GeneralOpts, ResolverOpt, WalletOpts};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -77,7 +77,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn bp_runtime<D: DeriveSpk, K: Keychain>(
         &self,
         conf: &Config,
-    ) -> Result<Runtime<D, K>, BoostrapError>
+    ) -> Result<Runtime<D, K>, BootstrapError>
     where
         for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
         for<'de> K: serde::Serialize + serde::Deserialize<'de>,

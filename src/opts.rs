@@ -133,7 +133,7 @@ pub struct GeneralOpts {
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
-pub enum BoostrapError {
+pub enum BootstrapError {
     #[from]
     Load(LoadError),
     #[from]
