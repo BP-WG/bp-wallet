@@ -30,6 +30,15 @@ use crate::{Indexer, Wallet, WalletDescr};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
+pub enum RuntimeError {
+    #[from]
+    Load(LoadError),
+    #[from]
+    Explora(esplora::Error),
+}
+
+#[derive(Debug, Display, Error, From)]
+#[display(inner)]
 pub enum LoadError {
     #[from]
     Io(io::Error),

@@ -24,7 +24,6 @@ use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 use bp::{Chain, DeriveSpk, DescriptorStd, TrKey, XpubDescriptor};
-use bp_rt::LoadError;
 use clap::ValueHint;
 use strict_encoding::Ident;
 
@@ -129,15 +128,6 @@ pub struct GeneralOpts {
         env = "LNPBP_NETWORK"
     )]
     pub chain: Chain,
-}
-
-#[derive(Debug, Display, Error, From)]
-#[display(inner)]
-pub enum BootstrapError {
-    #[from]
-    Load(LoadError),
-    #[from]
-    Explora(esplora::Error),
 }
 
 impl GeneralOpts {

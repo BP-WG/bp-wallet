@@ -27,7 +27,7 @@ use bp_rt::{AddrInfo, UtxoInfo};
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
-use crate::{Args, BootstrapError, Config, Exec};
+use crate::{Args, Config, Exec, RuntimeError};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 #[display(lowercase)]
@@ -60,7 +60,7 @@ pub enum Command {
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
-    type Error = BootstrapError;
+    type Error = RuntimeError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
     fn exec<C: Keychain>(self, mut config: Config, name: &'static str) -> Result<(), Self::Error>
