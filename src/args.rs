@@ -56,6 +56,18 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStd
     pub command: C,
 }
 
+impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
+    pub fn translate<C1: Clone + Eq + Debug + Subcommand>(&self, cmd: &C1) -> Args<C1, O> {
+        Args {
+            verbose: self.verbose.clone(),
+            wallet: self.wallet.clone(),
+            resolver: self.resolver.clone(),
+            general: self.general.clone(),
+            command: cmd.clone(),
+        }
+    }
+}
+
 pub trait Exec {
     type Error: std::error::Error;
     const CONF_FILE_NAME: &'static str;
