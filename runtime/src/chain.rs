@@ -20,8 +20,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, ParseIntError};
+use std::str::FromStr;
 
+use amplify::hex;
 use bp::{
     Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, Outpoint, Sats, SeqNo,
     SigScript, Terminal, Txid, Witness,
@@ -69,6 +71,44 @@ pub enum TxStatus {
     Mempool,
     Channel,
     Unknown,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+#[display("{txid}.{vin}")]
+pub struct Inpoint {
+    pub txid: Txid,
+    pub vin: u32,
+}
+
+impl Inpoint {
+    #[inline]
+    pub fn new(txid: Txid, vin: u32) -> Self { Inpoint { txid, vin } }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Display, From, Error)]
+#[display(doc_comments)]
+pub enum InpointParseError {
+    /// malformed string representation of transaction input '{0}' lacking txid and vin
+    /// separator '.'
+    MalformedSeparator(String),
+
+    /// malformed transaction input number. Details: {0}
+    #[from]
+    InvalidVout(ParseIntError),
+
+    /// malformed transaction input txid value. Details: {0}
+    #[from]
+    InvalidTxid(hex::Error),
+}
+
+impl FromStr for Inpoint {
+    type Err = InpointParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (txid, vin) =
+            s.split_once('.').ok_or_else(|| InpointParseError::MalformedSeparator(s.to_owned()))?;
+        Ok(Inpoint::new(txid.parse()?, u32::from_str(vin)?))
+    }
 }
 
 #[cfg_attr(
