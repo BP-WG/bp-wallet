@@ -92,6 +92,12 @@ impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
     pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
         self.wallet.update(indexer).into_result()
     }
+
+    #[inline]
+    pub fn attach(wallet: Wallet<D, C>) -> Self { Self { path: None, wallet } }
+
+    #[inline]
+    pub fn detach(self) -> Wallet<D, C> { self.wallet }
 }
 
 impl<D: DeriveSpk, C: Keychain> Runtime<D, C>
