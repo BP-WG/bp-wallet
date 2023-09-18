@@ -45,7 +45,7 @@ fn run() -> Result<(), RuntimeError> {
     LogLevel::from_verbosity_flag_count(args.verbose).apply();
     trace!("Command-line arguments: {:#?}", &args);
 
-    eprintln!("\nBP: command-line wallet for bitcoin protocol");
+    eprintln!("BP: command-line wallet for bitcoin protocol");
     eprintln!("    by LNP/BP Standards Association\n");
 
     let conf = Config::load(&args.conf_path("bp"));
