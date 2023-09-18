@@ -213,6 +213,7 @@ pub struct Wallet<D: DeriveSpk, C: Keychain = Bip32Keychain, L2: Layer2 = ()> {
     pub(crate) descr: WalletDescr<D, C, L2::Descr>,
     pub(crate) data: WalletData<L2::Data>,
     pub(crate) cache: WalletCache<C, L2::Cache>,
+    pub(crate) layer2: L2,
 }
 
 impl<D: DeriveSpk, C: Keychain, L2: Layer2> Deref for Wallet<D, C, L2> {
@@ -227,6 +228,7 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C, ()> {
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
             cache: WalletCache::new(),
+            layer2: (),
         }
     }
 
@@ -241,21 +243,23 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C, ()> {
 }
 
 impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
-    pub fn new_layer2(descr: D, layer2: L2::Descr, network: Chain) -> Self {
+    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
         Wallet {
-            descr: WalletDescr::new_layer2(descr, layer2, network),
+            descr: WalletDescr::new_layer2(descr, l2_descr, network),
             data: empty!(),
             cache: WalletCache::new(),
+            layer2,
         }
     }
 
     pub fn with_layer2<I: Indexer>(
         descr: D,
-        layer2: L2::Descr,
+        l2_descr: L2::Descr,
+        layer2: L2,
         network: Chain,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
-        let mut wallet = Wallet::new_layer2(descr, layer2, network);
+        let mut wallet = Wallet::new_layer2(descr, l2_descr, layer2, network);
         wallet.update(indexer).map(|_| wallet)
     }
 
@@ -263,8 +267,14 @@ impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
         descr: WalletDescr<D, C, L2::Descr>,
         data: WalletData<L2::Data>,
         cache: WalletCache<C, L2::Cache>,
+        layer2: L2,
     ) -> Self {
-        Wallet { descr, data, cache }
+        Wallet {
+            descr,
+            data,
+            cache,
+            layer2,
+        }
     }
 
     pub fn set_name(&mut self, name: String) { self.data.name = name; }
@@ -343,10 +353,17 @@ mod fs {
         }
     }
 
-    impl<D: DeriveSpk, C: Keychain> Wallet<D, C>
-    where for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de>
+    impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2>
+    where
+        for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> C: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> D: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> L2::Descr: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> L2::Data: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> L2::Cache: serde::Serialize + serde::Deserialize<'de>,
     {
-        pub fn load(path: &Path) -> Result<Self, crate::LoadError> {
+        pub fn load(path: &Path) -> Result<Self, crate::LoadError<L2::LoadError>> {
             let files = WalletFiles::new(path);
 
             let descr = fs::read_to_string(files.descr)?;
@@ -358,15 +375,23 @@ mod fs {
             let cache = fs::read_to_string(files.cache)?;
             let cache = toml::from_str(&cache)?;
 
-            Ok(Wallet { descr, data, cache })
+            let layer2 = L2::load(path).map_err(crate::LoadError::Layer2)?;
+
+            Ok(Wallet {
+                descr,
+                data,
+                cache,
+                layer2,
+            })
         }
 
-        pub fn store(&self, path: &Path) -> Result<(), crate::StoreError> {
+        pub fn store(&self, path: &Path) -> Result<(), crate::StoreError<L2::StoreError>> {
             fs::create_dir_all(path)?;
             let files = WalletFiles::new(path);
             fs::write(files.descr, toml::to_string_pretty(&self.descr)?)?;
             fs::write(files.data, toml::to_string_pretty(&self.data)?)?;
             fs::write(files.cache, toml::to_string_pretty(&self.cache)?)?;
+            self.layer2.store(path).map_err(crate::StoreError::Layer2)?;
 
             Ok(())
         }

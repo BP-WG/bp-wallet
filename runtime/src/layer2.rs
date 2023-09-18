@@ -20,26 +20,81 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub trait Layer2 {
-    type Descr: Layer2Descriptor;
-    type Data: Layer2Data;
-    type Cache: Layer2Cache;
+use std::convert::Infallible;
+use std::error;
+use std::fmt::Debug;
+use std::path::Path;
+
+pub trait Layer2: Debug {
+    type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;
+    type Data: Layer2Data<LoadError = Self::LoadError, StoreError = Self::StoreError>;
+    type Cache: Layer2Cache<LoadError = Self::LoadError, StoreError = Self::StoreError>;
+    type LoadError: error::Error;
+    type StoreError: error::Error;
+
+    fn load(path: &Path) -> Result<Self, Self::LoadError>
+    where Self: Sized;
+    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
-pub trait Layer2Descriptor {}
+pub trait Layer2Descriptor: Debug {
+    type LoadError: error::Error;
+    type StoreError: error::Error;
 
-pub trait Layer2Data: Default {}
+    fn load(path: &Path) -> Result<Self, Self::LoadError>
+    where Self: Sized;
+    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
+}
 
-pub trait Layer2Cache: Default {}
+pub trait Layer2Data: Debug + Default {
+    type LoadError: error::Error;
+    type StoreError: error::Error;
+
+    fn load(path: &Path) -> Result<Self, Self::LoadError>
+    where Self: Sized;
+    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
+}
+
+pub trait Layer2Cache: Debug + Default {
+    type LoadError: error::Error;
+    type StoreError: error::Error;
+
+    fn load(path: &Path) -> Result<Self, Self::LoadError>
+    where Self: Sized;
+    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
+}
 
 impl Layer2 for () {
     type Descr = ();
     type Data = ();
     type Cache = ();
+    type LoadError = Infallible;
+    type StoreError = Infallible;
+
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
-impl Layer2Descriptor for () {}
+impl Layer2Descriptor for () {
+    type LoadError = Infallible;
+    type StoreError = Infallible;
 
-impl Layer2Data for () {}
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
+}
 
-impl Layer2Cache for () {}
+impl Layer2Data for () {
+    type LoadError = Infallible;
+    type StoreError = Infallible;
+
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
+}
+
+impl Layer2Cache for () {
+    type LoadError = Infallible;
+    type StoreError = Infallible;
+
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
+}
