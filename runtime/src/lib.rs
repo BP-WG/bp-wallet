@@ -39,7 +39,7 @@ mod chain;
 mod wallet;
 
 pub use chain::{
-    AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, UtxoInfo,
+    AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, TxoInfo,
 };
 pub use indexers::Indexer;
 #[cfg(feature = "fs")]

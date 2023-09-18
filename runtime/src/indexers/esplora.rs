@@ -26,7 +26,7 @@ use bp::{Address, DeriveSpk, Idx, Keychain, NormalIndex, Outpoint, Terminal};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
-use crate::{Indexer, MayError, UtxoInfo, WalletCache, WalletDescr};
+use crate::{Indexer, MayError, TxoInfo, WalletCache, WalletDescr};
 
 impl Indexer for BlockingClient {
     type Error = Error;
@@ -64,7 +64,7 @@ impl Indexer for BlockingClient {
                                 if out.scriptpubkey != script {
                                     continue;
                                 }
-                                let utxo = UtxoInfo {
+                                let utxo = TxoInfo {
                                     outpoint: Outpoint::new(tx.txid, vout as u32),
                                     terminal: Terminal::new(*keychain, index),
                                     address,

@@ -31,7 +31,7 @@ use bp::{
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
-use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, UtxoInfo};
+use crate::{AddrInfo, BlockInfo, Indexer, MayError, TxInfo, TxoInfo};
 
 pub struct AddrIter<'descr, D: DeriveSpk, C: Keychain> {
     script_pubkey: &'descr D,
@@ -146,7 +146,7 @@ pub struct WalletCache<C: Keychain> {
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
     pub(crate) tx: HashMap<Txid, TxInfo<C>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) utxo: HashMap<Address, HashSet<UtxoInfo<C>>>,
+    pub(crate) utxo: HashMap<Address, HashSet<TxoInfo<C>>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
@@ -211,13 +211,13 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
         self.cache.utxo.values().flatten().map(|utxo| utxo.value).sum::<Sats>()
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = UtxoInfo<C>> + '_ {
+    pub fn coins(&self) -> impl Iterator<Item = TxoInfo<C>> + '_ {
         self.cache.utxo.values().flatten().copied()
     }
 
     pub fn address_coins(
         &self,
-    ) -> impl Iterator<Item = (Address, impl Iterator<Item = UtxoInfo<C>> + '_)> + '_ {
+    ) -> impl Iterator<Item = (Address, impl Iterator<Item = TxoInfo<C>> + '_)> + '_ {
         self.cache.utxo.iter().map(|(k, v)| (*k, v.iter().copied()))
     }
 

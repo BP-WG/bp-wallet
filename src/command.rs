@@ -23,7 +23,7 @@
 use std::fs;
 
 use bp::Keychain;
-use bp_rt::{AddrInfo, UtxoInfo};
+use bp_rt::{AddrInfo, TxoInfo};
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -143,7 +143,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 for (addr, coins) in runtime.address_coins() {
                     println!("{addr}:");
                     for utxo in coins {
-                        let UtxoInfo {
+                        let TxoInfo {
                             outpoint, value, ..
                         } = utxo;
                         println!("\t{:>12} ṩ\t{outpoint}", value.0);

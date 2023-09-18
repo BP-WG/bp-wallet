@@ -132,7 +132,7 @@ pub struct TxOutInfo<C: Keychain> {
     serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct UtxoInfo<C: Keychain> {
+pub struct TxoInfo<C: Keychain> {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
