@@ -83,7 +83,7 @@ impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
     pub fn new(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,
-            wallet: Wallet::new(descr, network),
+            wallet: Wallet::new_standard(descr, network),
         }
     }
 

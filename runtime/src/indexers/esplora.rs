@@ -26,15 +26,15 @@ use bp::{Address, DeriveSpk, Idx, Keychain, NormalIndex, Outpoint, Terminal};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
-use crate::{Indexer, MayError, TxoInfo, WalletCache, WalletDescr};
+use crate::{Indexer, Layer2, MayError, TxoInfo, WalletCache, WalletDescr};
 
 impl Indexer for BlockingClient {
     type Error = Error;
 
-    fn create<D: DeriveSpk, C: Keychain>(
+    fn create<D: DeriveSpk, C: Keychain, L2: Layer2>(
         &self,
-        descriptor: &WalletDescr<D, C>,
-    ) -> MayError<WalletCache<C>, Vec<Self::Error>> {
+        descriptor: &WalletDescr<D, C, L2::Descr>,
+    ) -> MayError<WalletCache<C, L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
 
@@ -93,10 +93,10 @@ impl Indexer for BlockingClient {
         }
     }
 
-    fn update<D: DeriveSpk, C: Keychain>(
+    fn update<D: DeriveSpk, C: Keychain, L2: Layer2>(
         &self,
-        descr: &WalletDescr<D, C>,
-        cache: &mut WalletCache<C>,
+        descr: &WalletDescr<D, C, L2::Descr>,
+        cache: &mut WalletCache<C, L2::Cache>,
     ) -> (usize, Vec<Self::Error>) {
         todo!()
     }

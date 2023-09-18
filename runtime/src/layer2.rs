@@ -20,26 +20,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "esplora")]
-mod esplora;
-
-use bp::{DeriveSpk, Keychain};
-
-use crate::{Layer2, MayError, WalletCache, WalletDescr};
-
-pub(self) const BATCH_SIZE: u8 = 10;
-
-pub trait Indexer {
-    type Error;
-
-    fn create<D: DeriveSpk, C: Keychain, L2: Layer2>(
-        &self,
-        descr: &WalletDescr<D, C, L2::Descr>,
-    ) -> MayError<WalletCache<C, L2::Cache>, Vec<Self::Error>>;
-
-    fn update<D: DeriveSpk, C: Keychain, L2: Layer2>(
-        &self,
-        descr: &WalletDescr<D, C, L2::Descr>,
-        cache: &mut WalletCache<C, L2::Cache>,
-    ) -> (usize, Vec<Self::Error>);
+pub trait Layer2 {
+    type Descr: Layer2Descriptor;
+    type Data: Layer2Data;
+    type Cache: Layer2Cache;
 }
+
+pub trait Layer2Descriptor {}
+
+pub trait Layer2Data: Default {}
+
+pub trait Layer2Cache: Default {}
+
+impl Layer2 for () {
+    type Descr = ();
+    type Data = ();
+    type Cache = ();
+}
+
+impl Layer2Descriptor for () {}
+
+impl Layer2Data for () {}
+
+impl Layer2Cache for () {}
