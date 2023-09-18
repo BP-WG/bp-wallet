@@ -180,6 +180,8 @@ pub struct TxoInfo<C: Keychain> {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub address: Address,
     pub value: Sats,
+    #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
+    pub spent: Option<Inpoint>,
 }
 
 #[cfg_attr(

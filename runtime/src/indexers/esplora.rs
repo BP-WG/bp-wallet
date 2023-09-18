@@ -69,8 +69,9 @@ impl Indexer for BlockingClient {
                                     terminal: Terminal::new(*keychain, index),
                                     address,
                                     value: out.value.into(),
+                                    spent: None,
                                 };
-                                cache.utxo.entry(address).or_default().insert(utxo);
+                                cache.outputs.insert(utxo);
                             }
                         }
                     }

@@ -145,8 +145,7 @@ pub struct WalletCache<C: Keychain> {
     pub(crate) last_height: u32,
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
     pub(crate) tx: HashMap<Txid, TxInfo<C>>,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) utxo: HashMap<Address, HashSet<TxoInfo<C>>>,
+    pub(crate) outputs: HashSet<TxoInfo<C>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
@@ -159,7 +158,7 @@ impl<C: Keychain> Default for WalletCache<C> {
             last_height: 0,
             headers: empty!(),
             tx: empty!(),
-            utxo: empty!(),
+            outputs: empty!(),
             addr: empty!(),
             max_known: empty!(),
         }
@@ -208,17 +207,28 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C> {
     }
 
     pub fn balance(&self) -> Sats {
-        self.cache.utxo.values().flatten().map(|utxo| utxo.value).sum::<Sats>()
+        self.cache
+            .outputs
+            .iter()
+            .filter(|utxo| utxo.spent.is_none())
+            .map(|utxo| utxo.value)
+            .sum::<Sats>()
     }
 
     pub fn coins(&self) -> impl Iterator<Item = TxoInfo<C>> + '_ {
-        self.cache.utxo.values().flatten().copied()
+        self.cache.outputs.iter().filter(|utxo| utxo.spent.is_none()).copied()
     }
 
     pub fn address_coins(
         &self,
     ) -> impl Iterator<Item = (Address, impl Iterator<Item = TxoInfo<C>> + '_)> + '_ {
-        self.cache.utxo.iter().map(|(k, v)| (*k, v.iter().copied()))
+        self.coins()
+            .fold(HashMap::<_, HashSet<TxoInfo<C>>>::new(), |mut acc, txo| {
+                acc.entry(txo.address).or_default().insert(txo);
+                acc
+            })
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter()))
     }
 
     pub fn address_all(&self) -> impl Iterator<Item = AddrInfo<C>> + '_ {
@@ -302,7 +312,7 @@ impl<C: Keychain> WalletCache<C> {
             last_height: 0,
             headers: none!(),
             tx: none!(),
-            utxo: none!(),
+            outputs: none!(),
             addr: none!(),
             max_known: none!(),
         }
