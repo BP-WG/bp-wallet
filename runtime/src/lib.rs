@@ -48,4 +48,4 @@ pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Tx, No
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr, Warning};

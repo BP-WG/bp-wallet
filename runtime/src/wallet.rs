@@ -287,6 +287,15 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
      */
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
+#[display(doc_comments)]
+pub enum Warning {
+    /// no cache file is found, initializing with empty cache
+    CacheAbsent,
+    /// wallet cache damaged or has invalid version; resetting
+    CacheDamaged,
+}
+
 #[cfg(feature = "fs")]
 mod fs {
     use std::fs;
@@ -324,7 +333,9 @@ mod fs {
         for<'de> L2::Data: serde::Serialize + serde::Deserialize<'de>,
         for<'de> L2::Cache: serde::Serialize + serde::Deserialize<'de>,
     {
-        pub fn load(path: &Path) -> Result<Self, crate::LoadError<L2::LoadError>> {
+        pub fn load(path: &Path) -> Result<(Self, Vec<Warning>), crate::LoadError<L2::LoadError>> {
+            let mut warnings = Vec::new();
+
             let files = WalletFiles::new(path);
 
             let descr = fs::read_to_string(files.descr)?;
@@ -333,22 +344,23 @@ mod fs {
             let data = fs::read_to_string(files.data)?;
             let data = toml::from_str(&data)?;
 
-            let cache = match fs::read_to_string(files.cache) {
-                Ok(cache) => toml::from_str(&cache)?,
-                Err(_) => {
-                    eprint!("warning: no cache file is found, initializing with empty cache");
+            let cache = fs::read_to_string(files.cache)
+                .map_err(|_| Warning::CacheAbsent)
+                .and_then(|cache| toml::from_str(&cache).map_err(|_| Warning::CacheDamaged))
+                .unwrap_or_else(|warn| {
+                    warnings.push(warn);
                     WalletCache::default()
-                }
-            };
+                });
 
             let layer2 = L2::load(path).map_err(crate::LoadError::Layer2)?;
 
-            Ok(Wallet {
+            let wallet = Wallet::<D, L2> {
                 descr,
                 data,
                 cache,
                 layer2,
-            })
+            };
+            Ok((wallet, warnings))
         }
 
         pub fn store(&self, path: &Path) -> Result<(), crate::StoreError<L2::StoreError>> {
