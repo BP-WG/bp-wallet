@@ -264,6 +264,7 @@ dependencies = [
  "cfg_eval",
  "serde",
  "serde_with",
+ "serde_yaml 0.9.25",
  "toml 0.7.8",
 ]
 

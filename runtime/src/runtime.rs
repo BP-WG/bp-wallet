@@ -66,6 +66,9 @@ pub enum StoreError<L2: error::Error = Infallible> {
     #[from]
     Toml(toml::ser::Error),
 
+    #[from]
+    Yaml(serde_yaml::Error),
+
     Layer2(L2),
 
     #[from]

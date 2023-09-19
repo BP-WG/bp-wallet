@@ -349,7 +349,7 @@ mod fs {
             data.push("data.toml");
 
             let mut cache = path.to_owned();
-            cache.push("cache.toml");
+            cache.push("cache.yaml");
 
             WalletFiles { descr, data, cache }
         }
@@ -377,7 +377,7 @@ mod fs {
 
             let cache = fs::read_to_string(files.cache)
                 .map_err(|_| Warning::CacheAbsent)
-                .and_then(|cache| toml::from_str(&cache).map_err(|_| Warning::CacheDamaged))
+                .and_then(|cache| serde_yaml::from_str(&cache).map_err(|_| Warning::CacheDamaged))
                 .unwrap_or_else(|warn| {
                     warnings.push(warn);
                     WalletCache::default()
@@ -399,7 +399,7 @@ mod fs {
             let files = WalletFiles::new(path);
             fs::write(files.descr, toml::to_string_pretty(&self.descr)?)?;
             fs::write(files.data, toml::to_string_pretty(&self.data)?)?;
-            fs::write(files.cache, toml::to_string_pretty(&self.cache)?)?;
+            fs::write(files.cache, serde_yaml::to_string(&self.cache)?)?;
             self.layer2.store(path).map_err(crate::StoreError::Layer2)?;
 
             Ok(())
