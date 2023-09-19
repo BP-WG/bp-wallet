@@ -26,7 +26,6 @@ extern crate serde_crate as serde;
 
 use std::process::ExitCode;
 
-use bp::Bip32Keychain;
 use bpw::{Args, Command, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
 use clap::Parser;
 
@@ -50,5 +49,5 @@ fn run() -> Result<(), RuntimeError> {
 
     let conf = Config::load(&args.conf_path("bp"));
     debug!("Executing command: {}", args.command);
-    args.exec::<Bip32Keychain>(conf, "bp")
+    args.exec(conf, "bp")
 }

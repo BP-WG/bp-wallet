@@ -22,7 +22,7 @@
 
 use std::cmp::max;
 
-use bp::{Address, DeriveSpk, Idx, Keychain, NormalIndex, Outpoint, Terminal};
+use bp::{Address, DeriveSpk, Idx, NormalIndex, Outpoint, Terminal};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
@@ -31,19 +31,19 @@ use crate::{Indexer, Layer2, MayError, TxoInfo, WalletCache, WalletDescr};
 impl Indexer for BlockingClient {
     type Error = Error;
 
-    fn create<D: DeriveSpk, C: Keychain, L2: Layer2>(
+    fn create<D: DeriveSpk, L2: Layer2>(
         &self,
-        descriptor: &WalletDescr<D, C, L2::Descr>,
-    ) -> MayError<WalletCache<C, L2::Cache>, Vec<Self::Error>> {
+        descriptor: &WalletDescr<D, L2::Descr>,
+    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
 
-        for keychain in &descriptor.keychains {
+        for keychain in descriptor.keychains() {
             let mut index = NormalIndex::ZERO;
-            let max_known = cache.max_known.entry(keychain.derivation()).or_default();
+            let max_known = cache.max_known.entry(keychain).or_default();
             let mut empty_count = 0usize;
             loop {
-                let script = descriptor.derive(*keychain, index);
+                let script = descriptor.derive(keychain, index);
 
                 let address =
                     Address::with(&script, descriptor.chain).expect("descriptor guarantees");
@@ -66,7 +66,7 @@ impl Indexer for BlockingClient {
                                 }
                                 let utxo = TxoInfo {
                                     outpoint: Outpoint::new(tx.txid, vout as u32),
-                                    terminal: Terminal::new(*keychain, index),
+                                    terminal: Terminal::new(keychain, index),
                                     address,
                                     value: out.value.into(),
                                     spent: None,
@@ -93,10 +93,10 @@ impl Indexer for BlockingClient {
         }
     }
 
-    fn update<D: DeriveSpk, C: Keychain, L2: Layer2>(
+    fn update<D: DeriveSpk, L2: Layer2>(
         &self,
-        descr: &WalletDescr<D, C, L2::Descr>,
-        cache: &mut WalletCache<C, L2::Cache>,
+        descr: &WalletDescr<D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
     ) -> (usize, Vec<Self::Error>) {
         todo!()
     }

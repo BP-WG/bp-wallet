@@ -25,7 +25,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::{error, io};
 
-use bp::{Bip32Keychain, Chain, DeriveSpk, DescriptorStd, Keychain};
+use bp::{Chain, DeriveSpk, DescriptorStd};
 
 use crate::{Indexer, Layer2, Wallet};
 
@@ -70,22 +70,22 @@ pub enum StoreError<L2: error::Error = Infallible> {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd, C: Keychain = Bip32Keychain, L2: Layer2 = ()> {
+pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Layer2 = ()> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
-    wallet: Wallet<D, C, L2>,
+    wallet: Wallet<D, L2>,
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> Deref for Runtime<D, C, L2> {
-    type Target = Wallet<D, C, L2>;
+impl<D: DeriveSpk, L2: Layer2> Deref for Runtime<D, L2> {
+    type Target = Wallet<D, L2>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> DerefMut for Runtime<D, C, L2> {
+impl<D: DeriveSpk, L2: Layer2> DerefMut for Runtime<D, L2> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
+impl<D: DeriveSpk> Runtime<D> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -94,7 +94,7 @@ impl<D: DeriveSpk, C: Keychain> Runtime<D, C> {
     }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> Runtime<D, C, L2> {
+impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -108,16 +108,14 @@ impl<D: DeriveSpk, C: Keychain, L2: Layer2> Runtime<D, C, L2> {
     }
 
     #[inline]
-    pub fn attach(wallet: Wallet<D, C, L2>) -> Self { Self { path: None, wallet } }
+    pub fn attach(wallet: Wallet<D, L2>) -> Self { Self { path: None, wallet } }
 
     #[inline]
-    pub fn detach(self) -> Wallet<D, C, L2> { self.wallet }
+    pub fn detach(self) -> Wallet<D, L2> { self.wallet }
 }
 
-impl<D: DeriveSpk, C: Keychain> Runtime<D, C>
-where
-    for<'de> C: serde::Serialize + serde::Deserialize<'de>,
-    for<'de> D: serde::Serialize + serde::Deserialize<'de>,
+impl<D: DeriveSpk> Runtime<D>
+where for<'de> D: serde::Serialize + serde::Deserialize<'de>
 {
     pub fn load_standard(path: PathBuf) -> Result<Self, LoadError> {
         Ok(Runtime {
@@ -141,9 +139,8 @@ where
     }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> Runtime<D, C, L2>
+impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2>
 where
-    for<'de> C: serde::Serialize + serde::Deserialize<'de>,
     for<'de> D: serde::Serialize + serde::Deserialize<'de>,
     for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
     for<'de> L2::Descr: serde::Serialize + serde::Deserialize<'de>,

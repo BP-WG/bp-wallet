@@ -22,7 +22,6 @@
 
 use std::fs;
 
-use bp::Keychain;
 use bp_rt::{AddrInfo, TxoInfo};
 use strict_encoding::Ident;
 
@@ -50,8 +49,12 @@ pub enum Command {
 
     /// List addresses for the wallet descriptor.
     Addresses {
+        /// Use change keychain
+        #[clap(short, long)]
+        change: bool,
+
         /// Number of addresses to generate.
-        #[clap(short, default_value = "20")]
+        #[clap(short = 'n', default_value = "20")]
         count: u16,
     },
 
@@ -63,8 +66,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     type Error = RuntimeError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec<C: Keychain>(self, mut config: Config, name: &'static str) -> Result<(), Self::Error>
-    where for<'de> C: serde::Serialize + serde::Deserialize<'de> {
+    fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
         println!();
 
         match &self.command {
@@ -108,7 +110,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Create { name } => {
-                let mut runtime = self.bp_runtime::<O::Descr, C>(&config)?;
+                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -119,12 +121,12 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     println!("success");
                 }
             }
-            Command::Addresses { count } => {
-                let runtime = self.bp_runtime::<O::Descr, C>(&config)?;
+            Command::Addresses { change, count } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Addresses (outer):");
                 println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
-                for info in runtime.address_all().take(*count as usize) {
+                for info in runtime.address_all(*change as u8).take(*count as usize) {
                     let AddrInfo {
                         addr,
                         terminal,
@@ -136,7 +138,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Coins => {
-                let runtime = self.bp_runtime::<O::Descr, C>(&config)?;
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Coins (UTXOs):");
                 println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");
