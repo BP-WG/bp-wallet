@@ -22,7 +22,7 @@
 
 use std::fs;
 
-use bp_rt::{AddrInfo, TxoInfo};
+use bp_rt::WalletAddr;
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -60,6 +60,9 @@ pub enum Command {
 
     /// List available coins (unspent transaction outputs).
     Coins,
+
+    /// Display history of wallet operations.
+    History,
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
@@ -67,8 +70,6 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
     fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
-        println!();
-
         match &self.command {
             Command::List => {
                 let dir = self.general.base_dir();
@@ -124,10 +125,9 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             Command::Addresses { change, count } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Addresses (outer):");
-                println!();
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
                 for info in runtime.address_all(*change as u8).take(*count as usize) {
-                    let AddrInfo {
+                    let WalletAddr {
                         addr,
                         terminal,
                         used,
@@ -139,9 +139,9 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 runtime.try_store()?;
             }
             Command::Coins => {
+                /*
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Coins (UTXOs):");
-                println!();
                 println!("Address\t{:>12}\tOutpoint", "Value");
                 for (addr, coins) in runtime.address_coins() {
                     println!("{addr}:");
@@ -155,6 +155,12 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     println!();
                 }
                 runtime.try_store()?;
+                 */
+            }
+            Command::History => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("History:");
+                println!("Date\tHeight\t{:<64}\tAmount\tBalance", "Txid");
             }
         };
 

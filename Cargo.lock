@@ -231,7 +231,7 @@ dependencies = [
 [[package]]
 name = "bp-esplora"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-esplora-client#095f5787755c814cc40c1943dd2bc8a363035370"
+source = "git+https://github.com/BP-WG/bp-esplora-client#7b61436b6e086a1a5a4485ff436d02f30af6d5a4"
 dependencies = [
  "amplify",
  "bp-std",
@@ -245,7 +245,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.7"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#91eab32707e7502bc8199fdc65971c6c8f39b044"
+source = "git+https://github.com/BP-WG/bp-core?branch=primitives#64649c0e1c7aaa8757ea14b9b0241baa39921dcb"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -752,9 +752,9 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "443144c8cdadd93ebf52ddb4056d257f5b52c04d3c804e657d19eb73fc33668b"
+checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
 name = "hex"

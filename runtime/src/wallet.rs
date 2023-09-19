@@ -20,20 +20,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::num::NonZeroU32;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
 
 use bp::{
-    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Sats,
-    Terminal, Txid,
+    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Sats, Txid,
 };
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
 use crate::{
-    AddrInfo, BlockInfo, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    NoLayer2, TxInfo, TxoInfo,
+    BlockInfo, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError, MiningInfo,
+    NoLayer2, WalletAddr, WalletTx,
 };
 
 pub struct AddrIter<'descr, D: DeriveSpk> {
@@ -145,8 +143,6 @@ pub struct WalletData<L2: Layer2Data> {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -156,29 +152,16 @@ pub struct WalletData<L2: Layer2Data> {
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache<L2: Layer2Cache> {
-    pub(crate) last_height: u32,
-    pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
-    pub(crate) tx: HashMap<Txid, TxInfo>,
-    pub(crate) outputs: HashSet<TxoInfo>,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) addr: HashMap<Terminal, AddrInfo>,
+    pub(crate) last_block: MiningInfo,
+    pub(crate) headers: BTreeSet<BlockInfo>,
+    pub(crate) tx: BTreeMap<Txid, WalletTx>,
+    pub(crate) utxo: BTreeSet<Outpoint>,
+    pub(crate) addr: BTreeMap<u8, WalletAddr>,
     pub(crate) layer2: L2,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) max_known: HashMap<u8, NormalIndex>,
 }
 
 impl<L2: Layer2Cache> Default for WalletCache<L2> {
-    fn default() -> Self {
-        WalletCache {
-            last_height: 0,
-            headers: empty!(),
-            tx: empty!(),
-            outputs: empty!(),
-            addr: empty!(),
-            layer2: empty!(),
-            max_known: empty!(),
-        }
-    }
+    fn default() -> Self { WalletCache::new() }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -256,6 +239,7 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
         WalletCache::with::<_, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
+    /*
     pub fn balance(&self) -> Sats {
         self.cache
             .outputs
@@ -280,14 +264,18 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
             .into_iter()
             .map(|(k, v)| (k, v.into_iter()))
     }
+     */
 
-    pub fn address_all(&self, keychain: u8) -> impl Iterator<Item = AddrInfo> + '_ {
-        self.descr.addresses(keychain).map(|derived| match self.cache.addr.get(&derived.terminal) {
-            None => AddrInfo::from(derived),
-            Some(info) => *info,
+    pub fn address_all(&self, keychain: u8) -> impl Iterator<Item = WalletAddr> + '_ {
+        self.descr.addresses(keychain).map(|derived| {
+            match self.cache.addr.get(&derived.terminal.keychain) {
+                None => WalletAddr::from(derived),
+                Some(info) => *info,
+            }
         })
     }
 
+    /*
     pub fn derivation_index_tip(&self, keychain: u8) -> NormalIndex {
         let last_known = self.cache.max_known.get(&keychain).copied().unwrap_or_default();
         if keychain == 0 {
@@ -296,6 +284,7 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
             last_known
         }
     }
+     */
 }
 
 #[cfg(feature = "fs")]
@@ -375,23 +364,18 @@ mod fs {
     }
 }
 
-impl<L2: Layer2Cache> WalletCache<L2>
-where L2: Default
-{
+impl<L2C: Layer2Cache> WalletCache<L2C> {
     pub(crate) fn new() -> Self {
         WalletCache {
-            last_height: 0,
+            last_block: MiningInfo::genesis(),
             headers: none!(),
             tx: none!(),
-            outputs: none!(),
+            utxo: none!(),
             addr: none!(),
             layer2: none!(),
-            max_known: none!(),
         }
     }
-}
 
-impl<L2C: Layer2Cache> WalletCache<L2C> {
     pub fn with<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
         descriptor: &WalletDescr<D, L2::Descr>,
         indexer: &I,

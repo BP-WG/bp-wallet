@@ -20,13 +20,81 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::cmp::max;
+use std::num::NonZeroU32;
 
-use bp::{Address, DeriveSpk, Idx, NormalIndex, Outpoint, Terminal};
+use bp::{Address, DeriveSpk, Idx, LockTime, NormalIndex, Outpoint, SeqNo, Witness};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
-use crate::{Indexer, Layer2, MayError, TxoInfo, WalletCache, WalletDescr};
+use crate::{
+    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletCache,
+    WalletDescr, WalletTx,
+};
+
+impl From<esplora::TxStatus> for TxStatus {
+    fn from(status: esplora::TxStatus) -> Self {
+        if let esplora::TxStatus {
+            confirmed: true,
+            block_height: Some(height),
+            block_hash: Some(hash),
+            block_time: Some(ts),
+        } = status
+        {
+            TxStatus::Mined(MiningInfo {
+                height: NonZeroU32::try_from(height).unwrap_or(NonZeroU32::MIN),
+                time: ts,
+                block_hash: hash,
+            })
+        } else {
+            TxStatus::Mempool
+        }
+    }
+}
+
+impl From<esplora::PrevOut> for Party {
+    fn from(prevout: esplora::PrevOut) -> Self { Party::Unknown(prevout.scriptpubkey) }
+}
+
+impl From<esplora::Vin> for TxCredit {
+    fn from(vin: esplora::Vin) -> Self {
+        TxCredit {
+            outpoint: Outpoint::new(vin.txid, vin.vout),
+            sequence: SeqNo::from_consensus_u32(vin.sequence),
+            coinbase: vin.is_coinbase,
+            script_sig: vin.scriptsig,
+            witness: Witness::from_consensus_stack(vin.witness),
+            value: vin.prevout.as_ref().map(|prevout| prevout.value).unwrap_or_default().into(),
+            payer: vin.prevout.map(Party::from).unwrap_or(Party::Subsidy),
+        }
+    }
+}
+
+impl From<esplora::Tx> for WalletTx {
+    fn from(tx: esplora::Tx) -> Self {
+        WalletTx {
+            txid: tx.txid,
+            status: tx.status.into(),
+            inputs: tx.vin.into_iter().map(TxCredit::from).collect(),
+            outputs: tx
+                .vout
+                .into_iter()
+                .enumerate()
+                .map(|(n, vout)| TxDebit {
+                    outpoint: Outpoint::new(tx.txid, n as u32),
+                    beneficiary: Party::from(vout.scriptpubkey),
+                    value: vout.value.into(),
+                    derivation: None,
+                    spent: None,
+                })
+                .collect(),
+            fee: tx.fee.into(),
+            size: tx.size,
+            weight: tx.weight,
+            version: tx.version,
+            locktime: LockTime::from_consensus_u32(tx.locktime),
+        }
+    }
+}
 
 impl Indexer for BlockingClient {
     type Error = Error;
@@ -40,7 +108,6 @@ impl Indexer for BlockingClient {
 
         for keychain in descriptor.keychains() {
             let mut index = NormalIndex::ZERO;
-            let max_known = cache.max_known.entry(keychain).or_default();
             let mut empty_count = 0usize;
             loop {
                 let script = descriptor.derive(keychain, index);
@@ -58,22 +125,9 @@ impl Indexer for BlockingClient {
                     }
                     Ok(txes) => {
                         empty_count = 0;
-                        *max_known = max(*max_known, index);
-                        for tx in txes {
-                            for (vout, out) in tx.vout.iter().enumerate() {
-                                if out.scriptpubkey != script {
-                                    continue;
-                                }
-                                let utxo = TxoInfo {
-                                    outpoint: Outpoint::new(tx.txid, vout as u32),
-                                    terminal: Terminal::new(keychain, index),
-                                    address,
-                                    value: out.value.into(),
-                                    spent: None,
-                                };
-                                cache.outputs.insert(utxo);
-                            }
-                        }
+                        cache
+                            .tx
+                            .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
                     }
                 }
 

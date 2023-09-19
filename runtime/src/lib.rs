@@ -35,15 +35,16 @@ mod indexers;
 #[cfg(feature = "fs")]
 mod runtime;
 mod util;
-mod chain;
+mod data;
+//mod rows;
 mod wallet;
 mod layer2;
 
-pub use chain::{
-    AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, TxoInfo,
+pub use data::{
+    BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
 };
 pub use indexers::Indexer;
-pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, NoLayer2};
+pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2};
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;
