@@ -127,6 +127,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             } else {
                 eprintln!(" success");
             }
+            runtime.try_store()?;
         }
 
         Ok(runtime)

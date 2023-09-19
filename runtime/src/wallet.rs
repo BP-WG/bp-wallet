@@ -164,6 +164,34 @@ impl<L2: Layer2Cache> Default for WalletCache<L2> {
     fn default() -> Self { WalletCache::new() }
 }
 
+impl<L2C: Layer2Cache> WalletCache<L2C> {
+    pub(crate) fn new() -> Self {
+        WalletCache {
+            last_block: MiningInfo::genesis(),
+            headers: none!(),
+            tx: none!(),
+            utxo: none!(),
+            addr: none!(),
+            layer2: none!(),
+        }
+    }
+
+    pub fn with<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
+        descriptor: &WalletDescr<D, L2::Descr>,
+        indexer: &I,
+    ) -> MayError<Self, Vec<I::Error>> {
+        indexer.create::<_, L2>(descriptor)
+    }
+
+    pub fn update<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
+        &mut self,
+        descriptor: &WalletDescr<D, L2::Descr>,
+        indexer: &I,
+    ) -> (usize, Vec<I::Error>) {
+        indexer.update::<_, L2>(descriptor, self)
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Wallet<D: DeriveSpk, L2: Layer2 = NoLayer2> {
     pub(crate) descr: WalletDescr<D, L2::Descr>,
@@ -285,6 +313,9 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
         }
     }
      */
+
+    #[inline]
+    pub fn transactions(&self) -> &BTreeMap<Txid, WalletTx> { &self.cache.tx }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
@@ -373,33 +404,5 @@ mod fs {
 
             Ok(())
         }
-    }
-}
-
-impl<L2C: Layer2Cache> WalletCache<L2C> {
-    pub(crate) fn new() -> Self {
-        WalletCache {
-            last_block: MiningInfo::genesis(),
-            headers: none!(),
-            tx: none!(),
-            utxo: none!(),
-            addr: none!(),
-            layer2: none!(),
-        }
-    }
-
-    pub fn with<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
-        descriptor: &WalletDescr<D, L2::Descr>,
-        indexer: &I,
-    ) -> MayError<Self, Vec<I::Error>> {
-        indexer.create::<_, L2>(descriptor)
-    }
-
-    pub fn update<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
-        &mut self,
-        descriptor: &WalletDescr<D, L2::Descr>,
-        indexer: &I,
-    ) -> (usize, Vec<I::Error>) {
-        indexer.update::<_, L2>(descriptor, self)
     }
 }

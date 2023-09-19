@@ -136,7 +136,6 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     } = info;
                     println!("{terminal}\t{addr}\t{used}\t{volume}\t{balance}");
                 }
-                runtime.try_store()?;
             }
             Command::Coins => {
                 /*
@@ -154,13 +153,11 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     }
                     println!();
                 }
-                runtime.try_store()?;
                  */
             }
             Command::History => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("History:");
-                println!("Date\tHeight\t{:<64}\tAmount\tBalance", "Txid");
+                println!("{}", serde_yaml::to_string(&runtime.transactions()).unwrap());
             }
         };
 
