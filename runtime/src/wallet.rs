@@ -344,8 +344,13 @@ mod fs {
             let data = fs::read_to_string(files.data)?;
             let data = toml::from_str(&data)?;
 
-            let cache = fs::read_to_string(files.cache)?;
-            let cache = toml::from_str(&cache)?;
+            let cache = match fs::read_to_string(files.cache) {
+                Ok(cache) => toml::from_str(&cache)?,
+                Err(_) => {
+                    eprint!("warning: no cache file is found, initializing with empty cache");
+                    WalletCache::default()
+                }
+            };
 
             let layer2 = L2::load(path).map_err(crate::LoadError::Layer2)?;
 
