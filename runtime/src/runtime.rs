@@ -36,6 +36,9 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
     Load(LoadError<L2>),
 
     #[from]
+    Store(StoreError<L2>),
+
+    #[from]
     Explora(esplora::Error),
 }
 

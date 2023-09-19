@@ -136,6 +136,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     } = info;
                     println!("{terminal}\t{addr}\t{used}\t{volume}\t{balance}");
                 }
+                runtime.try_store()?;
             }
             Command::Coins => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
@@ -153,6 +154,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     }
                     println!();
                 }
+                runtime.try_store()?;
             }
         };
 
