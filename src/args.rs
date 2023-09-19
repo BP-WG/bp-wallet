@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp::{DeriveSpk, Keychain};
+use bp::DeriveSpk;
 use bp_rt::Runtime;
 use clap::Subcommand;
 use strict_encoding::Ident;
@@ -72,8 +72,7 @@ pub trait Exec {
     type Error: std::error::Error;
     const CONF_FILE_NAME: &'static str;
 
-    fn exec<C: Keychain>(self, config: Config, name: &'static str) -> Result<(), Self::Error>
-    where for<'de> C: serde::Serialize + serde::Deserialize<'de>;
+    fn exec(self, config: Config, name: &'static str) -> Result<(), Self::Error>;
 }
 
 impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
@@ -86,16 +85,10 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
-    pub fn bp_runtime<D: DeriveSpk, K: Keychain>(
-        &self,
-        conf: &Config,
-    ) -> Result<Runtime<D, K>, RuntimeError>
-    where
-        for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
-        for<'de> K: serde::Serialize + serde::Deserialize<'de>,
-    {
+    pub fn bp_runtime<D: DeriveSpk>(&self, conf: &Config) -> Result<Runtime<D>, RuntimeError>
+    where for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de> {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<D, K> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {
+        let mut runtime: Runtime<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {
             eprint!(" from command-line argument ... ");
             Runtime::new_standard(d.into(), self.general.chain)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {

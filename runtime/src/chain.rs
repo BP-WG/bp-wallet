@@ -25,8 +25,8 @@ use std::str::FromStr;
 
 use amplify::hex;
 use bp::{
-    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, Outpoint, Sats, SeqNo,
-    SigScript, Terminal, Txid, Witness,
+    Address, BlockHash, BlockHeader, DerivedAddr, LockTime, Outpoint, Sats, SeqNo, SigScript,
+    Terminal, Txid, Witness,
 };
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
@@ -114,14 +114,14 @@ impl FromStr for Inpoint {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxInfo<C: Keychain> {
+pub struct TxInfo {
     pub txid: Txid,
     pub status: TxStatus,
     pub inputs: Vec<TxInInfo>,
-    pub outputs: Vec<TxOutInfo<C>>,
+    pub outputs: Vec<TxOutInfo>,
     pub fee: Sats,
     pub size: u32,
     pub weight: u32,
@@ -153,15 +153,15 @@ pub struct TxInInfo {
     cfg_eval,
     serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxOutInfo<C: Keychain> {
+pub struct TxOutInfo {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
     pub value: Sats,
     #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
-    pub derivation: Option<Terminal<C>>,
+    pub derivation: Option<Terminal>,
 }
 
 #[cfg_attr(
@@ -169,14 +169,14 @@ pub struct TxOutInfo<C: Keychain> {
     cfg_eval,
     serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxoInfo<C: Keychain> {
+pub struct TxoInfo {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
-    pub terminal: Terminal<C>,
+    pub terminal: Terminal,
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub address: Address,
     pub value: Sats,
@@ -189,21 +189,21 @@ pub struct TxoInfo<C: Keychain> {
     cfg_eval,
     serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase", bound = "")
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct AddrInfo<C: Keychain> {
+pub struct AddrInfo {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub addr: Address,
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
-    pub terminal: Terminal<C>,
+    pub terminal: Terminal,
     pub used: u32,
     pub volume: Sats,
     pub balance: Sats,
 }
 
-impl<C: Keychain> From<DerivedAddr<C>> for AddrInfo<C> {
-    fn from(derived: DerivedAddr<C>) -> Self {
+impl From<DerivedAddr> for AddrInfo {
+    fn from(derived: DerivedAddr) -> Self {
         AddrInfo {
             addr: derived.addr,
             terminal: derived.terminal,

@@ -23,7 +23,7 @@
 #[cfg(feature = "esplora")]
 mod esplora;
 
-use bp::{DeriveSpk, Keychain};
+use bp::DeriveSpk;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
 
@@ -32,14 +32,14 @@ pub(self) const BATCH_SIZE: u8 = 10;
 pub trait Indexer {
     type Error;
 
-    fn create<D: DeriveSpk, C: Keychain, L2: Layer2>(
+    fn create<D: DeriveSpk, L2: Layer2>(
         &self,
-        descr: &WalletDescr<D, C, L2::Descr>,
-    ) -> MayError<WalletCache<C, L2::Cache>, Vec<Self::Error>>;
+        descr: &WalletDescr<D, L2::Descr>,
+    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>>;
 
-    fn update<D: DeriveSpk, C: Keychain, L2: Layer2>(
+    fn update<D: DeriveSpk, L2: Layer2>(
         &self,
-        descr: &WalletDescr<D, C, L2::Descr>,
-        cache: &mut WalletCache<C, L2::Cache>,
+        descr: &WalletDescr<D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
     ) -> (usize, Vec<Self::Error>);
 }

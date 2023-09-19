@@ -20,13 +20,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::num::NonZeroU32;
 use std::ops::Deref;
 
 use bp::{
-    Address, AddressNetwork, Bip32Keychain, Chain, DeriveSpk, DerivedAddr, Idx, Keychain,
-    NormalIndex, Outpoint, Sats, Terminal, Txid,
+    Address, AddressNetwork, Chain, DeriveSpk, DerivedAddr, Idx, NormalIndex, Outpoint, Sats,
+    Terminal, Txid,
 };
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
@@ -36,15 +36,16 @@ use crate::{
     TxInfo, TxoInfo,
 };
 
-pub struct AddrIter<'descr, D: DeriveSpk, C: Keychain> {
+pub struct AddrIter<'descr, D: DeriveSpk> {
     script_pubkey: &'descr D,
     network: AddressNetwork,
-    keychain: C,
+    keychain: u8,
     index: NormalIndex,
 }
 
-impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
-    type Item = DerivedAddr<C>;
+impl<'descr, D: DeriveSpk> Iterator for AddrIter<'descr, D> {
+    type Item = DerivedAddr;
+
     fn next(&mut self) -> Option<Self::Item> {
         let addr =
             self.script_pubkey.derive_address(self.network, self.keychain, self.index).ok()?;
@@ -63,82 +64,54 @@ impl<'descr, D: DeriveSpk, C: Keychain> Iterator for AddrIter<'descr, D, C> {
         crate = "serde_crate",
         rename_all = "camelCase",
         bound(
-            serialize = "C: serde::Serialize, D: serde::Serialize, L2: serde::Serialize",
-            deserialize = "C: serde::Deserialize<'de>, D: serde::Deserialize<'de>, L2: \
-                           serde::Deserialize<'de>"
+            serialize = "D: serde::Serialize, L2: serde::Serialize",
+            deserialize = "D: serde::Deserialize<'de>, L2: serde::Deserialize<'de>"
         )
     )
 )]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
-pub struct WalletDescr<D, C = Bip32Keychain, L2 = ()>
+pub struct WalletDescr<D, L2 = ()>
 where
     D: DeriveSpk,
-    C: Keychain,
     L2: Layer2Descriptor,
 {
     pub(crate) script_pubkey: D,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeSet<_>"))]
-    pub(crate) keychains: BTreeSet<C>,
     #[getter(as_copy)]
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub(crate) chain: Chain,
     pub(crate) layer2: L2,
 }
 
-impl<D: DeriveSpk, C: Keychain> WalletDescr<D, C, ()> {
+impl<D: DeriveSpk> WalletDescr<D, ()> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         WalletDescr {
             script_pubkey: descr,
-            keychains: C::STANDARD_SET.iter().copied().collect(),
-            chain: network,
-            layer2: (),
-        }
-    }
-
-    pub fn with_standard(descr: D, network: Chain, keychain: impl IntoIterator<Item = C>) -> Self {
-        WalletDescr {
-            script_pubkey: descr,
-            keychains: keychain.into_iter().collect(),
             chain: network,
             layer2: (),
         }
     }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2Descriptor> WalletDescr<D, C, L2> {
+impl<D: DeriveSpk, L2: Layer2Descriptor> WalletDescr<D, L2> {
     pub fn new_layer2(descr: D, layer2: L2, network: Chain) -> Self {
         WalletDescr {
             script_pubkey: descr,
-            keychains: C::STANDARD_SET.iter().copied().collect(),
             chain: network,
             layer2,
         }
     }
 
-    pub fn with_layer2(
-        descr: D,
-        layer2: L2,
-        network: Chain,
-        keychain: impl IntoIterator<Item = C>,
-    ) -> Self {
-        WalletDescr {
-            script_pubkey: descr,
-            keychains: keychain.into_iter().collect(),
-            chain: network,
-            layer2,
-        }
-    }
-    pub fn addresses(&self) -> AddrIter<D, C> {
+    pub fn addresses(&self, keychain: u8) -> AddrIter<D> {
         AddrIter {
             script_pubkey: &self.script_pubkey,
             network: self.chain.into(),
-            keychain: *self.keychains.first().expect("keychain must contain at least one index"),
+            keychain,
             index: NormalIndex::ZERO,
         }
     }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2Descriptor> Deref for WalletDescr<D, C, L2> {
+impl<D: DeriveSpk, L2: Layer2Descriptor> Deref for WalletDescr<D, L2> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.script_pubkey }
@@ -182,19 +155,19 @@ pub struct WalletData<L2: Layer2Data> {
     )
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct WalletCache<C: Keychain, L2: Layer2Cache> {
+pub struct WalletCache<L2: Layer2Cache> {
     pub(crate) last_height: u32,
     pub(crate) headers: HashMap<NonZeroU32, BlockInfo>,
-    pub(crate) tx: HashMap<Txid, TxInfo<C>>,
-    pub(crate) outputs: HashSet<TxoInfo<C>>,
+    pub(crate) tx: HashMap<Txid, TxInfo>,
+    pub(crate) outputs: HashSet<TxoInfo>,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) addr: HashMap<Terminal<C>, AddrInfo<C>>,
+    pub(crate) addr: HashMap<Terminal, AddrInfo>,
     pub(crate) layer2: L2,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub(crate) max_known: HashMap<NormalIndex, NormalIndex>,
+    pub(crate) max_known: HashMap<u8, NormalIndex>,
 }
 
-impl<C: Keychain, L2: Layer2Cache> Default for WalletCache<C, L2> {
+impl<L2: Layer2Cache> Default for WalletCache<L2> {
     fn default() -> Self {
         WalletCache {
             last_height: 0,
@@ -209,20 +182,20 @@ impl<C: Keychain, L2: Layer2Cache> Default for WalletCache<C, L2> {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<D: DeriveSpk, C: Keychain = Bip32Keychain, L2: Layer2 = ()> {
-    pub(crate) descr: WalletDescr<D, C, L2::Descr>,
+pub struct Wallet<D: DeriveSpk, L2: Layer2 = ()> {
+    pub(crate) descr: WalletDescr<D, L2::Descr>,
     pub(crate) data: WalletData<L2::Data>,
-    pub(crate) cache: WalletCache<C, L2::Cache>,
+    pub(crate) cache: WalletCache<L2::Cache>,
     pub(crate) layer2: L2,
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> Deref for Wallet<D, C, L2> {
-    type Target = WalletDescr<D, C, L2::Descr>;
+impl<D: DeriveSpk, L2: Layer2> Deref for Wallet<D, L2> {
+    type Target = WalletDescr<D, L2::Descr>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<D: DeriveSpk, C: Keychain> Wallet<D, C, ()> {
+impl<D: DeriveSpk> Wallet<D, ()> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
@@ -242,7 +215,7 @@ impl<D: DeriveSpk, C: Keychain> Wallet<D, C, ()> {
     }
 }
 
-impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
+impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
@@ -264,9 +237,9 @@ impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
     }
 
     pub fn restore(
-        descr: WalletDescr<D, C, L2::Descr>,
+        descr: WalletDescr<D, L2::Descr>,
         data: WalletData<L2::Data>,
-        cache: WalletCache<C, L2::Cache>,
+        cache: WalletCache<L2::Cache>,
         layer2: L2,
     ) -> Self {
         Wallet {
@@ -292,15 +265,15 @@ impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
             .sum::<Sats>()
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = TxoInfo<C>> + '_ {
+    pub fn coins(&self) -> impl Iterator<Item = TxoInfo> + '_ {
         self.cache.outputs.iter().filter(|utxo| utxo.spent.is_none()).copied()
     }
 
     pub fn address_coins(
         &self,
-    ) -> impl Iterator<Item = (Address, impl Iterator<Item = TxoInfo<C>> + '_)> + '_ {
+    ) -> impl Iterator<Item = (Address, impl Iterator<Item = TxoInfo> + '_)> + '_ {
         self.coins()
-            .fold(HashMap::<_, HashSet<TxoInfo<C>>>::new(), |mut acc, txo| {
+            .fold(HashMap::<_, HashSet<TxoInfo>>::new(), |mut acc, txo| {
                 acc.entry(txo.address).or_default().insert(txo);
                 acc
             })
@@ -308,16 +281,16 @@ impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2> {
             .map(|(k, v)| (k, v.into_iter()))
     }
 
-    pub fn address_all(&self) -> impl Iterator<Item = AddrInfo<C>> + '_ {
-        self.descr.addresses().map(|derived| match self.cache.addr.get(&derived.terminal) {
+    pub fn address_all(&self, keychain: u8) -> impl Iterator<Item = AddrInfo> + '_ {
+        self.descr.addresses(keychain).map(|derived| match self.cache.addr.get(&derived.terminal) {
             None => AddrInfo::from(derived),
             Some(info) => *info,
         })
     }
 
-    pub fn derivation_index_tip(&self, keychain: NormalIndex) -> NormalIndex {
+    pub fn derivation_index_tip(&self, keychain: u8) -> NormalIndex {
         let last_known = self.cache.max_known.get(&keychain).copied().unwrap_or_default();
-        if keychain == NormalIndex::ZERO {
+        if keychain == 0 {
             self.data.last_used.max(last_known)
         } else {
             last_known
@@ -353,10 +326,9 @@ mod fs {
         }
     }
 
-    impl<D: DeriveSpk, C: Keychain, L2: Layer2> Wallet<D, C, L2>
+    impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2>
     where
-        for<'de> WalletDescr<D, C>: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> C: serde::Serialize + serde::Deserialize<'de>,
+        for<'de> WalletDescr<D>: serde::Serialize + serde::Deserialize<'de>,
         for<'de> D: serde::Serialize + serde::Deserialize<'de>,
         for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
         for<'de> L2::Descr: serde::Serialize + serde::Deserialize<'de>,
@@ -398,7 +370,7 @@ mod fs {
     }
 }
 
-impl<C: Keychain, L2: Layer2Cache> WalletCache<C, L2>
+impl<L2: Layer2Cache> WalletCache<L2>
 where L2: Default
 {
     pub(crate) fn new() -> Self {
@@ -414,19 +386,19 @@ where L2: Default
     }
 }
 
-impl<C: Keychain, L2C: Layer2Cache> WalletCache<C, L2C> {
+impl<L2C: Layer2Cache> WalletCache<L2C> {
     pub fn with<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
-        descriptor: &WalletDescr<D, C, L2::Descr>,
+        descriptor: &WalletDescr<D, L2::Descr>,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
-        indexer.create::<_, _, L2>(descriptor)
+        indexer.create::<_, L2>(descriptor)
     }
 
     pub fn update<I: Indexer, D: DeriveSpk, L2: Layer2<Cache = L2C>>(
         &mut self,
-        descriptor: &WalletDescr<D, C, L2::Descr>,
+        descriptor: &WalletDescr<D, L2::Descr>,
         indexer: &I,
     ) -> (usize, Vec<I::Error>) {
-        indexer.update::<_, _, L2>(descriptor, self)
+        indexer.update::<_, L2>(descriptor, self)
     }
 }
