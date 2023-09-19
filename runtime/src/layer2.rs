@@ -64,37 +64,46 @@ pub trait Layer2Cache: Debug + Default {
     fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
-impl Layer2 for () {
-    type Descr = ();
-    type Data = ();
-    type Cache = ();
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate")
+)]
+pub enum ImpossibleLayer2 {}
+pub type NoLayer2 = Option<ImpossibleLayer2>;
+
+impl Layer2 for NoLayer2 {
+    type Descr = NoLayer2;
+    type Data = NoLayer2;
+    type Cache = NoLayer2;
     type LoadError = Infallible;
     type StoreError = Infallible;
 
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
     fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
-impl Layer2Descriptor for () {
+impl Layer2Descriptor for NoLayer2 {
     type LoadError = Infallible;
     type StoreError = Infallible;
 
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
     fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
-impl Layer2Data for () {
+impl Layer2Data for NoLayer2 {
     type LoadError = Infallible;
     type StoreError = Infallible;
 
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
     fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
-impl Layer2Cache for () {
+impl Layer2Cache for NoLayer2 {
     type LoadError = Infallible;
     type StoreError = Infallible;
 
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(()) }
+    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
     fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }

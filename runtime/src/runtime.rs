@@ -27,7 +27,7 @@ use std::{error, io};
 
 use bp::{Chain, DeriveSpk, DescriptorStd};
 
-use crate::{Indexer, Layer2, Wallet};
+use crate::{Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]
@@ -70,7 +70,7 @@ pub enum StoreError<L2: error::Error = Infallible> {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Layer2 = ()> {
+pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
     wallet: Wallet<D, L2>,

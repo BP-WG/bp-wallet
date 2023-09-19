@@ -54,7 +54,7 @@ pub enum Command {
         change: bool,
 
         /// Number of addresses to generate.
-        #[clap(short = 'n', default_value = "20")]
+        #[clap(short = 'N', long = "no", default_value = "20")]
         count: u16,
     },
 

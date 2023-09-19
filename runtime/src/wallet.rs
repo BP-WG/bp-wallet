@@ -33,7 +33,7 @@ use serde_with::DisplayFromStr;
 
 use crate::{
     AddrInfo, BlockInfo, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    TxInfo, TxoInfo,
+    NoLayer2, TxInfo, TxoInfo,
 };
 
 pub struct AddrIter<'descr, D: DeriveSpk> {
@@ -70,7 +70,7 @@ impl<'descr, D: DeriveSpk> Iterator for AddrIter<'descr, D> {
     )
 )]
 #[derive(Getters, Clone, Eq, PartialEq, Debug)]
-pub struct WalletDescr<D, L2 = ()>
+pub struct WalletDescr<D, L2 = NoLayer2>
 where
     D: DeriveSpk,
     L2: Layer2Descriptor,
@@ -82,12 +82,12 @@ where
     pub(crate) layer2: L2,
 }
 
-impl<D: DeriveSpk> WalletDescr<D, ()> {
+impl<D: DeriveSpk> WalletDescr<D, NoLayer2> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         WalletDescr {
             script_pubkey: descr,
             chain: network,
-            layer2: (),
+            layer2: None,
         }
     }
 }
@@ -182,7 +182,7 @@ impl<L2: Layer2Cache> Default for WalletCache<L2> {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<D: DeriveSpk, L2: Layer2 = ()> {
+pub struct Wallet<D: DeriveSpk, L2: Layer2 = NoLayer2> {
     pub(crate) descr: WalletDescr<D, L2::Descr>,
     pub(crate) data: WalletData<L2::Data>,
     pub(crate) cache: WalletCache<L2::Cache>,
@@ -195,13 +195,13 @@ impl<D: DeriveSpk, L2: Layer2> Deref for Wallet<D, L2> {
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<D: DeriveSpk> Wallet<D, ()> {
+impl<D: DeriveSpk> Wallet<D, NoLayer2> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
             cache: WalletCache::new(),
-            layer2: (),
+            layer2: None,
         }
     }
 

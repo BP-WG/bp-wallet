@@ -43,7 +43,7 @@ pub use chain::{
     AddrInfo, BlockHeight, BlockInfo, MiningInfo, TxInInfo, TxInfo, TxOutInfo, TxStatus, TxoInfo,
 };
 pub use indexers::Indexer;
-pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor};
+pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, NoLayer2};
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;
