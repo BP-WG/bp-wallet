@@ -123,6 +123,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Addresses { change, count } => {
+                /*
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Addresses (outer):");
                 println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
@@ -136,6 +137,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     } = info;
                     println!("{terminal}\t{addr}\t{used}\t{volume}\t{balance}");
                 }
+                 */
             }
             Command::Coins => {
                 /*

@@ -28,8 +28,8 @@ use std::str::FromStr;
 use amplify::hex;
 use amplify::hex::FromHex;
 use bp::{
-    Address, BlockHash, BlockHeader, DerivedAddr, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo,
-    SigScript, Terminal, Txid, Witness,
+    Address, BlockHash, BlockHeader, DerivedAddr, LockTime, NormalIndex, Outpoint, Sats,
+    ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
@@ -173,7 +173,7 @@ pub enum Party {
     Unknown(ScriptPubkey),
 
     #[from]
-    Wallet(Terminal),
+    Wallet(DerivedAddr),
 }
 
 impl Display for Party {
@@ -196,7 +196,7 @@ impl FromStr for Party {
         }
         Address::from_str(s)
             .map(Self::from)
-            .or_else(|_| Terminal::from_str(s).map(Self::from))
+            .or_else(|_| DerivedAddr::from_str(s).map(Self::from))
             .or_else(|_| ScriptPubkey::from_hex(s).map(Self::from))
             .map_err(|_| s.to_owned())
     }
@@ -237,8 +237,6 @@ pub struct TxDebit {
     pub beneficiary: Party,
     pub value: Sats,
     #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
-    pub derivation: Option<Terminal>,
-    #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
     pub spent: Option<Inpoint>,
 }
 
@@ -250,32 +248,58 @@ pub struct TxDebit {
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct WalletAddr {
+pub struct WalletAddr<T = Sats> {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub terminal: Terminal,
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub addr: Address,
     pub used: u32,
     pub volume: Sats,
-    pub balance: Sats,
+    pub balance: T,
 }
 
-impl Ord for WalletAddr {
+impl<T> Ord for WalletAddr<T>
+where T: Eq
+{
     fn cmp(&self, other: &Self) -> Ordering { self.terminal.cmp(&other.terminal) }
 }
 
-impl PartialOrd for WalletAddr {
+impl<T> PartialOrd for WalletAddr<T>
+where T: Eq
+{
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-impl From<DerivedAddr> for WalletAddr {
+impl<T> From<DerivedAddr> for WalletAddr<T>
+where T: Default
+{
     fn from(derived: DerivedAddr) -> Self {
         WalletAddr {
             addr: derived.addr,
             terminal: derived.terminal,
             used: 0,
             volume: Sats::ZERO,
-            balance: Sats::ZERO,
+            balance: zero!(),
+        }
+    }
+}
+
+impl<T> WalletAddr<T>
+where T: Default
+{
+    pub fn new(addr: Address, keychain: u8, index: NormalIndex) -> Self {
+        WalletAddr::<T>::from(DerivedAddr::new(addr, keychain, index))
+    }
+}
+
+impl WalletAddr<i64> {
+    pub fn expect_transmute(self) -> WalletAddr<Sats> {
+        WalletAddr {
+            terminal: self.terminal,
+            addr: self.addr,
+            used: self.used,
+            volume: self.volume,
+            balance: Sats(u64::try_from(self.balance).expect("negative balance")),
         }
     }
 }

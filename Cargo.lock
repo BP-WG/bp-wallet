@@ -245,7 +245,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.7"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#0453d78aebe6af85e9740189fd8a8dda8f2c3322"
+source = "git+https://github.com/BP-WG/bp-core?branch=primitives#6b2e0dad6593e84f051fa879f3b3e61ba8f0b099"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -271,7 +271,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#4e28d9bfc8e09fbd91ea6b9450f6b7330eb0cc7e"
+source = "git+https://github.com/BP-WG/bp-std#2bbdf345217edddf28cccdba0f1a553d0f4e5c4f"
 dependencies = [
  "amplify",
  "bech32",

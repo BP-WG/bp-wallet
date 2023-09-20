@@ -20,15 +20,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bp::{Address, DeriveSpk, Idx, LockTime, NormalIndex, Outpoint, SeqNo, Witness};
+use bp::{DeriveSpk, LockTime, Outpoint, SeqNo, Witness};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
+use crate::data::Inpoint;
 use crate::{
-    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletCache,
-    WalletDescr, WalletTx,
+    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
+    WalletCache, WalletDescr, WalletTx,
 };
 
 impl From<esplora::TxStatus> for TxStatus {
@@ -83,7 +85,6 @@ impl From<esplora::Tx> for WalletTx {
                     outpoint: Outpoint::new(tx.txid, n as u32),
                     beneficiary: Party::from(vout.scriptpubkey),
                     value: vout.value.into(),
-                    derivation: None,
                     spent: None,
                 })
                 .collect(),
@@ -106,15 +107,14 @@ impl Indexer for BlockingClient {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
 
+        let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
-            let mut index = NormalIndex::ZERO;
             let mut empty_count = 0usize;
-            loop {
-                let script = descriptor.derive(keychain, index);
+            for derive in descriptor.addresses(keychain) {
+                let script = derive.addr.script_pubkey();
 
-                let address =
-                    Address::with(&script, descriptor.chain).expect("descriptor guarantees");
                 eprint!(".");
+                let mut txids = Vec::new();
                 match self.scripthash_txs(&script, None) {
                     Err(err) => errors.push(err),
                     Ok(txes) if txes.is_empty() => {
@@ -125,20 +125,61 @@ impl Indexer for BlockingClient {
                     }
                     Ok(txes) => {
                         empty_count = 0;
+                        txids = txes.iter().map(|tx| tx.txid).collect();
                         cache
                             .tx
                             .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
                     }
                 }
 
-                if index.checked_inc_assign().is_none() {
-                    break;
-                }
+                address_index.insert(script, (derive, txids));
             }
         }
 
         // TODO: Update headers & tip
-        // TODO: Construct addr information
+
+        for (script, (mut addr_info, txids)) in address_index {
+            let mut wallet_addr = WalletAddr::<i64>::from(addr_info.clone());
+            for txid in txids {
+                let mut tx = cache.tx.remove(&txid).expect("broken logic");
+                for (vin, credit) in tx.inputs.iter_mut().enumerate() {
+                    let Party::Unknown(ref s) = credit.payer else {
+                        panic!("newly added transaction contains non-script payer");
+                    };
+                    if s == &script {
+                        credit.payer = Party::Wallet(addr_info.clone());
+                        wallet_addr.balance = wallet_addr
+                            .balance
+                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
+                    }
+                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
+                        prev_tx
+                            .outputs
+                            .get_mut(credit.outpoint.vout_u32() as usize)
+                            .map(|vout| vout.spent = Some(Inpoint::new(tx.txid, vin as u32)));
+                    }
+                }
+                for debit in &mut tx.outputs {
+                    let Party::Unknown(ref s) = debit.beneficiary else {
+                        panic!("newly added transaction contains non-script payer");
+                    };
+                    if s == &script {
+                        debit.beneficiary = Party::Wallet(addr_info.clone());
+                        wallet_addr.used = wallet_addr.used.saturating_add(1);
+                        wallet_addr.volume.saturating_add_assign(debit.value);
+                        wallet_addr.balance = wallet_addr
+                            .balance
+                            .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
+                    }
+                }
+                cache.tx.insert(tx.txid, tx);
+            }
+            cache
+                .addr
+                .entry(addr_info.terminal.keychain)
+                .or_default()
+                .insert(wallet_addr.expect_transmute());
+        }
 
         if errors.is_empty() {
             MayError::ok(cache)

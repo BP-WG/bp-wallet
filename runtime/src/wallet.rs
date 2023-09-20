@@ -156,7 +156,7 @@ pub struct WalletCache<L2: Layer2Cache> {
     pub(crate) headers: BTreeSet<BlockInfo>,
     pub(crate) tx: BTreeMap<Txid, WalletTx>,
     pub(crate) utxo: BTreeSet<Outpoint>,
-    pub(crate) addr: BTreeMap<u8, WalletAddr>,
+    pub(crate) addr: BTreeMap<u8, BTreeSet<WalletAddr>>,
     pub(crate) layer2: L2,
 }
 
@@ -292,18 +292,16 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
             .into_iter()
             .map(|(k, v)| (k, v.into_iter()))
     }
-     */
 
     pub fn address_all(&self, keychain: u8) -> impl Iterator<Item = WalletAddr> + '_ {
         self.descr.addresses(keychain).map(|derived| {
             match self.cache.addr.get(&derived.terminal.keychain) {
                 None => WalletAddr::from(derived),
-                Some(info) => *info,
+                Some(info) => info.iter().copied(),
             }
         })
     }
 
-    /*
     pub fn derivation_index_tip(&self, keychain: u8) -> NormalIndex {
         let last_known = self.cache.max_known.get(&keychain).copied().unwrap_or_default();
         if keychain == 0 {
