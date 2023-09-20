@@ -59,9 +59,30 @@ pub trait Layer2Cache: Debug + Default {
     type LoadError: error::Error;
     type StoreError: error::Error;
 
+    type Tx: Layer2Tx;
+    type Coin: Layer2Coin;
+
     fn load(path: &Path) -> Result<Self, Self::LoadError>
     where Self: Sized;
     fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
+}
+
+#[cfg(not(feature = "serde"))]
+pub trait Layer2Tx: Debug + Default {}
+
+#[cfg(feature = "serde")]
+pub trait Layer2Tx:
+    Clone + Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
+{
+}
+
+#[cfg(not(feature = "serde"))]
+pub trait Layer2Coin: Debug + Default {}
+
+#[cfg(feature = "serde")]
+pub trait Layer2Coin:
+    Clone + Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
+{
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -101,9 +122,15 @@ impl Layer2Data for NoLayer2 {
 }
 
 impl Layer2Cache for NoLayer2 {
+    type Tx = NoLayer2;
+    type Coin = NoLayer2;
+
     type LoadError = Infallible;
     type StoreError = Infallible;
 
     fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
     fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
+
+impl Layer2Tx for NoLayer2 {}
+impl Layer2Coin for NoLayer2 {}

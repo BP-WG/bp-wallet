@@ -104,9 +104,19 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             eprint!(" from wallet {wallet_name} ... ");
             Runtime::load_standard(self.general.wallet_dir(wallet_name))?
         };
-        eprintln!("success");
+        let mut sync = self.resolver.sync;
+        if runtime.warnings().is_empty() {
+            eprintln!("success");
+        } else {
+            eprintln!("complete with warnings:");
+            for warning in runtime.warnings() {
+                eprintln!("- {warning}");
+            }
+            sync = true;
+            runtime.reset_warnings();
+        }
 
-        if self.resolver.sync || self.wallet.descriptor_opts.is_some() {
+        if sync || self.wallet.descriptor_opts.is_some() {
             eprint!("Syncing ...");
             let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
             if let Err(errors) = runtime.sync(&indexer) {
@@ -117,6 +127,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             } else {
                 eprintln!(" success");
             }
+            runtime.try_store()?;
         }
 
         Ok(runtime)

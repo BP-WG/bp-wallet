@@ -22,6 +22,7 @@ bp-esplora = { workspace = true, optional = true }
 cfg_eval = { version = "0.1.2", optional = true }
 serde_crate = { workspace = true, optional = true }
 serde_with = { workspace = true, optional = true }
+serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 
 [features]
@@ -29,4 +30,4 @@ default = ["esplora"]
 all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
-serde = ["cfg_eval", "serde_crate", "serde_with", "toml", "bp-std/serde"]
+serde = ["cfg_eval", "serde_crate", "serde_with", "serde_yaml", "toml", "bp-std/serde"]

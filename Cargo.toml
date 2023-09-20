@@ -9,7 +9,7 @@ categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://lnp-bp.org"
 repository = "https://github.com/BP-WG/bp-wallet"
-rust-version = "1.60" # Due to rust-amplify
+rust-version = "1.70" # Due to clap
 edition = "2021"
 license = "Apache-2.0"
 
@@ -20,6 +20,7 @@ bp-std = "0.11.0"
 bp-esplora = "0.11.0"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_with = "3.1.0"
+serde_yaml = "0.9.19"
 toml = "0.7.6"
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
 
@@ -55,7 +56,7 @@ env_logger = "0.10.0"
 clap = { version = "4.1.8", features = ["derive", "env"] }
 shellexpand = "3.0.0"
 serde_crate = { workspace = true }
-serde_yaml = "0.9.19"
+serde_yaml = { workspace = true }
 toml = "0.7.6"
 
 [features]

@@ -27,9 +27,11 @@ use std::{error, io};
 
 use bp::{Chain, DeriveSpk, DescriptorStd};
 
+use crate::wallet::fs::Warning;
 use crate::{Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
+#[non_exhaustive]
 #[display(inner)]
 pub enum RuntimeError<L2: error::Error = Infallible> {
     #[from]
@@ -39,7 +41,8 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
     Store(StoreError<L2>),
 
     #[from]
-    Explora(esplora::Error),
+    #[cfg(feature = "esplora")]
+    Esplora(esplora::Error),
 }
 
 #[derive(Debug, Display, Error, From)]
@@ -66,6 +69,9 @@ pub enum StoreError<L2: error::Error = Infallible> {
     #[from]
     Toml(toml::ser::Error),
 
+    #[from]
+    Yaml(serde_yaml::Error),
+
     Layer2(L2),
 
     #[from]
@@ -77,6 +83,7 @@ pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
     wallet: Wallet<D, L2>,
+    warnings: Vec<Warning>,
 }
 
 impl<D: DeriveSpk, L2: Layer2> Deref for Runtime<D, L2> {
@@ -93,6 +100,7 @@ impl<D: DeriveSpk> Runtime<D> {
         Runtime {
             path: None,
             wallet: Wallet::new_standard(descr, network),
+            warnings: none!(),
         }
     }
 }
@@ -102,6 +110,7 @@ impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
         Runtime {
             path: None,
             wallet: Wallet::new_layer2(descr, l2_descr, layer2, network),
+            warnings: none!(),
         }
     }
     pub fn set_name(&mut self, name: String) { self.wallet.set_name(name) }
@@ -111,19 +120,29 @@ impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
     }
 
     #[inline]
-    pub fn attach(wallet: Wallet<D, L2>) -> Self { Self { path: None, wallet } }
+    pub fn attach(wallet: Wallet<D, L2>) -> Self {
+        Self {
+            path: None,
+            wallet,
+            warnings: none!(),
+        }
+    }
 
     #[inline]
     pub fn detach(self) -> Wallet<D, L2> { self.wallet }
+
+    pub fn reset_warnings(&mut self) { self.warnings.clear() }
 }
 
 impl<D: DeriveSpk> Runtime<D>
 where for<'de> D: serde::Serialize + serde::Deserialize<'de>
 {
     pub fn load_standard(path: PathBuf) -> Result<Self, LoadError> {
+        let (wallet, warnings) = Wallet::load(&path)?;
         Ok(Runtime {
             path: Some(path.clone()),
-            wallet: Wallet::load(&path)?,
+            wallet,
+            warnings,
         })
     }
 
@@ -151,9 +170,11 @@ where
     for<'de> L2::Cache: serde::Serialize + serde::Deserialize<'de>,
 {
     pub fn load_layer2(path: PathBuf) -> Result<Self, LoadError<L2::LoadError>> {
+        let (wallet, warnings) = Wallet::load(&path)?;
         Ok(Runtime {
             path: Some(path.clone()),
-            wallet: Wallet::load(&path)?,
+            wallet,
+            warnings,
         })
     }
 
