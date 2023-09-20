@@ -271,7 +271,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#d40f0ae451cf1e673a1cd25497c4e1a547913a66"
+source = "git+https://github.com/BP-WG/bp-std#02349f93c47d7d85123168677578cb5d8fae6c66"
 dependencies = [
  "amplify",
  "bech32",

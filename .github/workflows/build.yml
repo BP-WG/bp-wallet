@@ -31,7 +31,9 @@ jobs:
       matrix:
         feature:
           - serde
-          - cli
+          - esplora
+          - fs
+          - serde,esplora
     steps:
       - uses: actions/checkout@v2
       - name: Install rust stable
@@ -43,12 +45,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --no-default-features --features=${{ matrix.feature }}
+          args: -p bp-runtime --no-default-features --features=${{ matrix.feature }}
       - name: Defaults + ${{ matrix.feature }}
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --features=${{ matrix.feature }}
+          args: -p bp-runtime --features=${{ matrix.feature }}
   platforms:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -72,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ nightly, beta, stable, 1.60.0 ]
+        toolchain: [ nightly, beta, stable, 1.67.0 ]
     steps:
       - uses: actions/checkout@v2
       - name: Install rust ${{ matrix.toolchain }}
