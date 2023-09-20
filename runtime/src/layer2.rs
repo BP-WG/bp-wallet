@@ -70,7 +70,10 @@ pub trait Layer2Cache: Debug + Default {
 pub trait Layer2Tx: Debug + Default {}
 
 #[cfg(feature = "serde")]
-pub trait Layer2Tx: Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de> {}
+pub trait Layer2Tx:
+    Clone + Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
+{
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 #[cfg_attr(

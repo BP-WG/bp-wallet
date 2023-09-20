@@ -106,6 +106,15 @@ pub enum TxStatus {
     Unknown,
 }
 
+impl TxStatus {
+    pub fn map<T>(&self, f: impl FnOnce(&MiningInfo) -> T) -> Option<T> {
+        match self {
+            TxStatus::Mined(info) => Some(f(info)),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
 #[display("{txid}.{vin}")]
 pub struct Inpoint {
@@ -162,6 +171,30 @@ pub struct WalletTx {
     pub locktime: LockTime,
 }
 
+impl WalletTx {
+    pub fn credits(&self) -> impl Iterator<Item = &TxCredit> {
+        self.inputs.iter().filter(|c| c.is_external())
+    }
+
+    pub fn debits(&self) -> impl Iterator<Item = &TxDebit> {
+        self.outputs.iter().filter(|d| d.is_external())
+    }
+
+    pub fn total_moved(&self) -> Sats { self.inputs.iter().map(|vin| vin.value).sum::<Sats>() }
+
+    pub fn credit_sum(&self) -> Sats { self.credits().map(|vin| vin.value).sum::<Sats>() }
+
+    pub fn debit_sum(&self) -> Sats { self.debits().map(|vout| vout.value).sum::<Sats>() }
+
+    pub fn credited_debited(&self) -> (Sats, Sats) { (self.credit_sum(), self.debit_sum()) }
+
+    pub fn balance_change(&self) -> i64 {
+        let credit = i64::try_from(self.credit_sum().sats()).expect("sats overflow");
+        let debit = i64::try_from(self.debit_sum().sats()).expect("sats overflow");
+        debit - credit
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
 pub enum Party {
     Subsidy,
@@ -174,6 +207,11 @@ pub enum Party {
 
     #[from]
     Wallet(DerivedAddr),
+}
+
+impl Party {
+    pub fn is_ourself(&self) -> bool { matches!(self, Party::Wallet(_)) }
+    pub fn is_external(&self) -> bool { !self.is_ourself() }
 }
 
 impl Display for Party {
@@ -222,6 +260,11 @@ pub struct TxCredit {
     pub value: Sats,
 }
 
+impl TxCredit {
+    pub fn is_ourself(&self) -> bool { self.payer.is_ourself() }
+    pub fn is_external(&self) -> bool { !self.is_ourself() }
+}
+
 #[cfg_attr(
     feature = "serde",
     cfg_eval,
@@ -238,6 +281,11 @@ pub struct TxDebit {
     pub value: Sats,
     #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
     pub spent: Option<Inpoint>,
+}
+
+impl TxDebit {
+    pub fn is_ourself(&self) -> bool { self.beneficiary.is_ourself() }
+    pub fn is_external(&self) -> bool { !self.is_ourself() }
 }
 
 #[cfg_attr(

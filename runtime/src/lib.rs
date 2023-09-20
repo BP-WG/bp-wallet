@@ -36,7 +36,7 @@ mod indexers;
 mod runtime;
 mod util;
 mod data;
-//mod rows;
+mod rows;
 mod wallet;
 mod layer2;
 
@@ -45,6 +45,7 @@ pub use data::{
 };
 pub use indexers::Indexer;
 pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2};
+pub use rows::{Counterparty, OpType, TxRow};
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;

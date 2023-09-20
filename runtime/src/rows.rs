@@ -21,10 +21,15 @@
 // limitations under the License.
 
 use std::collections::HashMap;
+use std::fmt::{self, Display, Formatter, LowerHex};
+use std::str::FromStr;
 
+use amplify::hex::FromHex;
 use bp::{Address, Sats, ScriptPubkey, Txid};
+#[cfg(feature = "serde")]
+use serde_with::DisplayFromStr;
 
-use crate::{BlockHeight, Layer2Cache, Layer2Tx, WalletCache};
+use crate::{BlockHeight, Layer2Cache, Layer2Tx, Party, WalletCache};
 
 #[cfg_attr(
     feature = "serde",
@@ -39,18 +44,56 @@ pub enum OpType {
     Debit,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Display)]
-#[display(inner)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
 pub enum Counterparty {
+    Miner,
+    #[from]
     Address(Address),
-    #[display(LowerHex)]
+    #[from]
     Unknown(ScriptPubkey),
+}
+
+impl From<Party> for Counterparty {
+    fn from(party: Party) -> Self {
+        match party {
+            Party::Subsidy => Counterparty::Miner,
+            Party::Counterparty(addr) => Counterparty::Address(addr),
+            Party::Unknown(script) => Counterparty::Unknown(script),
+            Party::Wallet(_) => {
+                panic!("counterparty must be constructed only for external parties")
+            }
+        }
+    }
+}
+
+impl Display for Counterparty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Counterparty::Miner => f.write_str("miner"),
+            Counterparty::Address(addr) => Display::fmt(addr, f),
+            Counterparty::Unknown(script) => LowerHex::fmt(script, f),
+        }
+    }
+}
+
+impl FromStr for Counterparty {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "miner" {
+            return Ok(Counterparty::Miner);
+        }
+        Address::from_str(s)
+            .map(Self::from)
+            .or_else(|_| ScriptPubkey::from_hex(s).map(Self::from))
+            .map_err(|_| s.to_owned())
+    }
 }
 
 #[cfg_attr(
     feature = "serde",
-    serde_as,
     cfg_eval,
+    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -61,9 +104,9 @@ pub enum Counterparty {
         )
     )
 )]
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TxRow<L2: Layer2Tx> {
-    pub height: BlockHeight,
+    pub height: Option<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
@@ -71,7 +114,7 @@ pub struct TxRow<L2: Layer2Tx> {
     pub txid: Txid,
     pub fee: Sats,
     pub weight: u32,
-    pub vbytes: u32,
+    pub size: u32,
     pub total: Sats,
     pub amount: Sats,
     pub balance: Sats,
@@ -79,5 +122,45 @@ pub struct TxRow<L2: Layer2Tx> {
 }
 
 impl<L2: Layer2Cache> WalletCache<L2> {
-    pub fn history(&self) -> Vec<TxRow<L2::Tx>> { for out in &self.outputs {} }
+    pub fn history(&self) -> impl Iterator<Item = TxRow<L2::Tx>> + '_ {
+        self.tx.values().flat_map(|tx| {
+            let mut rows = Vec::with_capacity(2);
+            let (credit, debit) = tx.credited_debited();
+            let mut row = TxRow {
+                height: tx.status.map(|info| info.height),
+                operation: OpType::Credit,
+                counterparties: none!(),
+                txid: tx.txid,
+                fee: tx.fee,
+                weight: tx.weight,
+                size: tx.size,
+                total: tx.total_moved(),
+                amount: Sats::ZERO,
+                balance: Sats::ZERO,
+                layer2: none!(), // TODO: Add support to WalletTx
+            };
+            // TODO: Add balance calculation
+            if credit.is_non_zero() {
+                row.counterparties = tx.credits().fold(HashMap::new(), |mut cp, inp| {
+                    let party = Counterparty::from(inp.payer.clone());
+                    cp.entry(party).or_default().saturating_add_assign(inp.value);
+                    cp
+                });
+                row.operation = OpType::Credit;
+                row.amount = credit;
+                rows.push(row.clone());
+            }
+            if debit.is_non_zero() {
+                row.counterparties = tx.debits().fold(HashMap::new(), |mut cp, out| {
+                    let party = Counterparty::from(out.beneficiary.clone());
+                    cp.entry(party).or_default().saturating_add_assign(out.value);
+                    cp
+                });
+                row.operation = OpType::Debit;
+                row.amount = debit;
+                rows.push(row);
+            }
+            rows
+        })
+    }
 }

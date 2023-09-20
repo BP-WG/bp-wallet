@@ -159,7 +159,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             }
             Command::History => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("{}", serde_yaml::to_string(&runtime.transactions()).unwrap());
+                println!(
+                    "{}",
+                    serde_yaml::to_string(&runtime.history().collect::<Vec<_>>()).unwrap()
+                );
             }
         };
 

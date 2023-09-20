@@ -31,7 +31,7 @@ use serde_with::DisplayFromStr;
 
 use crate::{
     BlockInfo, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError, MiningInfo,
-    NoLayer2, WalletAddr, WalletTx,
+    NoLayer2, TxRow, WalletAddr, WalletTx,
 };
 
 pub struct AddrIter<'descr, D: DeriveSpk> {
@@ -314,6 +314,11 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
 
     #[inline]
     pub fn transactions(&self) -> &BTreeMap<Txid, WalletTx> { &self.cache.tx }
+
+    #[inline]
+    pub fn history(&self) -> impl Iterator<Item = TxRow<<L2::Cache as Layer2Cache>::Tx>> + '_ {
+        self.cache.history()
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
