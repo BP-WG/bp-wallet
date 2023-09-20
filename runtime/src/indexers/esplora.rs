@@ -138,7 +138,7 @@ impl Indexer for BlockingClient {
 
         // TODO: Update headers & tip
 
-        for (script, (mut addr_info, txids)) in address_index {
+        for (script, (addr_info, txids)) in address_index {
             let mut wallet_addr = WalletAddr::<i64>::from(addr_info.clone());
             for txid in txids {
                 let mut tx = cache.tx.remove(&txid).expect("broken logic");

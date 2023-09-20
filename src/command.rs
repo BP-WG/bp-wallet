@@ -22,46 +22,60 @@
 
 use std::fs;
 
-use bp_rt::{BlockHeight, OpType, WalletAddr};
+use bp::{Idx, NormalIndex};
+use bp_rt::OpType;
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
-use crate::{Args, Config, Exec, RuntimeError};
+use crate::{Args, Config, Exec, RuntimeError, WalletAddr};
 
-#[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
-#[display(lowercase)]
+#[derive(Subcommand, Clone, PartialEq, Eq, Debug)]
 pub enum Command {
-    /// List known wallets.
+    /// List known wallets
     List,
 
-    /// Get or set default wallet.
-    #[display("default")]
+    /// Get or set default wallet
     Default {
-        /// Name of the wallet to make it default.
+        /// Name of the wallet to make it default
         default: Option<Ident>,
     },
 
-    /// Create a wallet.
+    /// Create a wallet
     Create {
-        /// The name for the new wallet.
+        /// The name for the new wallet
         name: Ident,
     },
 
-    /// List addresses for the wallet descriptor.
-    Addresses {
-        /// Use change keychain
+    /// List wallet balance with additional optional details
+    Balance {
+        /// Print balance for each individual address
         #[clap(short, long)]
-        change: bool,
+        addr: bool,
 
-        /// Number of addresses to generate.
-        #[clap(short = 'N', long = "no", default_value = "20")]
-        count: u16,
+        /// Print information about individual UTXOs
+        #[clap(short, long)]
+        utxo: bool,
     },
 
-    /// List available coins (unspent transaction outputs).
-    Coins,
+    Addr {
+        /// Use change keychain
+        #[clap(short = '1', long)]
+        change: bool,
 
-    /// Display history of wallet operations.
+        /// Use custom address index
+        #[clap(short, long)]
+        index: Option<NormalIndex>,
+
+        /// Do not shift the last used index
+        #[clap(short = 'N', long, requires = "change")]
+        no_shift: bool,
+
+        /// Number of addresses to generate
+        #[clap(short, long, default_value = "1")]
+        no: u8,
+    },
+
+    /// Display history of wallet operations
     History {
         /// Print full transaction ids
         #[clap(long)]
@@ -77,7 +91,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     type Error = RuntimeError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
+    fn exec(mut self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
         match &self.command {
             Command::List => {
                 let dir = self.general.base_dir();
@@ -130,12 +144,20 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     println!("success");
                 }
             }
-            Command::Addresses { change, count } => {
-                /*
+            Command::Balance {
+                addr: false,
+                utxo: false,
+            } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("Addresses (outer):");
-                println!("Term.\tAddress\t\t\t\t\t\t\t\t# used\tVolume\tBalance");
-                for info in runtime.address_all(*change as u8).take(*count as usize) {
+                println!("\nWallet total balance: {} ṩ", runtime.balance());
+            }
+            Command::Balance {
+                addr: true,
+                utxo: false,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nTerm.\t{:62}\t# used\tVol., ṩ\tBalance, ṩ", "Address");
+                for info in runtime.address_balance() {
                     let WalletAddr {
                         addr,
                         terminal,
@@ -143,20 +165,67 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         volume,
                         balance,
                     } = info;
-                    println!("{terminal}\t{addr}\t{used}\t{volume}\t{balance}");
+                    println!("{terminal}\t{:62}\t{used}\t{volume}\t{balance}", addr.to_string());
                 }
-                 */
+                self.command = Command::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.exec(config, name)?;
             }
-            Command::Coins => {
+            Command::Balance {
+                addr: false,
+                utxo: true,
+            } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("Coins (UTXOs):");
-                println!("Height\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
+                println!("\nHeight\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
                 for row in runtime.coins() {
                     println!(
                         "{}\t{: >12}\t{:68}\t{}",
                         row.height, row.amount, row.outpoint, row.address
                     );
                 }
+                self.command = Command::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.exec(config, name)?;
+            }
+            Command::Balance {
+                addr: true,
+                utxo: true,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nHeight\t{:>12}\t{:68}", "Amount, ṩ", "Outpoint");
+                for (derived_addr, utxos) in runtime.address_coins() {
+                    println!("{}\t{}", derived_addr.addr, derived_addr.terminal);
+                    for row in utxos {
+                        println!("{}\t{: >12}\t{:68}", row.height, row.amount, row.outpoint);
+                    }
+                    println!()
+                }
+                self.command = Command::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.exec(config, name)?;
+            }
+            Command::Addr {
+                change,
+                index,
+                no_shift,
+                no,
+            } => {
+                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let keychain = *change as u8;
+                let index = index.unwrap_or_else(|| runtime.next_index(keychain, !*no_shift));
+                println!("\nTerm.\tAddress");
+                for derived_addr in
+                    runtime.addresses(keychain).skip(index.index() as usize).take(*no as usize)
+                {
+                    println!("{}\t{}", derived_addr.terminal, derived_addr.addr);
+                }
+                runtime.try_store()?;
             }
             Command::History { txid, details } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;

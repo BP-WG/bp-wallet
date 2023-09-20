@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ops::Deref;
 
 use bp::{
@@ -153,6 +153,7 @@ pub struct WalletData<L2: Layer2Data> {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache<L2: Layer2Cache> {
     pub(crate) last_block: MiningInfo,
+    pub(crate) last_change: NormalIndex,
     pub(crate) headers: BTreeSet<BlockInfo>,
     pub(crate) tx: BTreeMap<Txid, WalletTx>,
     pub(crate) utxo: BTreeSet<Outpoint>,
@@ -168,6 +169,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     pub(crate) fn new() -> Self {
         WalletCache {
             last_block: MiningInfo::genesis(),
+            last_change: NormalIndex::ZERO,
             headers: none!(),
             tx: none!(),
             utxo: none!(),
@@ -189,6 +191,12 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         indexer: &I,
     ) -> (usize, Vec<I::Error>) {
         indexer.update::<_, L2>(descriptor, self)
+    }
+
+    pub fn addresses_on(&self, keychain: u8) -> &BTreeSet<WalletAddr> {
+        self.addr.get(&keychain).unwrap_or_else(|| {
+            panic!("keychain #{keychain} is not supported by the wallet descriptor")
+        })
     }
 }
 
@@ -267,50 +275,34 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
         WalletCache::with::<_, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
-    /*
-    pub fn balance(&self) -> Sats {
-        self.cache
-            .outputs
-            .iter()
-            .filter(|utxo| utxo.spent.is_none())
-            .map(|utxo| utxo.value)
-            .sum::<Sats>()
+    pub fn next_index_on(&self, keychain: u8) -> NormalIndex {
+        self.address_coins()
+            .keys()
+            .filter(|ad| ad.terminal.keychain == keychain)
+            .map(|ad| ad.terminal.index)
+            .max()
+            .as_ref()
+            .map(NormalIndex::saturating_inc)
+            .unwrap_or_default()
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = TxoInfo> + '_ {
-        self.cache.outputs.iter().filter(|utxo| utxo.spent.is_none()).copied()
-    }
-
-    pub fn address_coins(
-        &self,
-    ) -> impl Iterator<Item = (Address, impl Iterator<Item = TxoInfo> + '_)> + '_ {
-        self.coins()
-            .fold(HashMap::<_, HashSet<TxoInfo>>::new(), |mut acc, txo| {
-                acc.entry(txo.address).or_default().insert(txo);
-                acc
-            })
-            .into_iter()
-            .map(|(k, v)| (k, v.into_iter()))
-    }
-
-    pub fn address_all(&self, keychain: u8) -> impl Iterator<Item = WalletAddr> + '_ {
-        self.descr.addresses(keychain).map(|derived| {
-            match self.cache.addr.get(&derived.terminal.keychain) {
-                None => WalletAddr::from(derived),
-                Some(info) => info.iter().copied(),
-            }
-        })
-    }
-
-    pub fn derivation_index_tip(&self, keychain: u8) -> NormalIndex {
-        let last_known = self.cache.max_known.get(&keychain).copied().unwrap_or_default();
-        if keychain == 0 {
-            self.data.last_used.max(last_known)
+    pub fn next_index(&mut self, keychain: u8, shift: bool) -> NormalIndex {
+        if keychain == 1 {
+            self.next_change(shift)
         } else {
-            last_known
+            self.next_index_on(keychain)
         }
     }
-     */
+
+    pub fn next_change(&mut self, shift: bool) -> NormalIndex {
+        let idx = self.cache.last_change.max(self.next_index_on(1));
+        if shift {
+            self.cache.last_change.saturating_inc_assign();
+        }
+        idx
+    }
+
+    pub fn balance(&self) -> Sats { self.cache.coins().map(|utxo| utxo.amount).sum::<Sats>() }
 
     #[inline]
     pub fn transactions(&self) -> &BTreeMap<Txid, WalletTx> { &self.cache.tx }
@@ -318,6 +310,20 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
     #[inline]
     pub fn coins(&self) -> impl Iterator<Item = CoinRow<<L2::Cache as Layer2Cache>::Coin>> + '_ {
         self.cache.coins()
+    }
+
+    pub fn address_coins(
+        &self,
+    ) -> HashMap<DerivedAddr, Vec<CoinRow<<L2::Cache as Layer2Cache>::Coin>>> {
+        let map = HashMap::new();
+        self.coins().fold(map, |mut acc, txo| {
+            acc.entry(txo.address).or_default().push(txo);
+            acc
+        })
+    }
+
+    pub fn address_balance(&self) -> impl Iterator<Item = WalletAddr> + '_ {
+        self.cache.addr.values().flat_map(|set| set.iter()).copied()
     }
 
     #[inline]

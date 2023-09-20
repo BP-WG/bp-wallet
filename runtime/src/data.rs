@@ -21,7 +21,7 @@
 // limitations under the License.
 
 use std::cmp::Ordering;
-use std::fmt::{self, Display, Formatter, LowerHex, Write};
+use std::fmt::{self, Display, Formatter, LowerHex};
 use std::num::{NonZeroU32, ParseIntError};
 use std::str::FromStr;
 

@@ -48,6 +48,6 @@ fn run() -> Result<(), RuntimeError> {
     eprintln!("    by LNP/BP Standards Association\n");
 
     let conf = Config::load(&args.conf_path("bp"));
-    debug!("Executing command: {}", args.command);
+    debug!("Executing command: {:?}", args.command);
     args.exec(conf, "bp")
 }
