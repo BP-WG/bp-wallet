@@ -21,7 +21,7 @@
 // limitations under the License.
 
 use std::cmp::Ordering;
-use std::fmt::{self, Display, Formatter, LowerHex};
+use std::fmt::{self, Display, Formatter, LowerHex, Write};
 use std::num::{NonZeroU32, ParseIntError};
 use std::str::FromStr;
 
@@ -99,18 +99,33 @@ impl MiningInfo {
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum TxStatus {
-    Mined(MiningInfo),
+pub enum TxStatus<T = MiningInfo> {
+    Mined(T),
     Mempool,
     Channel,
     Unknown,
 }
 
-impl TxStatus {
-    pub fn map<T>(&self, f: impl FnOnce(&MiningInfo) -> T) -> Option<T> {
+impl<T> TxStatus<T> {
+    pub fn map<U>(&self, f: impl FnOnce(&T) -> U) -> TxStatus<U> {
         match self {
-            TxStatus::Mined(info) => Some(f(info)),
-            _ => None,
+            TxStatus::Mined(info) => TxStatus::Mined(f(info)),
+            TxStatus::Mempool => TxStatus::Mempool,
+            TxStatus::Channel => TxStatus::Channel,
+            TxStatus::Unknown => TxStatus::Unknown,
+        }
+    }
+}
+
+impl<T> Display for TxStatus<T>
+where T: Display
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            TxStatus::Mined(info) => Display::fmt(info, f),
+            TxStatus::Mempool => f.write_str("mempool"),
+            TxStatus::Channel => f.write_str("channel"),
+            TxStatus::Unknown => f.write_str("unknown"),
         }
     }
 }

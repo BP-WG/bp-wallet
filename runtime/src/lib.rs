@@ -44,8 +44,10 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
 };
 pub use indexers::Indexer;
-pub use layer2::{Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2};
-pub use rows::{Counterparty, OpType, TxRow};
+pub use layer2::{
+    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
+};
+pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;

@@ -170,6 +170,7 @@ impl Indexer for BlockingClient {
                         panic!("newly added transaction contains non-script payer");
                     };
                     if s == &script {
+                        cache.utxo.insert(debit.outpoint);
                         debit.beneficiary = Party::Wallet(addr_info.clone());
                         wallet_addr.used = wallet_addr.used.saturating_add(1);
                         wallet_addr.volume.saturating_add_assign(debit.value);

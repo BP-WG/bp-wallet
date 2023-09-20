@@ -148,37 +148,27 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                  */
             }
             Command::Coins => {
-                /*
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!("Coins (UTXOs):");
-                println!("Address\t{:>12}\tOutpoint", "Value");
-                for (addr, coins) in runtime.address_coins() {
-                    println!("{addr}:");
-                    for utxo in coins {
-                        let TxoInfo {
-                            outpoint, value, ..
-                        } = utxo;
-                        println!("\t{:>12} ṩ\t{outpoint}", value.0);
-                        //₿
-                    }
-                    println!();
+                println!("Height\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
+                for row in runtime.coins() {
+                    println!(
+                        "{}\t{: >12}\t{:68}\t{}",
+                        row.height, row.amount, row.outpoint, row.address
+                    );
                 }
-                 */
             }
             Command::History { txid, details } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!(
-                    "\nHeight\t{: <1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
+                    "\nHeight\t{:<1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
                     "Txid",
                     if *txid { 64 } else { 18 }
                 );
                 for row in runtime.history() {
                     println!(
                         "{}\t{}\t{}{: >12}\t{: >8.2}",
-                        row.height
-                            .as_ref()
-                            .map(BlockHeight::to_string)
-                            .unwrap_or_else(|| s!("mempool")),
+                        row.height,
                         if *txid { row.txid.to_string() } else { format!("{:#}", row.txid) },
                         row.operation,
                         row.amount,

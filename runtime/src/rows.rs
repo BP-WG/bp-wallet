@@ -25,11 +25,11 @@ use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
-use bp::{Address, DerivedAddr, Sats, ScriptPubkey, Txid};
+use bp::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
-use crate::{BlockHeight, Layer2Cache, Layer2Tx, Party, WalletCache};
+use crate::{BlockHeight, Layer2Cache, Layer2Coin, Layer2Tx, Party, TxStatus, WalletCache};
 
 #[cfg_attr(
     feature = "serde",
@@ -106,7 +106,7 @@ impl FromStr for Counterparty {
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TxRow<L2: Layer2Tx> {
-    pub height: Option<BlockHeight>,
+    pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
@@ -123,7 +123,50 @@ pub struct TxRow<L2: Layer2Tx> {
     pub layer2: L2,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    cfg_eval,
+    serde_as,
+    derive(serde::Serialize, serde::Deserialize),
+    serde(
+        crate = "serde_crate",
+        rename_all = "camelCase",
+        bound(
+            serialize = "L2: serde::Serialize",
+            deserialize = "for<'d> L2: serde::Deserialize<'d>"
+        )
+    )
+)]
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct CoinRow<L2: Layer2Coin> {
+    pub height: TxStatus<BlockHeight>,
+    // TODO: Add date/time
+    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
+    pub address: DerivedAddr,
+    pub outpoint: Outpoint,
+    pub amount: Sats,
+    pub layer2: Vec<L2>,
+}
+
 impl<L2: Layer2Cache> WalletCache<L2> {
+    pub fn coins(&self) -> impl Iterator<Item = CoinRow<L2::Coin>> + '_ {
+        self.utxo.iter().map(|utxo| {
+            let Some(tx) = self.tx.get(&utxo.txid) else {
+                panic!("cache data inconsistency");
+            };
+            let Some(out) = tx.outputs.get(utxo.vout_usize()) else {
+                panic!("cache data inconsistency");
+            };
+            CoinRow {
+                height: tx.status.map(|info| info.height),
+                outpoint: *utxo,
+                address: out.derived_addr().expect("cache data inconsistency"),
+                amount: out.value,
+                layer2: none!(), // TODO: Add support to WalletTx
+            }
+        })
+    }
+
     pub fn history(&self) -> impl Iterator<Item = TxRow<L2::Tx>> + '_ {
         self.tx.values().map(|tx| {
             let (credit, debit) = tx.credited_debited();
