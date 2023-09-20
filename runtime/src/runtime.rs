@@ -31,6 +31,7 @@ use crate::wallet::fs::Warning;
 use crate::{Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
+#[non_exhaustive]
 #[display(inner)]
 pub enum RuntimeError<L2: error::Error = Infallible> {
     #[from]
@@ -40,7 +41,8 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
     Store(StoreError<L2>),
 
     #[from]
-    Explora(esplora::Error),
+    #[cfg(feature = "esplora")]
+    Esplora(esplora::Error),
 }
 
 #[derive(Debug, Display, Error, From)]
