@@ -189,8 +189,8 @@ impl WalletTx {
     pub fn credited_debited(&self) -> (Sats, Sats) { (self.credit_sum(), self.debit_sum()) }
 
     pub fn balance_change(&self) -> i64 {
-        let credit = i64::try_from(self.credit_sum().sats()).expect("sats overflow");
-        let debit = i64::try_from(self.debit_sum().sats()).expect("sats overflow");
+        let credit = self.credit_sum().sats_i64();
+        let debit = self.debit_sum().sats_i64();
         debit - credit
     }
 }
@@ -212,6 +212,12 @@ pub enum Party {
 impl Party {
     pub fn is_ourself(&self) -> bool { matches!(self, Party::Wallet(_)) }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
+    pub fn derived_addr(&self) -> Option<DerivedAddr> {
+        match self {
+            Party::Wallet(addr) => Some(*addr),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Party {
@@ -263,6 +269,7 @@ pub struct TxCredit {
 impl TxCredit {
     pub fn is_ourself(&self) -> bool { self.payer.is_ourself() }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
+    pub fn derived_addr(&self) -> Option<DerivedAddr> { self.payer.derived_addr() }
 }
 
 #[cfg_attr(
@@ -286,6 +293,7 @@ pub struct TxDebit {
 impl TxDebit {
     pub fn is_ourself(&self) -> bool { self.beneficiary.is_ourself() }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
+    pub fn derived_addr(&self) -> Option<DerivedAddr> { self.beneficiary.derived_addr() }
 }
 
 #[cfg_attr(

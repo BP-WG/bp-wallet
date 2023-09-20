@@ -27,7 +27,8 @@ use std::{error, io};
 
 use bp::{Chain, DeriveSpk, DescriptorStd};
 
-use crate::{Indexer, Layer2, NoLayer2, Wallet, Warning};
+use crate::wallet::fs::Warning;
+use crate::{Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[display(inner)]

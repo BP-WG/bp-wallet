@@ -23,7 +23,7 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bp::{DeriveSpk, LockTime, Outpoint, SeqNo, Witness};
+use bp::{Address, DeriveSpk, LockTime, Outpoint, SeqNo, Witness};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
@@ -151,6 +151,12 @@ impl Indexer for BlockingClient {
                         wallet_addr.balance = wallet_addr
                             .balance
                             .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
+                    } else {
+                        Address::with(s, descriptor.chain())
+                            .map(|addr| {
+                                credit.payer = Party::Counterparty(addr);
+                            })
+                            .ok();
                     }
                     if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
                         prev_tx
@@ -170,6 +176,12 @@ impl Indexer for BlockingClient {
                         wallet_addr.balance = wallet_addr
                             .balance
                             .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
+                    } else {
+                        Address::with(s, descriptor.chain())
+                            .map(|addr| {
+                                debit.beneficiary = Party::Counterparty(addr);
+                            })
+                            .ok();
                     }
                 }
                 cache.tx.insert(tx.txid, tx);

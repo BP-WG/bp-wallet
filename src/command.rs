@@ -22,7 +22,7 @@
 
 use std::fs;
 
-use bp_rt::WalletAddr;
+use bp_rt::{BlockHeight, OpType, WalletAddr};
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -62,7 +62,15 @@ pub enum Command {
     Coins,
 
     /// Display history of wallet operations.
-    History,
+    History {
+        /// Print full transaction ids
+        #[clap(long)]
+        txid: bool,
+
+        /// Print operation details
+        #[clap(long)]
+        details: bool,
+    },
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
@@ -157,12 +165,54 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
                  */
             }
-            Command::History => {
+            Command::History { txid, details } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!(
-                    "{}",
-                    serde_yaml::to_string(&runtime.history().collect::<Vec<_>>()).unwrap()
+                    "\nHeight\t{: <1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
+                    "Txid",
+                    if *txid { 64 } else { 18 }
                 );
+                for row in runtime.history() {
+                    println!(
+                        "{}\t{}\t{}{: >12}\t{: >8.2}",
+                        row.height
+                            .as_ref()
+                            .map(BlockHeight::to_string)
+                            .unwrap_or_else(|| s!("mempool")),
+                        if *txid { row.txid.to_string() } else { format!("{:#}", row.txid) },
+                        row.operation,
+                        row.amount,
+                        row.fee.sats() as f64 * 4.0 / row.weight as f64
+                    );
+                    if *details {
+                        for (cp, value) in &row.own {
+                            println!(
+                                "\t* {value: >-12}ṩ\t{}\t{cp}",
+                                if *value < 0 {
+                                    "debit from"
+                                } else if row.operation == OpType::Credit {
+                                    "credit to "
+                                } else {
+                                    "change to "
+                                }
+                            );
+                        }
+                        for (cp, value) in &row.counterparties {
+                            println!(
+                                "\t* {value: >-12}ṩ\t{}\t{cp}",
+                                if *value > 0 {
+                                    "paid from "
+                                } else if row.operation == OpType::Credit {
+                                    "change to "
+                                } else {
+                                    "sent to   "
+                                }
+                            );
+                        }
+                        println!("\t* {: >-12}ṩ\tminer fee", -row.fee.sats_i64());
+                        println!();
+                    }
+                }
             }
         };
 

@@ -321,21 +321,21 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
-#[display(doc_comments)]
-pub enum Warning {
-    /// no cache file is found, initializing with empty cache
-    CacheAbsent,
-    /// wallet cache damaged or has invalid version; resetting
-    CacheDamaged,
-}
-
 #[cfg(feature = "fs")]
-mod fs {
+pub(crate) mod fs {
     use std::fs;
     use std::path::{Path, PathBuf};
 
     use super::*;
+
+    #[derive(Debug, Display)]
+    #[display(doc_comments)]
+    pub enum Warning {
+        /// no cache file is found, initializing with empty cache
+        CacheAbsent,
+        /// wallet cache damaged or has invalid version; resetting ({0})
+        CacheDamaged(serde_yaml::Error),
+    }
 
     struct WalletFiles {
         pub descr: PathBuf,
@@ -380,7 +380,9 @@ mod fs {
 
             let cache = fs::read_to_string(files.cache)
                 .map_err(|_| Warning::CacheAbsent)
-                .and_then(|cache| serde_yaml::from_str(&cache).map_err(|_| Warning::CacheDamaged))
+                .and_then(|cache| {
+                    serde_yaml::from_str(&cache).map_err(|err| Warning::CacheDamaged(err))
+                })
                 .unwrap_or_else(|warn| {
                     warnings.push(warn);
                     WalletCache::default()

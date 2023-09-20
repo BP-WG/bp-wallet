@@ -25,7 +25,7 @@ use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
-use bp::{Address, Sats, ScriptPubkey, Txid};
+use bp::{Address, DerivedAddr, Sats, ScriptPubkey, Txid};
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
@@ -110,7 +110,9 @@ pub struct TxRow<L2: Layer2Tx> {
     // TODO: Add date/time
     pub operation: OpType,
     #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
-    pub counterparties: HashMap<Counterparty, Sats>,
+    pub counterparties: Vec<(Counterparty, i64)>,
+    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
+    pub own: Vec<(DerivedAddr, i64)>,
     pub txid: Txid,
     pub fee: Sats,
     pub weight: u32,
@@ -123,13 +125,13 @@ pub struct TxRow<L2: Layer2Tx> {
 
 impl<L2: Layer2Cache> WalletCache<L2> {
     pub fn history(&self) -> impl Iterator<Item = TxRow<L2::Tx>> + '_ {
-        self.tx.values().flat_map(|tx| {
-            let mut rows = Vec::with_capacity(2);
+        self.tx.values().map(|tx| {
             let (credit, debit) = tx.credited_debited();
             let mut row = TxRow {
                 height: tx.status.map(|info| info.height),
                 operation: OpType::Credit,
                 counterparties: none!(),
+                own: none!(),
                 txid: tx.txid,
                 fee: tx.fee,
                 weight: tx.weight,
@@ -140,27 +142,39 @@ impl<L2: Layer2Cache> WalletCache<L2> {
                 layer2: none!(), // TODO: Add support to WalletTx
             };
             // TODO: Add balance calculation
+            row.own = tx
+                .inputs
+                .iter()
+                .filter_map(|i| i.derived_addr().map(|a| (a, -i.value.sats_i64())))
+                .chain(
+                    tx.outputs
+                        .iter()
+                        .filter_map(|o| o.derived_addr().map(|a| (a, o.value.sats_i64()))),
+                )
+                .collect();
             if credit.is_non_zero() {
-                row.counterparties = tx.credits().fold(HashMap::new(), |mut cp, inp| {
+                row.counterparties = tx.credits().fold(Vec::new(), |mut cp, inp| {
                     let party = Counterparty::from(inp.payer.clone());
-                    cp.entry(party).or_default().saturating_add_assign(inp.value);
+                    cp.push((party, inp.value.sats_i64()));
                     cp
                 });
-                row.operation = OpType::Credit;
-                row.amount = credit;
-                rows.push(row.clone());
-            }
-            if debit.is_non_zero() {
-                row.counterparties = tx.debits().fold(HashMap::new(), |mut cp, out| {
+                row.counterparties.extend(tx.debits().fold(Vec::new(), |mut cp, out| {
                     let party = Counterparty::from(out.beneficiary.clone());
-                    cp.entry(party).or_default().saturating_add_assign(out.value);
+                    cp.push((party, -out.value.sats_i64()));
+                    cp
+                }));
+                row.operation = OpType::Credit;
+                row.amount = credit - debit - tx.fee;
+            } else if debit.is_non_zero() {
+                row.counterparties = tx.debits().fold(Vec::new(), |mut cp, out| {
+                    let party = Counterparty::from(out.beneficiary.clone());
+                    cp.push((party, -out.value.sats_i64()));
                     cp
                 });
                 row.operation = OpType::Debit;
                 row.amount = debit;
-                rows.push(row);
             }
-            rows
+            row
         })
     }
 }
