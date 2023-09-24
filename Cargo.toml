@@ -17,6 +17,7 @@ license = "Apache-2.0"
 amplify = "4.1.0"
 strict_encoding = "2.6.0"
 bp-std = "0.11.0"
+psbt = "0.11.0"
 bp-esplora = "0.11.0"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_with = "3.1.0"
@@ -50,6 +51,7 @@ amplify = { workspace = true, features = ["serde"] }
 strict_encoding = { workspace = true }
 bp-runtime = { path = "runtime", features = ["serde", "fs"] }
 bp-std = { workspace = true, features = ["serde"] }
+psbt = { workspace = true, features = ["serde"] }
 bp-esplora = { workspace = true }
 log = { workspace = true }
 env_logger = "0.10.0"
@@ -65,5 +67,6 @@ all = []
 
 [patch.crates-io]
 bp-primitives = { git = "https://github.com/BP-WG/bp-core", branch = "primitives" }
-bp-std = { git = "https://github.com/BP-WG/bp-std" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "psbt" }
 bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "psbt" }

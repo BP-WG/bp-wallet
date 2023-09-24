@@ -39,6 +39,7 @@ mod data;
 mod rows;
 mod wallet;
 mod layer2;
+mod payments;
 
 pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
