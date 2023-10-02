@@ -43,6 +43,7 @@ mod payments;
 
 pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
+    WalletUtxo,
 };
 pub use indexers::Indexer;
 pub use layer2::{

@@ -24,14 +24,28 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use bp::{Address, AddressNetwork, Chain, DerivedAddr, Idx, NormalIndex, Outpoint, Sats, Txid, Descriptor};
+use bp::{
+    Address, AddressNetwork, Chain, DerivedAddr, Descriptor, Idx, NormalIndex, Outpoint, Sats,
+    Txid, Vout,
+};
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    MiningInfo, NoLayer2, TxRow, WalletAddr, WalletTx,
+    MiningInfo, NoLayer2, TxRow, WalletAddr, WalletTx, WalletUtxo,
 };
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
+#[display(doc_comments)]
+pub enum NonWalletItem {
+    /// transaction {0} is now known to the wallet.
+    NonWalletTx(Txid),
+    /// transaction {0} doesn't contains output number {1}.
+    NoOutput(Txid, Vout),
+    /// transaction output {0} doesn't belongs to the wallet.
+    NonWalletUtxo(Outpoint),
+}
 
 pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     generator: &'descr D,
@@ -202,6 +216,21 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
         })
     }
+
+    pub fn utxo(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+        let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
+        let debit = tx
+            .outputs
+            .get(outpoint.vout.into_usize())
+            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
+        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
+        // TODO: Check whether TXO is spend AND mined
+        Ok(WalletUtxo {
+            outpoint,
+            value: debit.value,
+            terminal,
+        })
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -333,6 +362,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     #[inline]
     pub fn history(&self) -> impl Iterator<Item = TxRow<<L2::Cache as Layer2Cache>::Tx>> + '_ {
         self.cache.history()
+    }
+
+    pub fn utxo(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+        self.cache.utxo(outpoint)
     }
 }
 
