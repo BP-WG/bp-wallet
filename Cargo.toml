@@ -53,6 +53,7 @@ bp-runtime = { path = "runtime", features = ["serde", "fs"] }
 bp-std = { workspace = true, features = ["serde"] }
 psbt = { workspace = true, features = ["serde"] }
 bp-esplora = { workspace = true }
+base64 = "0.21.4"
 log = { workspace = true }
 env_logger = "0.10.0"
 clap = { version = "4.1.8", features = ["derive", "env"] }

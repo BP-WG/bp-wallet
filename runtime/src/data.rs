@@ -318,11 +318,15 @@ pub struct WalletUtxo {
     pub outpoint: Outpoint,
     pub value: Sats,
     pub terminal: Terminal,
+    pub status: TxStatus,
+    // TODO: Add layer 2
 }
 
 impl WalletUtxo {
     #[inline]
     pub fn to_prevout(&self) -> Prevout { Prevout::new(self.outpoint, self.value) }
+    #[inline]
+    pub fn into_outpoint(self) -> Outpoint { self.outpoint }
 }
 
 #[cfg_attr(

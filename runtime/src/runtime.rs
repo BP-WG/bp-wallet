@@ -28,7 +28,7 @@ use std::{error, io};
 use bp::{Chain, Descriptor, DescriptorStd, XpubDerivable};
 
 use crate::wallet::fs::Warning;
-use crate::{Indexer, Layer2, NoLayer2, Wallet};
+use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[non_exhaustive]
@@ -39,6 +39,9 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
 
     #[from]
     Store(StoreError<L2>),
+
+    #[from]
+    ConstructPsbt(ConstructionError),
 
     #[from]
     #[cfg(feature = "esplora")]

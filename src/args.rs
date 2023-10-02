@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp::{Descriptor, XpubDerivable};
+use bp::Descriptor;
 use bp_rt::Runtime;
 use clap::Subcommand;
 use strict_encoding::Ident;

@@ -20,7 +20,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::{Address, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
+use std::num::ParseIntError;
+use std::str::FromStr;
+
+use bp::{Address, AddressParseError, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
 use psbt::{Psbt, PsbtError};
 
 use crate::{Layer2, Wallet};
@@ -31,19 +34,71 @@ pub enum ConstructionError {
     Psbt(PsbtError),
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Display, Error, From)]
+#[display(doc_comments)]
+pub enum InvoiceParseError {
+    #[display("invalid format of the invoice")]
+    InvalidFormat,
+
+    #[from]
+    Int(ParseIntError),
+
+    #[from]
+    Address(AddressParseError),
+}
+
+/*
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Display)]
+#[display("{int}.{fract}")]
+pub struct Btc {
+    int: BtcInt,
+    fract: BtcFract,
+}
+ */
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
 pub enum Amount {
+    #[display(inner)]
     Fixed(Sats),
+    #[display("MAX")]
     Max,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+impl FromStr for Amount {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "MAX" {
+            return Ok(Amount::Max);
+        }
+        let (int, fract) = s.split_once('.').unwrap_or((s, ""));
+        // TODO: check for sats overflow
+        Ok(Amount::Fixed(
+            Sats::from_btc(u32::from_str(int)?) + Sats::from_sats(u32::from_str(fract)?),
+        ))
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
+#[display("{amount}@{beneficiary}", alt = "bitcoin:{beneficiary}?amount={amount}")]
 pub struct Invoice {
     pub beneficiary: Address,
     pub amount: Amount,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+impl FromStr for Invoice {
+    type Err = InvoiceParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (amount, beneficiary) = s.split_once('@').ok_or(InvoiceParseError::InvalidFormat)?;
+        Ok(Invoice {
+            beneficiary: Address::from_str(beneficiary)?,
+            amount: Amount::from_str(amount)?,
+        })
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct TxParams {
     pub fee: Sats,
     pub lock_time: Option<LockTime>,

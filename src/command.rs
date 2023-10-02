@@ -21,9 +21,11 @@
 // limitations under the License.
 
 use std::fs;
+use std::path::PathBuf;
 
-use bp::{Idx, NormalIndex};
-use bp_rt::OpType;
+use base64::Engine;
+use bp::{Idx, NormalIndex, Sats, SeqNo};
+use bp_rt::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -84,6 +86,20 @@ pub enum Command {
         /// Print operation details
         #[clap(long)]
         details: bool,
+    },
+
+    /// Compose a new PSBT to pay invoice
+    Construct {
+        /// Bitcoin invoice, either in form of `<sats>@<address>` or
+        /// `bitcoin:<address>?amount=<sats>`. To spend full wallet balance use `MAX` for the
+        /// amount.
+        invoice: Invoice,
+
+        /// Fee
+        fee: Sats,
+
+        /// Name of PSBT file to save. If not given, prints PSBT to STDOUT
+        psbt: Option<PathBuf>,
     },
 }
 
@@ -270,6 +286,41 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         }
                         println!("\t* {: >-12}ṩ\tminer fee", -row.fee.sats_i64());
                         println!();
+                    }
+                }
+            }
+            Command::Construct {
+                invoice,
+                fee,
+                psbt: psbt_file,
+            } => {
+                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let params = TxParams {
+                    fee: *fee,
+                    lock_time: None,
+                    // TODO: Support lock time and RBFs
+                    seq_no: SeqNo::from_consensus_u32(0),
+                };
+                // Do coin selection
+                let coins: Vec<_> = match invoice.amount {
+                    Amount::Fixed(sats) => {
+                        runtime.wallet().coinselect(sats, coinselect::all).collect()
+                    }
+                    Amount::Max => {
+                        runtime.wallet().all_utxos().map(WalletUtxo::into_outpoint).collect()
+                    }
+                };
+                let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
+                match psbt_file {
+                    Some(file_name) => {
+                        // TODO: Save file
+                    }
+                    None => {
+                        let engine = base64::engine::general_purpose::GeneralPurpose::new(
+                            &base64::alphabet::STANDARD,
+                            base64::engine::GeneralPurposeConfig::new(),
+                        );
+                        println!("{}", engine.encode(psbt.serialize_v2()))
                     }
                 }
             }

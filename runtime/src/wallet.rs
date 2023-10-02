@@ -22,7 +22,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{AddAssign, Deref};
 
 use bp::{
     Address, AddressNetwork, Chain, DerivedAddr, Descriptor, Idx, NormalIndex, Outpoint, Sats,
@@ -223,11 +223,28 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
             .get(outpoint.vout.into_usize())
             .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
         let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
-        // TODO: Check whether TXO is spend AND mined
+        // TODO: Check whether TXO is spend
         Ok(WalletUtxo {
             outpoint,
             value: debit.value,
             terminal,
+            status: tx.status,
+        })
+    }
+
+    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
+        self.utxo.iter().map(|outpoint| {
+            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
+            let debit = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
+            let terminal =
+                debit.derived_addr().expect("UTXO doesn't belong to the wallet").terminal;
+            // TODO: Check whether TXO is spend
+            WalletUtxo {
+                outpoint: *outpoint,
+                value: debit.value,
+                terminal,
+                status: tx.status,
+            }
         })
     }
 }
@@ -365,6 +382,23 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn utxo(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
         self.cache.utxo(outpoint)
+    }
+
+    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.all_utxos() }
+
+    pub fn coinselect<'a>(
+        &'a self,
+        up_to: Sats,
+        selector: impl Fn(&WalletUtxo) -> bool + 'a,
+    ) -> impl Iterator<Item = Outpoint> + '_ {
+        let mut selected = Sats::ZERO;
+        self.all_utxos()
+            .filter(selector)
+            .take_while(move |utxo| {
+                selected.add_assign(utxo.value);
+                selected <= up_to
+            })
+            .map(|utxo| utxo.outpoint)
     }
 }
 
