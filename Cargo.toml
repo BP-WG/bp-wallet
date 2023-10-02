@@ -14,7 +14,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "4.1.0"
+amplify = "4.1.1"
 strict_encoding = "2.6.0"
 bp-std = "0.11.0"
 psbt = "0.11.0"

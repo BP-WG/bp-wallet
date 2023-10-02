@@ -20,31 +20,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bp::{Address, DeriveSpk, Idx, LockTime, Outpoint, Sats};
+use bp::{Address, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
 use psbt::{Psbt, PsbtError};
 
 use crate::{BlockHeight, Layer2, Wallet};
 
-#[derive(Clone, Eq, PartialEq, Debug, Display, Error, From)]
+#[derive(Clone, Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum ConstructionError {
     Psbt(PsbtError),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct Invoice {
-    pub beneficiary: Address,
-    pub amount: Sats,
+pub enum Amount {
+    Fixed(Sats),
+    Max,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Invoice {
+    pub beneficiary: Address,
+    pub amount: Amount,
+}
+
+#[derive(Copy, Clone, PartialEq)]
 pub struct TxParams {
     pub fee_rate: f64,
     pub lock_time: Option<LockTime>,
     pub rbf: bool,
 }
 
-impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn construct_psbt(
         &mut self,
         coins: &[Outpoint],
@@ -60,23 +66,35 @@ impl<D: DeriveSpk, L2: Layer2> Wallet<D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            // Get terminal and txout matching outpoint
-            let mut input = psbt::Input::new(txout, coin, &self.descr, terminal);
-            // TODO: Set nSeq
-            psbt.push_input(input);
+            let utxo = self.utxo(coin);
+            let seq_no = match params.rbf {
+                true => SeqNo::rbf(),
+                false => SeqNo::default(),
+            };
+            psbt.construct_input_expect(utxo.prevout(), &self.descr.generator, utxo.terminal(), seq_no);
         }
 
-        // 2. Add beneficiary
+        // 2. Add outputs
         // TODO: Check address network
-        psbt.push_output(invoice.beneficiary.script_pubkey(), invoice.amount);
 
-        // 3. Add change
-        // TODO: Find out change amount
-        psbt.push_change(&self.descr, self.cache.last_change, change_amount);
+        // 2. Add outputs and change
+        let input_value = psbt.input_sum();
+        if let Amount::Fixed(value) = invoice.amount {
+            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
+
+            let mut change = psbt.construct_change_expect(&self.descr, self.cache.last_change, Sats::ZERO);
+            let output_value = psbt.output_sum();
+            let fee_value = psbt.vbytes() * params.fee_rate;
+            change.amount = input_value - output_value - fee_value;
+        } else {
+            let fee_value = psbt.vbytes() * params.fee_rate;
+            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), input_value - fee_value);
+        }
+
         self.cache.last_change.wrapping_inc_assign();
 
         psbt.complete_construction();
 
-        psbt.Ok(psbt)
+        Ok(psbt)
     }
 }

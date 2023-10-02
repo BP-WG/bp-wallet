@@ -25,7 +25,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::{error, io};
 
-use bp::{Chain, DeriveSpk, DescriptorStd};
+use bp::{Chain, Descriptor, DescriptorStd};
 
 use crate::wallet::fs::Warning;
 use crate::{Indexer, Layer2, NoLayer2, Wallet};
@@ -79,23 +79,23 @@ pub enum StoreError<L2: error::Error = Infallible> {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: DeriveSpk = DescriptorStd, L2: Layer2 = NoLayer2> {
+pub struct Runtime<K, D: Descriptor<K> = DescriptorStd, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
-    wallet: Wallet<D, L2>,
+    wallet: Wallet<K, D, L2>,
     warnings: Vec<Warning>,
 }
 
-impl<D: DeriveSpk, L2: Layer2> Deref for Runtime<D, L2> {
-    type Target = Wallet<D, L2>;
+impl<K, D: Descriptor<K>, L2: Layer2> Deref for Runtime<K, D, L2> {
+    type Target = Wallet<K, D, L2>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<D: DeriveSpk, L2: Layer2> DerefMut for Runtime<D, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for Runtime<K, D, L2> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<D: DeriveSpk> Runtime<D> {
+impl<K, D: Descriptor<K>> Runtime<K, D> {
     pub fn new_standard(descr: D, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -105,7 +105,7 @@ impl<D: DeriveSpk> Runtime<D> {
     }
 }
 
-impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> Runtime<K, D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
         Runtime {
             path: None,
@@ -120,7 +120,7 @@ impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
     }
 
     #[inline]
-    pub fn attach(wallet: Wallet<D, L2>) -> Self {
+    pub fn attach(wallet: Wallet<K, D, L2>) -> Self {
         Self {
             path: None,
             wallet,
@@ -129,12 +129,12 @@ impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2> {
     }
 
     #[inline]
-    pub fn detach(self) -> Wallet<D, L2> { self.wallet }
+    pub fn detach(self) -> Wallet<K, D, L2> { self.wallet }
 
     pub fn reset_warnings(&mut self) { self.warnings.clear() }
 }
 
-impl<D: DeriveSpk> Runtime<D>
+impl<K, D: Descriptor<K>> Runtime<K, D>
 where for<'de> D: serde::Serialize + serde::Deserialize<'de>
 {
     pub fn load_standard(path: PathBuf) -> Result<Self, LoadError> {
@@ -161,7 +161,7 @@ where for<'de> D: serde::Serialize + serde::Deserialize<'de>
     }
 }
 
-impl<D: DeriveSpk, L2: Layer2> Runtime<D, L2>
+impl<K, D: Descriptor<K>, L2: Layer2> Runtime<K, D, L2>
 where
     for<'de> D: serde::Serialize + serde::Deserialize<'de>,
     for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
