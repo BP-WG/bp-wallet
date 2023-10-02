@@ -23,7 +23,7 @@
 use bp::{Address, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
 use psbt::{Psbt, PsbtError};
 
-use crate::{BlockHeight, Layer2, Wallet};
+use crate::{Layer2, Wallet};
 
 #[derive(Clone, Debug, Display, Error, From)]
 #[display(doc_comments)]
@@ -45,9 +45,9 @@ pub struct Invoice {
 
 #[derive(Copy, Clone, PartialEq)]
 pub struct TxParams {
-    pub fee_rate: f64,
+    pub fee: Sats,
     pub lock_time: Option<LockTime>,
-    pub rbf: bool,
+    pub seq_no: SeqNo,
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
@@ -66,12 +66,13 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            let utxo = self.utxo(coin);
-            let seq_no = match params.rbf {
-                true => SeqNo::rbf(),
-                false => SeqNo::default(),
-            };
-            psbt.construct_input_expect(utxo.prevout(), &self.descr.generator, utxo.terminal(), seq_no);
+            let utxo = self.utxo(*coin).expect("wallet data inconsistency");
+            psbt.construct_input_expect(
+                utxo.to_prevout(),
+                &self.descr.generator,
+                utxo.terminal,
+                params.seq_no,
+            );
         }
 
         // 2. Add outputs
@@ -82,13 +83,18 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         if let Amount::Fixed(value) = invoice.amount {
             psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
 
-            let mut change = psbt.construct_change_expect(&self.descr, self.cache.last_change, Sats::ZERO);
             let output_value = psbt.output_sum();
-            let fee_value = psbt.vbytes() * params.fee_rate;
-            change.amount = input_value - output_value - fee_value;
+            let change = psbt.construct_change_expect(
+                &self.descr.generator,
+                self.cache.last_change,
+                Sats::ZERO,
+            );
+            change.amount = input_value - output_value - params.fee;
         } else {
-            let fee_value = psbt.vbytes() * params.fee_rate;
-            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), input_value - fee_value);
+            psbt.construct_output_expect(
+                invoice.beneficiary.script_pubkey(),
+                input_value - params.fee,
+            );
         }
 
         self.cache.last_change.wrapping_inc_assign();

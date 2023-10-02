@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bp::{Chain, DeriveSpk, DescriptorStd, TrKey, XpubDescriptor};
+use bp::{Chain, Descriptor, DescriptorStd, TrKey, XpubDerivable};
 use clap::ValueHint;
 use strict_encoding::Ident;
 
@@ -62,7 +62,7 @@ pub struct ResolverOpt {
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
-    type Descr: DeriveSpk + serde::Serialize + for<'de> serde::Deserialize<'de>;
+    type Descr: Descriptor + serde::Serialize + for<'de> serde::Deserialize<'de>;
     fn is_some(&self) -> bool;
     fn descriptor(&self) -> Option<Self::Descr>;
 }
@@ -72,7 +72,7 @@ pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
 pub struct DescrStdOpts {
     /// Use tr(KEY) descriptor as wallet.
     #[arg(long, global = true)]
-    pub tr_key_only: Option<XpubDescriptor>,
+    pub tr_key_only: Option<XpubDerivable>,
 }
 
 impl DescriptorOpts for DescrStdOpts {

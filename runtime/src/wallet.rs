@@ -52,15 +52,14 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     network: AddressNetwork,
     keychain: u8,
     index: NormalIndex,
-    _phantom: PhantomData<K>
+    _phantom: PhantomData<K>,
 }
 
 impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
     type Item = DerivedAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let addr =
-            self.generator.derive_address(self.network, self.keychain, self.index).ok()?;
+        let addr = self.generator.derive_address(self.network, self.keychain, self.index).ok()?;
         let derived = DerivedAddr::new(addr, self.keychain, self.index);
         self.index.wrapping_inc_assign();
         Some(derived)
@@ -92,7 +91,7 @@ where
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub(crate) chain: Chain,
     pub(crate) layer2: L2,
-    _phantom: PhantomData<K>
+    _phantom: PhantomData<K>,
 }
 
 impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
@@ -101,7 +100,7 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
             generator: descr,
             chain: network,
             layer2: None,
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
     }
 }
@@ -112,7 +111,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             generator: descr,
             chain: network,
             layer2,
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
     }
 
@@ -122,7 +121,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             network: self.chain.into(),
             keychain,
             index: NormalIndex::ZERO,
-            _phantom: PhantomData
+            _phantom: PhantomData,
         }
     }
 }
