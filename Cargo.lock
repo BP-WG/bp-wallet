@@ -340,7 +340,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.7"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#25575fe57a3229bc566e78d91bc9b133b360b740"
+source = "git+https://github.com/BP-WG/bp-core?branch=primitives#abfe62eab129ded5a674e2998ccd77bad4285ced"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#7e04f44f93f4bef23e8c5c7319340ebc1ffd67d4"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#1c22747ff050f528bb29659bc42d6817456e208b"
 dependencies = [
  "amplify",
  "bech32",
@@ -1272,9 +1272,10 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#7e04f44f93f4bef23e8c5c7319340ebc1ffd67d4"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#1c22747ff050f528bb29659bc42d6817456e208b"
 dependencies = [
  "amplify",
+ "base64",
  "bp-std",
  "chrono",
  "indexmap 2.0.2",
@@ -1380,9 +1381,9 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "reqwest"
-version = "0.11.21"
+version = "0.11.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78fdbab6a7e1d7b13cc8ff10197f47986b41c639300cc3c8158cac7847c9bbef"
+checksum = "046cd98826c46c2ac8ddecae268eb5c2e58628688a5fc7a2643704a73faba95b"
 dependencies = [
  "base64",
  "bytes",

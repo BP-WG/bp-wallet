@@ -27,6 +27,7 @@ use std::path::PathBuf;
 use base64::Engine;
 use bp::{Idx, NormalIndex, Sats, SeqNo};
 use bp_rt::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
+use psbt::PsbtVer;
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -92,6 +93,10 @@ pub enum Command {
 
     /// Compose a new PSBT to pay invoice
     Construct {
+        /// Encode PSBT as V2
+        #[clap(short = '2')]
+        v2: bool,
+
         /// Bitcoin invoice, either in form of `<sats>@<address>`. To spend full wallet balance use
         /// `MAX` for the amount.
         invoice: Invoice,
@@ -291,6 +296,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Construct {
+                v2,
                 invoice,
                 fee,
                 psbt: psbt_file,
@@ -312,17 +318,22 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     }
                 };
                 let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
+                let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
+                eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
                 match psbt_file {
                     Some(file_name) => {
                         let mut psbt_file = File::create(file_name)?;
-                        psbt.encode_v2(&mut psbt_file)?;
+                        psbt.encode(ver, &mut psbt_file)?;
                     }
                     None => {
                         let engine = base64::engine::general_purpose::GeneralPurpose::new(
                             &base64::alphabet::STANDARD,
                             base64::engine::GeneralPurposeConfig::new(),
                         );
-                        println!("{}", engine.encode(psbt.serialize_v2()))
+                        match ver {
+                            PsbtVer::V0 => println!("{psbt}"),
+                            PsbtVer::V2 => println!("{psbt:#}"),
+                        }
                     }
                 }
             }
