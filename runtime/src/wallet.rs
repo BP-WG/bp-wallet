@@ -20,6 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
@@ -156,7 +157,8 @@ pub struct WalletData<L2: Layer2Data> {
     #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
-    pub last_used: NormalIndex,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
+    pub last_used: BTreeMap<u8, NormalIndex>,
 }
 
 #[cfg_attr(
@@ -325,29 +327,19 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
-    pub fn next_index_on(&self, keychain: u8) -> NormalIndex {
-        self.address_coins()
+    pub fn next_index(&mut self, keychain: u8, shift: bool) -> NormalIndex {
+        let idx = self
+            .address_coins()
             .keys()
             .filter(|ad| ad.terminal.keychain == keychain)
             .map(|ad| ad.terminal.index)
             .max()
             .as_ref()
             .map(NormalIndex::saturating_inc)
-            .unwrap_or_default()
-    }
-
-    pub fn next_index(&mut self, keychain: u8, shift: bool) -> NormalIndex {
-        if keychain == 1 {
-            self.next_change(shift)
-        } else {
-            self.next_index_on(keychain)
-        }
-    }
-
-    pub fn next_change(&mut self, shift: bool) -> NormalIndex {
-        let idx = self.cache.last_change.max(self.next_index_on(1));
+            .unwrap_or_default();
         if shift {
-            self.cache.last_change.saturating_inc_assign();
+            let last_index = self.data.last_used.entry(keychain).or_default();
+            *last_index = cmp::max(*last_index, idx);
         }
         idx
     }

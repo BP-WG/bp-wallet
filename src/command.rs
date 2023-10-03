@@ -60,6 +60,7 @@ pub enum Command {
         utxo: bool,
     },
 
+    /// Generate a new wallet address(es)
     Addr {
         /// Use change keychain
         #[clap(short = '1', long)]
@@ -70,7 +71,7 @@ pub enum Command {
         index: Option<NormalIndex>,
 
         /// Do not shift the last used index
-        #[clap(short = 'N', long, requires = "change")]
+        #[clap(short = 'N', long, conflicts_with_all = ["change", "index"])]
         no_shift: bool,
 
         /// Number of addresses to generate
