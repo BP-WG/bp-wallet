@@ -31,7 +31,29 @@ use crate::{Layer2, Wallet};
 #[derive(Clone, Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum ConstructionError {
+    #[display(inner)]
     Psbt(PsbtError),
+
+    /// impossible to construct transaction having no inputs.
+    NoInputs,
+
+    /// attempt to spend more than present in transaction inputs. Total transaction inputs are
+    /// {input_value} sats, but output is {output_value} sats.
+    OutputExceedsInputs {
+        input_value: Sats,
+        output_value: Sats,
+    },
+
+    /// not enough funds to pay fee of {fee} sats; all inputs contain {input_value} sats and
+    /// outputs spends {output_value} sats out of them.
+    NoFundsForFee {
+        input_value: Sats,
+        output_value: Sats,
+        fee: Sats,
+    },
+
+    /// not enough funds to pay fee of {fee} sats even using all inputs ({input_value} sats).
+    InputsNotCoverFee { input_value: Sats, fee: Sats },
 }
 
 #[derive(Clone, Debug, Display, Error, From)]
@@ -111,6 +133,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         invoice: Invoice,
         params: TxParams,
     ) -> Result<Psbt, ConstructionError> {
+        if coins.is_empty() {
+            return Err(ConstructionError::NoInputs);
+        }
+
         let mut psbt = Psbt::create();
 
         // Set locktime
@@ -143,12 +169,26 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 self.cache.last_change,
                 Sats::ZERO,
             );
-            change.amount = input_value - output_value - params.fee;
+            change.amount = input_value
+                .checked_sub(output_value)
+                .ok_or(ConstructionError::OutputExceedsInputs {
+                    input_value,
+                    output_value,
+                })?
+                .checked_sub(params.fee)
+                .ok_or(ConstructionError::NoFundsForFee {
+                    input_value,
+                    output_value,
+                    fee: params.fee,
+                })?;
         } else {
-            psbt.construct_output_expect(
-                invoice.beneficiary.script_pubkey(),
-                input_value - params.fee,
-            );
+            let value = input_value.checked_sub(params.fee).ok_or(
+                ConstructionError::InputsNotCoverFee {
+                    input_value,
+                    fee: params.fee,
+                },
+            )?;
+            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
         }
 
         self.cache.last_change.wrapping_inc_assign();

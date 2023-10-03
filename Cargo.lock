@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#618a8ad6449b10bc105e73ed5b2ab7773c4489d4"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#7e04f44f93f4bef23e8c5c7319340ebc1ffd67d4"
 dependencies = [
  "amplify",
  "bech32",
@@ -1272,7 +1272,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#618a8ad6449b10bc105e73ed5b2ab7773c4489d4"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#7e04f44f93f4bef23e8c5c7319340ebc1ffd67d4"
 dependencies = [
  "amplify",
  "bp-std",

@@ -388,8 +388,12 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         self.all_utxos()
             .filter(selector)
             .take_while(move |utxo| {
-                selected.add_assign(utxo.value);
-                selected <= up_to
+                if selected <= up_to {
+                    selected.add_assign(utxo.value);
+                    true
+                } else {
+                    false
+                }
             })
             .map(|utxo| utxo.outpoint)
     }
