@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bp::{Chain, Descriptor, DescriptorStd, TrKey, XpubDerivable};
+use bp::{Chain, Descriptor, DescriptorStd, TrKey, Wpkh, XpubDerivable};
 use clap::ValueHint;
 use strict_encoding::Ident;
 
@@ -70,7 +70,11 @@ pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(multiple = false)]
 pub struct DescrStdOpts {
-    /// Use tr(KEY) descriptor as wallet.
+    /// Use wpkh(KEY) descriptor as wallet
+    #[arg(long, global = true)]
+    pub wpkh: Option<XpubDerivable>,
+
+    /// Use tr(KEY) descriptor as wallet
     #[arg(long, global = true)]
     pub tr_key_only: Option<XpubDerivable>,
 }
@@ -78,9 +82,15 @@ pub struct DescrStdOpts {
 impl DescriptorOpts for DescrStdOpts {
     type Descr = DescriptorStd;
 
-    fn is_some(&self) -> bool { self.tr_key_only.is_some() }
+    fn is_some(&self) -> bool { self.tr_key_only.is_some() | self.wpkh.is_some() }
     fn descriptor(&self) -> Option<Self::Descr> {
-        self.tr_key_only.clone().map(TrKey::from).map(TrKey::into)
+        if let Some(ref x) = self.tr_key_only {
+            Some(TrKey::from(x.clone()).into())
+        } else if let Some(ref x) = self.wpkh {
+            Some(Wpkh::from(x.clone()).into())
+        } else {
+            None
+        }
     }
 }
 
