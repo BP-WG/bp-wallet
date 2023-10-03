@@ -71,11 +71,10 @@ impl FromStr for Amount {
         if s == "MAX" {
             return Ok(Amount::Max);
         }
-        let (int, fract) = s.split_once('.').unwrap_or((s, ""));
+        // let (int, fract) = s.split_once('.').unwrap_or((s, ""));
+        // Sats::from_btc(u32::from_str(int)?) + Sats::from_sats(u32::from_str(fract)?),
         // TODO: check for sats overflow
-        Ok(Amount::Fixed(
-            Sats::from_btc(u32::from_str(int)?) + Sats::from_sats(u32::from_str(fract)?),
-        ))
+        Sats::from_str(s).map(Amount::Fixed)
     }
 }
 

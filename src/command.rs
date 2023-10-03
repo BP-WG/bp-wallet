@@ -21,6 +21,7 @@
 // limitations under the License.
 
 use std::fs;
+use std::fs::File;
 use std::path::PathBuf;
 
 use base64::Engine;
@@ -90,9 +91,8 @@ pub enum Command {
 
     /// Compose a new PSBT to pay invoice
     Construct {
-        /// Bitcoin invoice, either in form of `<sats>@<address>` or
-        /// `bitcoin:<address>?amount=<sats>`. To spend full wallet balance use `MAX` for the
-        /// amount.
+        /// Bitcoin invoice, either in form of `<sats>@<address>`. To spend full wallet balance use
+        /// `MAX` for the amount.
         invoice: Invoice,
 
         /// Fee
@@ -313,7 +313,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
                 match psbt_file {
                     Some(file_name) => {
-                        // TODO: Save file
+                        let mut psbt_file = File::create(file_name)?;
+                        psbt.encode_v2(&mut psbt_file)?;
                     }
                     None => {
                         let engine = base64::engine::general_purpose::GeneralPurpose::new(

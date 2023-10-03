@@ -22,4 +22,6 @@
 
 use crate::WalletUtxo;
 
+// TODO: Use traits and structs with internal state
+
 pub fn all(_: &WalletUtxo) -> bool { true }

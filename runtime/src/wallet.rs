@@ -91,6 +91,7 @@ where
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub(crate) chain: Chain,
     pub(crate) layer2: L2,
+    #[cfg_attr(feature = "serde", serde(skip))]
     _phantom: PhantomData<K>,
 }
 
