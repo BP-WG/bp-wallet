@@ -57,7 +57,8 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
 #[display(inner)]
 pub enum LoadError<L2: error::Error = Infallible> {
     #[from]
-    Io(io::Error),
+    #[from(io::Error)]
+    Io(IoError),
 
     #[from]
     Toml(toml::de::Error),
@@ -72,7 +73,8 @@ pub enum LoadError<L2: error::Error = Infallible> {
 #[display(inner)]
 pub enum StoreError<L2: error::Error = Infallible> {
     #[from]
-    Io(io::Error),
+    #[from(io::Error)]
+    Io(IoError),
 
     #[from]
     Toml(toml::ser::Error),
