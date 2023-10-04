@@ -25,8 +25,8 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use base64::Engine;
-use bp::{Idx, NormalIndex, Sats, SeqNo};
 use bp_rt::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
+use bpstd::{Idx, NormalIndex, Sats, SeqNo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
 

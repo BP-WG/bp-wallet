@@ -27,7 +27,7 @@ use std::str::FromStr;
 
 use amplify::hex;
 use amplify::hex::FromHex;
-use bp::{
+use bpstd::{
     Address, BlockHash, BlockHeader, DerivedAddr, LockTime, NormalIndex, Outpoint, Sats,
     ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };

@@ -25,7 +25,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
-use bp::{
+use bpstd::{
     Address, AddressNetwork, Chain, DerivedAddr, Descriptor, Idx, NormalIndex, Outpoint, Sats,
     Txid, Vout,
 };

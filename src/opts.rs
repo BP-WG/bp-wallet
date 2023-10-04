@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bp::{Chain, Descriptor, DescriptorStd, TrKey, Wpkh, XpubDerivable};
+use bpstd::{Chain, Descriptor, DescriptorStd, TrKey, Wpkh, XpubDerivable};
 use clap::ValueHint;
 use strict_encoding::Ident;
 

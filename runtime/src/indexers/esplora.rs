@@ -23,7 +23,7 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bp::{Address, Descriptor, LockTime, Outpoint, SeqNo, Witness};
+use bpstd::{Address, Descriptor, LockTime, Outpoint, SeqNo, Witness};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;

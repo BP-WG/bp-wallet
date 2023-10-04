@@ -25,7 +25,7 @@ use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
-use bp::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
+use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 

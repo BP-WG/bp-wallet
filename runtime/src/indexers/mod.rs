@@ -23,7 +23,8 @@
 #[cfg(feature = "esplora")]
 mod esplora;
 
-use bp::Descriptor;
+use bpstd::Descriptor;
+
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
 
 pub(self) const BATCH_SIZE: u8 = 10;

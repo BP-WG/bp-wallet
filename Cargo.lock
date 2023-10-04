@@ -326,7 +326,7 @@ dependencies = [
 [[package]]
 name = "bp-esplora"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-esplora-client#7b61436b6e086a1a5a4485ff436d02f30af6d5a4"
+source = "git+https://github.com/BP-WG/bp-esplora-client#4d7b31c3b1dd85fb12e71003ed94399ee55dc48e"
 dependencies = [
  "amplify",
  "bp-std",
@@ -340,7 +340,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.7"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#abfe62eab129ded5a674e2998ccd77bad4285ced"
+source = "git+https://github.com/BP-WG/bp-core?branch=primitives#d962c2a386138d338ea8e5b2bf1e76bf77f7a87e"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#1c22747ff050f528bb29659bc42d6817456e208b"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#b01e491ca00027473c8fbcebaf88d01b7370e2e5"
 dependencies = [
  "amplify",
  "bech32",
@@ -1272,7 +1272,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#1c22747ff050f528bb29659bc42d6817456e208b"
+source = "git+https://github.com/BP-WG/bp-std?branch=psbt#b01e491ca00027473c8fbcebaf88d01b7370e2e5"
 dependencies = [
  "amplify",
  "base64",
