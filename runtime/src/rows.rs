@@ -25,7 +25,7 @@ use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
-use bp::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
+use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
@@ -150,16 +150,12 @@ pub struct CoinRow<L2: Layer2Coin> {
 
 impl<L2: Layer2Cache> WalletCache<L2> {
     pub fn coins(&self) -> impl Iterator<Item = CoinRow<L2::Coin>> + '_ {
-        self.utxo.iter().map(|utxo| {
-            let Some(tx) = self.tx.get(&utxo.txid) else {
-                panic!("cache data inconsistency");
-            };
-            let Some(out) = tx.outputs.get(utxo.vout_usize()) else {
-                panic!("cache data inconsistency");
-            };
+        self.utxo.iter().map(|outpoint| {
+            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
+            let out = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
             CoinRow {
                 height: tx.status.map(|info| info.height),
-                outpoint: *utxo,
+                outpoint: *outpoint,
                 address: out.derived_addr().expect("cache data inconsistency"),
                 amount: out.value,
                 layer2: none!(), // TODO: Add support to WalletTx

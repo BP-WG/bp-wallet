@@ -20,26 +20,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "esplora")]
-mod esplora;
+use crate::WalletUtxo;
 
-use bpstd::Descriptor;
+// TODO: Use traits and structs with internal state
 
-use crate::{Layer2, MayError, WalletCache, WalletDescr};
-
-pub(self) const BATCH_SIZE: u8 = 10;
-
-pub trait Indexer {
-    type Error;
-
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        descr: &WalletDescr<K, D, L2::Descr>,
-    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>>;
-
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        descr: &WalletDescr<K, D, L2::Descr>,
-        cache: &mut WalletCache<L2::Cache>,
-    ) -> (usize, Vec<Self::Error>);
-}
+pub fn all(_: &WalletUtxo) -> bool { true }

@@ -21,9 +21,13 @@
 // limitations under the License.
 
 use std::fs;
+use std::fs::File;
+use std::path::PathBuf;
 
-use bp::{Idx, NormalIndex};
-use bp_rt::OpType;
+use base64::Engine;
+use bp_rt::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
+use bpstd::{Idx, NormalIndex, Sats, SeqNo};
+use psbt::PsbtVer;
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -57,6 +61,7 @@ pub enum Command {
         utxo: bool,
     },
 
+    /// Generate a new wallet address(es)
     Addr {
         /// Use change keychain
         #[clap(short = '1', long)]
@@ -67,7 +72,7 @@ pub enum Command {
         index: Option<NormalIndex>,
 
         /// Do not shift the last used index
-        #[clap(short = 'N', long, requires = "change")]
+        #[clap(short = 'N', long, conflicts_with_all = ["change", "index"])]
         no_shift: bool,
 
         /// Number of addresses to generate
@@ -84,6 +89,23 @@ pub enum Command {
         /// Print operation details
         #[clap(long)]
         details: bool,
+    },
+
+    /// Compose a new PSBT to pay invoice
+    Construct {
+        /// Encode PSBT as V2
+        #[clap(short = '2')]
+        v2: bool,
+
+        /// Bitcoin invoice, either in form of `<sats>@<address>`. To spend full wallet balance use
+        /// `MAX` for the amount.
+        invoice: Invoice,
+
+        /// Fee
+        fee: Sats,
+
+        /// Name of PSBT file to save. If not given, prints PSBT to STDOUT
+        psbt: Option<PathBuf>,
     },
 }
 
@@ -270,6 +292,48 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         }
                         println!("\t* {: >-12}ṩ\tminer fee", -row.fee.sats_i64());
                         println!();
+                    }
+                }
+            }
+            Command::Construct {
+                v2,
+                invoice,
+                fee,
+                psbt: psbt_file,
+            } => {
+                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let params = TxParams {
+                    fee: *fee,
+                    lock_time: None,
+                    // TODO: Support lock time and RBFs
+                    seq_no: SeqNo::from_consensus_u32(0),
+                };
+                // Do coin selection
+                let coins: Vec<_> = match invoice.amount {
+                    Amount::Fixed(sats) => {
+                        runtime.wallet().coinselect(sats, coinselect::all).collect()
+                    }
+                    Amount::Max => {
+                        runtime.wallet().all_utxos().map(WalletUtxo::into_outpoint).collect()
+                    }
+                };
+                let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
+                let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
+                eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
+                match psbt_file {
+                    Some(file_name) => {
+                        let mut psbt_file = File::create(file_name)?;
+                        psbt.encode(ver, &mut psbt_file)?;
+                    }
+                    None => {
+                        let engine = base64::engine::general_purpose::GeneralPurpose::new(
+                            &base64::alphabet::STANDARD,
+                            base64::engine::GeneralPurposeConfig::new(),
+                        );
+                        match ver {
+                            PsbtVer::V0 => println!("{psbt}"),
+                            PsbtVer::V2 => println!("{psbt:#}"),
+                        }
                     }
                 }
             }

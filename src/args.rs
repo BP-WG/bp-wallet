@@ -23,8 +23,8 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp::DeriveSpk;
 use bp_rt::Runtime;
+use bpstd::Descriptor;
 use clap::Subcommand;
 use strict_encoding::Ident;
 
@@ -85,7 +85,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
-    pub fn bp_runtime<D: DeriveSpk>(&self, conf: &Config) -> Result<Runtime<D>, RuntimeError>
+    pub fn bp_runtime<D: Descriptor>(&self, conf: &Config) -> Result<Runtime<D>, RuntimeError>
     where for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de> {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {

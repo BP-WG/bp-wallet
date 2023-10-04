@@ -27,10 +27,11 @@ use std::str::FromStr;
 
 use amplify::hex;
 use amplify::hex::FromHex;
-use bp::{
+use bpstd::{
     Address, BlockHash, BlockHeader, DerivedAddr, LockTime, NormalIndex, Outpoint, Sats,
     ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };
+use psbt::Prevout;
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
@@ -301,6 +302,7 @@ pub struct TxDebit {
     #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub beneficiary: Party,
     pub value: Sats,
+    // TODO: Add multiple spends (for RBFs) and mining info
     #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
     pub spent: Option<Inpoint>,
 }
@@ -309,6 +311,22 @@ impl TxDebit {
     pub fn is_ourself(&self) -> bool { self.beneficiary.is_ourself() }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
     pub fn derived_addr(&self) -> Option<DerivedAddr> { self.beneficiary.derived_addr() }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct WalletUtxo {
+    pub outpoint: Outpoint,
+    pub value: Sats,
+    pub terminal: Terminal,
+    pub status: TxStatus,
+    // TODO: Add layer 2
+}
+
+impl WalletUtxo {
+    #[inline]
+    pub fn to_prevout(&self) -> Prevout { Prevout::new(self.outpoint, self.value) }
+    #[inline]
+    pub fn into_outpoint(self) -> Outpoint { self.outpoint }
 }
 
 #[cfg_attr(

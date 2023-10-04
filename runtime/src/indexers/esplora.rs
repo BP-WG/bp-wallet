@@ -23,7 +23,7 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bp::{Address, DeriveSpk, LockTime, Outpoint, SeqNo, Witness};
+use bpstd::{Address, Descriptor, LockTime, Outpoint, SeqNo, Witness};
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
@@ -100,9 +100,9 @@ impl From<esplora::Tx> for WalletTx {
 impl Indexer for BlockingClient {
     type Error = Error;
 
-    fn create<D: DeriveSpk, L2: Layer2>(
+    fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
-        descriptor: &WalletDescr<D, L2::Descr>,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
@@ -201,9 +201,9 @@ impl Indexer for BlockingClient {
         }
     }
 
-    fn update<D: DeriveSpk, L2: Layer2>(
+    fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
-        descr: &WalletDescr<D, L2::Descr>,
+        descr: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
     ) -> (usize, Vec<Self::Error>) {
         todo!()
