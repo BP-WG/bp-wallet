@@ -144,7 +144,7 @@ impl Indexer for BlockingClient {
                 let mut tx = cache.tx.remove(&txid).expect("broken logic");
                 for (vin, credit) in tx.inputs.iter_mut().enumerate() {
                     let Party::Unknown(ref s) = credit.payer else {
-                        panic!("newly added transaction contains non-script payer");
+                        continue;
                     };
                     if s == &script {
                         credit.payer = Party::Wallet(addr_info.clone());
@@ -167,7 +167,7 @@ impl Indexer for BlockingClient {
                 }
                 for debit in &mut tx.outputs {
                     let Party::Unknown(ref s) = debit.beneficiary else {
-                        panic!("newly added transaction contains non-script payer");
+                        continue;
                     };
                     if s == &script {
                         cache.utxo.insert(debit.outpoint);
