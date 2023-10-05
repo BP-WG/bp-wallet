@@ -142,7 +142,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         // Set locktime
         psbt.fallback_locktime = params.lock_time;
 
-        // TODO: Add xpubs
+        // Add xpubs
+        for spec in self.descr.generator.xpubs() {
+            psbt.xpubs.insert(*spec.xpub(), spec.origin().clone());
+        }
 
         // 1. Add inputs
         for coin in coins {
