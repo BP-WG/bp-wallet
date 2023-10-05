@@ -340,7 +340,7 @@ dependencies = [
 [[package]]
 name = "bp-primitives"
 version = "0.10.7"
-source = "git+https://github.com/BP-WG/bp-core?branch=primitives#d962c2a386138d338ea8e5b2bf1e76bf77f7a87e"
+source = "git+https://github.com/BP-WG/bp-core#f576847dc229cd2daf20fdb72c25834467214e6f"
 dependencies = [
  "amplify",
  "commit_verify",
@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#b01e491ca00027473c8fbcebaf88d01b7370e2e5"
+source = "git+https://github.com/BP-WG/bp-std#f7f9fa87134f8365360b9d5898dedc9d68a02528"
 dependencies = [
  "amplify",
  "bech32",
@@ -1272,7 +1272,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std?branch=psbt#b01e491ca00027473c8fbcebaf88d01b7370e2e5"
+source = "git+https://github.com/BP-WG/bp-std#f7f9fa87134f8365360b9d5898dedc9d68a02528"
 dependencies = [
  "amplify",
  "base64",
@@ -1441,9 +1441,9 @@ checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
 
 [[package]]
 name = "rustix"
-version = "0.38.15"
+version = "0.38.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2f9da0cbd88f9f09e7814e388301c8414c51c62aa6ce1e4b5c551d49d96e531"
+checksum = "f25469e9ae0f3d0047ca8b93fc56843f38e6774f0914a107ff8b41be8be8e0b7"
 dependencies = [
  "bitflags 2.4.0",
  "errno",

@@ -24,7 +24,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use bpstd::{Address, AddressParseError, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
-use psbt::{Psbt, PsbtError};
+use psbt::{Psbt, PsbtError, PsbtVer};
 
 use crate::{Layer2, Wallet};
 
@@ -137,7 +137,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             return Err(ConstructionError::NoInputs);
         }
 
-        let mut psbt = Psbt::create();
+        let mut psbt = Psbt::create(PsbtVer::V2);
 
         // Set locktime
         psbt.fallback_locktime = params.lock_time;
