@@ -23,7 +23,7 @@
 #[cfg(feature = "esplora")]
 mod esplora;
 
-use bpstd::Descriptor;
+use descriptors::Descriptor;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
 

@@ -26,7 +26,8 @@ use std::path::PathBuf;
 use std::{error, io};
 
 use amplify::IoError;
-use bpstd::{Chain, Descriptor, DescriptorStd, XpubDerivable};
+use bpstd::{Chain, XpubDerivable};
+use descriptors::{Descriptor, DescriptorStd};
 
 use crate::wallet::fs::Warning;
 use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};

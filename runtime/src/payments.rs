@@ -23,7 +23,8 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bpstd::{Address, AddressParseError, Descriptor, Idx, LockTime, Outpoint, Sats, SeqNo};
+use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, SeqNo};
+use descriptors::Descriptor;
 use psbt::{Psbt, PsbtError, PsbtVer};
 
 use crate::{Layer2, Wallet};

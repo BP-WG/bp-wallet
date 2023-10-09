@@ -23,8 +23,9 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bpstd::{Chain, Descriptor, DescriptorStd, TrKey, Wpkh, XpubDerivable};
+use bpstd::{Chain, XpubDerivable};
 use clap::ValueHint;
+use descriptors::{Descriptor, DescriptorStd, TrKey, Wpkh};
 use strict_encoding::Ident;
 
 pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";

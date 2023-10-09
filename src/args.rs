@@ -24,8 +24,8 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 use bp_rt::Runtime;
-use bpstd::Descriptor;
 use clap::Subcommand;
+use descriptors::Descriptor;
 use strict_encoding::Ident;
 
 use crate::opts::{DescrStdOpts, DescriptorOpts};

@@ -20,6 +20,7 @@ amplify = { workspace = true }
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 psbt = { workspace = true }
+descriptors = { workspace = true }
 cfg_eval = { version = "0.1.2", optional = true }
 serde_crate = { workspace = true, optional = true }
 serde_with = { workspace = true, optional = true }

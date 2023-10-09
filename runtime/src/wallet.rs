@@ -26,9 +26,9 @@ use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
 use bpstd::{
-    Address, AddressNetwork, Chain, DerivedAddr, Descriptor, Idx, NormalIndex, Outpoint, Sats,
-    Txid, Vout,
+    Address, AddressNetwork, Chain, DerivedAddr, Idx, NormalIndex, Outpoint, Sats, Txid, Vout,
 };
+use descriptors::Descriptor;
 #[cfg(feature = "serde")]
 use serde_with::DisplayFromStr;
 
