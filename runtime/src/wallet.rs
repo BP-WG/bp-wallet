@@ -29,8 +29,6 @@ use bpstd::{
     Address, AddressNetwork, Chain, DerivedAddr, Idx, NormalIndex, Outpoint, Sats, Txid, Vout,
 };
 use descriptors::Descriptor;
-#[cfg(feature = "serde")]
-use serde_with::DisplayFromStr;
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
@@ -69,8 +67,6 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -89,7 +85,6 @@ where
 {
     pub(crate) generator: D,
     #[getter(as_copy)]
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub(crate) chain: Chain,
     pub(crate) layer2: L2,
     #[cfg_attr(feature = "serde", serde(skip))]
@@ -136,8 +131,6 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> 
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -148,16 +141,11 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> 
 #[derive(Clone, Eq, PartialEq, Debug, Default)]
 pub struct WalletData<L2: Layer2Data> {
     pub name: String,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub tx_annotations: BTreeMap<Txid, String>,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub txout_annotations: BTreeMap<Outpoint, String>,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub txin_annotations: BTreeMap<Outpoint, String>,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
-    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<DisplayFromStr, _>"))]
     pub last_used: BTreeMap<u8, NormalIndex>,
 }
 

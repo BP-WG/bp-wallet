@@ -20,14 +20,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
 use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
-#[cfg(feature = "serde")]
-use serde_with::DisplayFromStr;
 
 use crate::{BlockHeight, Layer2Cache, Layer2Coin, Layer2Tx, Party, TxStatus, WalletCache};
 
@@ -45,6 +42,11 @@ pub enum OpType {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 pub enum Counterparty {
     Miner,
     #[from]
@@ -92,8 +94,6 @@ impl FromStr for Counterparty {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -109,9 +109,7 @@ pub struct TxRow<L2: Layer2Tx> {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub counterparties: Vec<(Counterparty, i64)>,
-    #[cfg_attr(feature = "serde", serde_as(as = "HashMap<DisplayFromStr, _>"))]
     pub own: Vec<(DerivedAddr, i64)>,
     pub txid: Txid,
     pub fee: Sats,
@@ -125,8 +123,6 @@ pub struct TxRow<L2: Layer2Tx> {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(
         crate = "serde_crate",
@@ -141,7 +137,6 @@ pub struct TxRow<L2: Layer2Tx> {
 pub struct CoinRow<L2: Layer2Coin> {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub address: DerivedAddr,
     pub outpoint: Outpoint,
     pub amount: Sats,

@@ -32,8 +32,6 @@ use bpstd::{
     ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };
 use psbt::Prevout;
-#[cfg(feature = "serde")]
-use serde_with::DisplayFromStr;
 
 pub type BlockHeight = NonZeroU32;
 
@@ -132,6 +130,11 @@ where T: Display
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 #[display("{txid}.{vin}")]
 pub struct Inpoint {
     pub txid: Txid,
@@ -212,6 +215,11 @@ impl WalletTx {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate", rename_all = "camelCase")
+)]
 pub enum Party {
     Subsidy,
 
@@ -264,16 +272,12 @@ impl FromStr for Party {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase",)
+    serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxCredit {
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub payer: Party,
     pub sequence: SeqNo,
     pub coinbase: bool,
@@ -290,20 +294,15 @@ impl TxCredit {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxDebit {
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub outpoint: Outpoint,
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub beneficiary: Party,
     pub value: Sats,
     // TODO: Add multiple spends (for RBFs) and mining info
-    #[cfg_attr(feature = "serde", serde_as(as = "Option<DisplayFromStr>"))]
     pub spent: Option<Inpoint>,
 }
 
@@ -331,16 +330,12 @@ impl WalletUtxo {
 
 #[cfg_attr(
     feature = "serde",
-    cfg_eval,
-    serde_as,
     derive(serde::Serialize, serde::Deserialize),
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct WalletAddr<T = Sats> {
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub terminal: Terminal,
-    #[cfg_attr(feature = "serde", serde_as(as = "DisplayFromStr"))]
     pub addr: Address,
     pub used: u32,
     pub volume: Sats,

@@ -24,7 +24,6 @@ use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 
-use base64::Engine;
 use bp_rt::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
 use bpstd::{Idx, NormalIndex, Sats, SeqNo};
 use psbt::PsbtVer;
@@ -325,16 +324,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         let mut psbt_file = File::create(file_name)?;
                         psbt.encode(ver, &mut psbt_file)?;
                     }
-                    None => {
-                        let engine = base64::engine::general_purpose::GeneralPurpose::new(
-                            &base64::alphabet::STANDARD,
-                            base64::engine::GeneralPurposeConfig::new(),
-                        );
-                        match ver {
-                            PsbtVer::V0 => println!("{psbt}"),
-                            PsbtVer::V2 => println!("{psbt:#}"),
-                        }
-                    }
+                    None => match ver {
+                        PsbtVer::V0 => println!("{psbt}"),
+                        PsbtVer::V2 => println!("{psbt:#}"),
+                    },
                 }
             }
         };
