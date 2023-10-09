@@ -21,32 +21,33 @@
 // limitations under the License.
 
 #[macro_use]
-extern crate amplify;
-#[cfg(feature = "serde")]
+extern crate log;
 extern crate serde_crate as serde;
 
-mod indexers;
-#[cfg(feature = "fs")]
-mod runtime;
-mod util;
-mod data;
-mod rows;
-mod wallet;
-mod layer2;
-mod payments;
-pub mod coinselect;
+use std::process::ExitCode;
 
-pub use data::{
-    BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
-    WalletUtxo,
-};
-pub use indexers::Indexer;
-pub use layer2::{
-    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
-};
-pub use payments::{Amount, ConstructionError, Invoice, TxParams};
-pub use rows::{CoinRow, Counterparty, OpType, TxRow};
-#[cfg(feature = "fs")]
-pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
-pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+use bp_util::{Args, Command, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
+use clap::Parser;
+
+fn main() -> ExitCode {
+    if let Err(err) = run() {
+        eprintln!("Error: {err}");
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn run() -> Result<(), RuntimeError> {
+    let mut args = Args::<Command, DescrStdOpts>::parse();
+    args.process();
+    LogLevel::from_verbosity_flag_count(args.verbose).apply();
+    trace!("Command-line arguments: {:#?}", &args);
+
+    eprintln!("BP: command-line wallet for bitcoin protocol");
+    eprintln!("    by LNP/BP Standards Association\n");
+
+    let conf = Config::load(&args.conf_path("bp"));
+    debug!("Executing command: {:?}", args.command);
+    args.exec(conf, "bp")
+}

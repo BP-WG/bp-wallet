@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bp_rt::Runtime;
+use bpwallet::Runtime;
 use clap::Subcommand;
 use descriptors::Descriptor;
 use strict_encoding::Ident;

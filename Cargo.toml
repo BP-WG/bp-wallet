@@ -1,9 +1,9 @@
 [workspace]
-members = [".", "runtime"]
+members = [".", "cli"]
 exclude = ["convert"]
 
 [workspace.package]
-version = "0.11.0"
+version = "0.10.0-beta.1"
 keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
 categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
@@ -16,10 +16,10 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.5.0"
 strict_encoding = "2.6.1"
-bp-std = "0.11.0"
-psbt = "0.11.0"
-descriptors = "0.11.0"
-bp-esplora = "0.11.0"
+bp-std = "0.10.0-beta.1"
+psbt = "=0.10.0-BP-beta.1"
+descriptors = "=0.10.0-BP-beta.1"
+bp-esplora = "0.10.0"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_yaml = "0.9.19"
 toml = "0.8.2"
@@ -27,50 +27,34 @@ log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug
 
 [package]
 name = "bp-wallet"
-version = { workspace = true }
-description = "Modern, minimalistic & standard-compliant cold wallet library"
-keywords = { workspace = true }
-categories = { workspace = true }
+version.workspace = true
+description = "Modern, minimalistic & standard-compliant bitcoin wallet runtime"
+keywords.workspace = true
+categories.workspace = true
 readme = "README.md"
-authors = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
-rust-version = { workspace = true }
-edition = { workspace = true }
-license = { workspace = true }
-
-[[bin]]
-name = "bp"
-path = "src/bin/bp.rs"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [lib]
-name = "bpw"
+name = "bpwallet"
 
 [dependencies]
-amplify = { workspace = true, features = ["serde"] }
-strict_encoding = { workspace = true }
-bp-runtime = { path = "runtime", features = ["serde", "fs"] }
-bp-std = { workspace = true, features = ["serde"] }
-descriptors = { workspace = true, features = ["serde"] }
-psbt = { workspace = true, features = ["serde"] }
-bp-esplora = { workspace = true }
-base64 = "0.21.4"
-log = { workspace = true }
-env_logger = "0.10.0"
-clap = { version = "4.1.8", features = ["derive", "env"] }
-shellexpand = "3.0.0"
-serde_crate = { workspace = true }
-serde_yaml = { workspace = true }
-toml = { workspace = true }
+amplify = { workspace = true }
+bp-std = { workspace = true }
+bp-esplora = { workspace = true, optional = true }
+psbt = { workspace = true }
+descriptors = { workspace = true }
+serde_crate = { workspace = true, optional = true }
+serde_yaml = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
 
 [features]
-default = []
-all = []
-
-[patch.crates-io]
-bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "consensus" }
-bp-core = { git = "https://github.com/BP-WG/bp-core", branch = "consensus" }
-bp-std = { git = "https://github.com/BP-WG/bp-std" }
-bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client" }
-descriptors = { git = "https://github.com/BP-WG/bp-std" }
-psbt = { git = "https://github.com/BP-WG/bp-std" }
+default = ["esplora"]
+all = ["esplora", "fs"]
+esplora = ["bp-esplora"]
+fs = ["serde"]
+serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]

@@ -22,25 +22,31 @@
 
 #[macro_use]
 extern crate amplify;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-#[macro_use]
+#[cfg(feature = "serde")]
 extern crate serde_crate as serde;
 
-mod loglevel;
-mod opts;
-mod args;
-mod config;
-mod command;
+mod indexers;
+#[cfg(feature = "fs")]
+mod runtime;
+mod util;
+mod data;
+mod rows;
+mod wallet;
+mod layer2;
+mod payments;
+pub mod coinselect;
 
-pub use args::{Args, Exec};
-pub use bp_rt::*;
-pub use command::Command;
-pub use config::Config;
-pub use loglevel::LogLevel;
-pub use opts::{
-    DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV,
-    DEFAULT_ESPLORA,
+pub use data::{
+    BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
+    WalletUtxo,
 };
+pub use indexers::Indexer;
+pub use layer2::{
+    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
+};
+pub use payments::{Amount, ConstructionError, Invoice, TxParams};
+pub use rows::{CoinRow, Counterparty, OpType, TxRow};
+#[cfg(feature = "fs")]
+pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
+pub use util::MayError;
+pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};

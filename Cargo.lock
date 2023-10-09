@@ -283,8 +283,9 @@ dependencies = [
 
 [[package]]
 name = "bp-consensus"
-version = "0.10.10"
-source = "git+https://github.com/BP-WG/bp-core?branch=consensus#f3fd08046d37f2f8c41e65a637bfc9815372d71c"
+version = "0.10.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d7b87840e5fc65bcbcd3881e0a0150ecef4a9b18b1356eb7a8a9adc85280c63"
 dependencies = [
  "amplify",
  "chrono",
@@ -296,8 +297,9 @@ dependencies = [
 
 [[package]]
 name = "bp-core"
-version = "0.10.10"
-source = "git+https://github.com/BP-WG/bp-core?branch=consensus#f3fd08046d37f2f8c41e65a637bfc9815372d71c"
+version = "0.10.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a8b5219d96064b5d277c166fd5321ce6ee3e8a74e50bf2281d47726f365ead4"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -311,8 +313,9 @@ dependencies = [
 
 [[package]]
 name = "bp-dbc"
-version = "0.10.10"
-source = "git+https://github.com/BP-WG/bp-core?branch=consensus#f3fd08046d37f2f8c41e65a637bfc9815372d71c"
+version = "0.10.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e265b111f61acb39cf36778c4da9a3d3c49fcc7a7e4116fd40ab250d598b1280"
 dependencies = [
  "amplify",
  "base85",
@@ -325,8 +328,9 @@ dependencies = [
 
 [[package]]
 name = "bp-esplora"
-version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-esplora-client#4d7b31c3b1dd85fb12e71003ed94399ee55dc48e"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4f9f1e2117ed530960e67b2bea975cd8dee9ec48d33c285a9a06ed848308c73"
 dependencies = [
  "amplify",
  "bp-std",
@@ -338,23 +342,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-runtime"
-version = "0.11.0"
-dependencies = [
- "amplify",
- "bp-esplora",
- "bp-std",
- "descriptors",
- "psbt",
- "serde",
- "serde_yaml",
- "toml",
-]
-
-[[package]]
 name = "bp-seals"
-version = "0.10.10"
-source = "git+https://github.com/BP-WG/bp-core?branch=consensus#f3fd08046d37f2f8c41e65a637bfc9815372d71c"
+version = "0.10.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ccb60735209233ece5927a5c66355037af8479104b5ff55371ae4a0f53c96b2"
 dependencies = [
  "amplify",
  "baid58",
@@ -369,8 +360,9 @@ dependencies = [
 
 [[package]]
 name = "bp-std"
-version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#6c616607d3d7466b33cfaec2604161b315c88a5d"
+version = "0.10.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8098ada83a67537e36620857c16630bc4df32a50113650555b9a287eb0a64fe0"
 dependencies = [
  "amplify",
  "bech32",
@@ -383,14 +375,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-wallet"
-version = "0.11.0"
+name = "bp-util"
+version = "0.10.0-beta.1"
 dependencies = [
  "amplify",
  "base64",
  "bp-esplora",
- "bp-runtime",
  "bp-std",
+ "bp-wallet",
  "clap",
  "descriptors",
  "env_logger",
@@ -400,6 +392,20 @@ dependencies = [
  "serde_yaml",
  "shellexpand",
  "strict_encoding",
+ "toml",
+]
+
+[[package]]
+name = "bp-wallet"
+version = "0.10.0-beta.1"
+dependencies = [
+ "amplify",
+ "bp-esplora",
+ "bp-std",
+ "descriptors",
+ "psbt",
+ "serde",
+ "serde_yaml",
  "toml",
 ]
 
@@ -621,8 +627,9 @@ dependencies = [
 
 [[package]]
 name = "descriptors"
-version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#6c616607d3d7466b33cfaec2604161b315c88a5d"
+version = "0.10.0-BP-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6105e8317f28ac87e2a30cd4f8fcd1a4fc330e63b0faf55d93cf2041fc12dd5"
 dependencies = [
  "amplify",
  "bp-std",
@@ -1247,8 +1254,9 @@ dependencies = [
 
 [[package]]
 name = "psbt"
-version = "0.11.0"
-source = "git+https://github.com/BP-WG/bp-std#6c616607d3d7466b33cfaec2604161b315c88a5d"
+version = "0.10.0-BP-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cca3dfdaed6f9705ba29038985250c012bd14ad6341cb871b540222267e01cd1"
 dependencies = [
  "amplify",
  "base64",

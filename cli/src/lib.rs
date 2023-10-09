@@ -21,33 +21,26 @@
 // limitations under the License.
 
 #[macro_use]
+extern crate amplify;
+#[macro_use]
+extern crate clap;
+#[macro_use]
 extern crate log;
+#[macro_use]
 extern crate serde_crate as serde;
 
-use std::process::ExitCode;
+mod loglevel;
+mod opts;
+mod args;
+mod config;
+mod command;
 
-use bpw::{Args, Command, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
-use clap::Parser;
-
-fn main() -> ExitCode {
-    if let Err(err) = run() {
-        eprintln!("Error: {err}");
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
-}
-
-fn run() -> Result<(), RuntimeError> {
-    let mut args = Args::<Command, DescrStdOpts>::parse();
-    args.process();
-    LogLevel::from_verbosity_flag_count(args.verbose).apply();
-    trace!("Command-line arguments: {:#?}", &args);
-
-    eprintln!("BP: command-line wallet for bitcoin protocol");
-    eprintln!("    by LNP/BP Standards Association\n");
-
-    let conf = Config::load(&args.conf_path("bp"));
-    debug!("Executing command: {:?}", args.command);
-    args.exec(conf, "bp")
-}
+pub use args::{Args, Exec};
+pub use bpwallet::*;
+pub use command::Command;
+pub use config::Config;
+pub use loglevel::LogLevel;
+pub use opts::{
+    DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV,
+    DEFAULT_ESPLORA,
+};
