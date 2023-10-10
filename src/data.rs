@@ -245,6 +245,7 @@ pub enum Party {
 impl Party {
     pub fn is_ourself(&self) -> bool { matches!(self, Party::Wallet(_)) }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
+    pub fn is_unknown(&self) -> bool { matches!(self, Party::Unknown(_)) }
     pub fn derived_addr(&self) -> Option<DerivedAddr> {
         match self {
             Party::Wallet(addr) => Some(*addr),
@@ -256,6 +257,14 @@ impl Party {
             addr: wallet_addr.addr,
             terminal: wallet_addr.terminal,
         })
+    }
+    pub fn script_pubkey(&self) -> Option<ScriptPubkey> {
+        match self {
+            Party::Subsidy => None,
+            Party::Counterparty(addr) => Some(addr.script_pubkey()),
+            Party::Unknown(script) => Some(script.clone()),
+            Party::Wallet(_) => None,
+        }
     }
 }
 

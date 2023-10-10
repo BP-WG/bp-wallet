@@ -143,10 +143,10 @@ impl Indexer for BlockingClient {
             for txid in txids {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
                 for debit in &mut tx.outputs {
-                    let Party::Unknown(ref s) = debit.beneficiary else {
+                    let Some(s) = debit.beneficiary.script_pubkey() else {
                         continue;
                     };
-                    if s == script {
+                    if &s == script {
                         cache.utxo.insert(debit.outpoint);
                         debit.beneficiary = Party::from_wallet_addr(wallet_addr);
                         wallet_addr.used = wallet_addr.used.saturating_add(1);
@@ -154,8 +154,8 @@ impl Indexer for BlockingClient {
                         wallet_addr.balance = wallet_addr
                             .balance
                             .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
-                    } else {
-                        Address::with(s, descriptor.chain())
+                    } else if debit.beneficiary.is_unknown() {
+                        Address::with(&s, descriptor.chain())
                             .map(|addr| {
                                 debit.beneficiary = Party::Counterparty(addr);
                             })
@@ -170,16 +170,16 @@ impl Indexer for BlockingClient {
             for txid in txids {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
                 for credit in &mut tx.inputs {
-                    let Party::Unknown(ref s) = credit.payer else {
+                    let Some(s) = credit.payer.script_pubkey() else {
                         continue;
                     };
-                    if s == script {
+                    if &s == script {
                         credit.payer = Party::from_wallet_addr(wallet_addr);
                         wallet_addr.balance = wallet_addr
                             .balance
                             .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
-                    } else {
-                        Address::with(s, descriptor.chain())
+                    } else if credit.payer.is_unknown() {
+                        Address::with(&s, descriptor.chain())
                             .map(|addr| {
                                 credit.payer = Party::Counterparty(addr);
                             })
