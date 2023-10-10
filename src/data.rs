@@ -146,6 +146,15 @@ impl Inpoint {
     pub fn new(txid: Txid, vin: u32) -> Self { Inpoint { txid, vin } }
 }
 
+impl From<Outpoint> for Inpoint {
+    fn from(outpoint: Outpoint) -> Self {
+        Inpoint {
+            txid: outpoint.txid,
+            vin: outpoint.vout.into_u32(),
+        }
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Display, From, Error)]
 #[display(doc_comments)]
 pub enum InpointParseError {
@@ -241,6 +250,12 @@ impl Party {
             Party::Wallet(addr) => Some(*addr),
             _ => None,
         }
+    }
+    pub fn from_wallet_addr<T>(wallet_addr: &WalletAddr<T>) -> Self {
+        Party::Wallet(DerivedAddr {
+            addr: wallet_addr.addr,
+            terminal: wallet_addr.terminal,
+        })
     }
 }
 

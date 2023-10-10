@@ -28,7 +28,6 @@ use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
 use super::BATCH_SIZE;
-use crate::data::Inpoint;
 use crate::{
     Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
     WalletCache, WalletDescr, WalletTx,
@@ -133,46 +132,23 @@ impl Indexer for BlockingClient {
                     }
                 }
 
-                address_index.insert(script, (derive, txids));
+                let wallet_addr = WalletAddr::<i64>::from(derive);
+                address_index.insert(script, (wallet_addr, txids));
             }
         }
 
         // TODO: Update headers & tip
 
-        for (script, (addr_info, txids)) in address_index {
-            let mut wallet_addr = WalletAddr::<i64>::from(addr_info.clone());
+        for (script, (wallet_addr, txids)) in &mut address_index {
             for txid in txids {
-                let mut tx = cache.tx.remove(&txid).expect("broken logic");
-                for (vin, credit) in tx.inputs.iter_mut().enumerate() {
-                    let Party::Unknown(ref s) = credit.payer else {
-                        continue;
-                    };
-                    if s == &script {
-                        credit.payer = Party::Wallet(addr_info.clone());
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
-                    } else {
-                        Address::with(s, descriptor.chain())
-                            .map(|addr| {
-                                credit.payer = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
-                        prev_tx
-                            .outputs
-                            .get_mut(credit.outpoint.vout_u32() as usize)
-                            .map(|vout| vout.spent = Some(Inpoint::new(tx.txid, vin as u32)));
-                    }
-                }
+                let mut tx = cache.tx.remove(txid).expect("broken logic");
                 for debit in &mut tx.outputs {
                     let Party::Unknown(ref s) = debit.beneficiary else {
                         continue;
                     };
-                    if s == &script {
+                    if s == script {
                         cache.utxo.insert(debit.outpoint);
-                        debit.beneficiary = Party::Wallet(addr_info.clone());
+                        debit.beneficiary = Party::from_wallet_addr(wallet_addr);
                         wallet_addr.used = wallet_addr.used.saturating_add(1);
                         wallet_addr.volume.saturating_add_assign(debit.value);
                         wallet_addr.balance = wallet_addr
@@ -188,9 +164,40 @@ impl Indexer for BlockingClient {
                 }
                 cache.tx.insert(tx.txid, tx);
             }
+        }
+
+        for (script, (wallet_addr, txids)) in &mut address_index {
+            for txid in txids {
+                let mut tx = cache.tx.remove(txid).expect("broken logic");
+                for credit in &mut tx.inputs {
+                    let Party::Unknown(ref s) = credit.payer else {
+                        continue;
+                    };
+                    if s == script {
+                        credit.payer = Party::from_wallet_addr(wallet_addr);
+                        wallet_addr.balance = wallet_addr
+                            .balance
+                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
+                    } else {
+                        Address::with(s, descriptor.chain())
+                            .map(|addr| {
+                                credit.payer = Party::Counterparty(addr);
+                            })
+                            .ok();
+                    }
+                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
+                        prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize).map(|txout| {
+                            let outpoint = txout.outpoint;
+                            cache.utxo.remove(&outpoint);
+                            txout.spent = Some(credit.outpoint.into())
+                        });
+                    }
+                }
+                cache.tx.insert(tx.txid, tx);
+            }
             cache
                 .addr
-                .entry(addr_info.terminal.keychain)
+                .entry(wallet_addr.terminal.keychain)
                 .or_default()
                 .insert(wallet_addr.expect_transmute());
         }

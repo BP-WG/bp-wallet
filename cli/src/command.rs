@@ -96,7 +96,7 @@ pub enum Command {
         #[clap(short = '2')]
         v2: bool,
 
-        /// Bitcoin invoice, either in form of `<sats>@<address>`. To spend full wallet balance use
+        /// Bitcoin invoice in form of `<sats>@<address>`. To spend full wallet balance use
         /// `MAX` for the amount.
         invoice: Invoice,
 
@@ -192,6 +192,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     addr: false,
                     utxo: false,
                 };
+                self.resolver.sync = false;
                 self.exec(config, name)?;
             }
             Command::Balance {
@@ -210,6 +211,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     addr: false,
                     utxo: false,
                 };
+                self.resolver.sync = false;
                 self.exec(config, name)?;
             }
             Command::Balance {
@@ -229,6 +231,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     addr: false,
                     utxo: false,
                 };
+                self.resolver.sync = false;
                 self.exec(config, name)?;
             }
             Command::Addr {
