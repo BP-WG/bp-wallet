@@ -26,7 +26,7 @@ use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
 use bpstd::{
-    Address, AddressNetwork, Chain, DerivedAddr, Idx, NormalIndex, Outpoint, Sats, Txid, Vout,
+    Address, AddressNetwork, DerivedAddr, Idx, Network, NormalIndex, Outpoint, Sats, Txid, Vout,
 };
 use descriptors::Descriptor;
 
@@ -85,17 +85,17 @@ where
 {
     pub(crate) generator: D,
     #[getter(as_copy)]
-    pub(crate) chain: Chain,
+    pub(crate) network: Network,
     pub(crate) layer2: L2,
     #[cfg_attr(feature = "serde", serde(skip))]
     _phantom: PhantomData<K>,
 }
 
 impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
-    pub fn new_standard(descr: D, network: Chain) -> Self {
+    pub fn new_standard(descr: D, network: Network) -> Self {
         WalletDescr {
             generator: descr,
-            chain: network,
+            network,
             layer2: None,
             _phantom: PhantomData,
         }
@@ -103,10 +103,10 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
-    pub fn new_layer2(descr: D, layer2: L2, network: Chain) -> Self {
+    pub fn new_layer2(descr: D, layer2: L2, network: Network) -> Self {
         WalletDescr {
             generator: descr,
-            chain: network,
+            network,
             layer2,
             _phantom: PhantomData,
         }
@@ -115,7 +115,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
     pub fn addresses(&self, keychain: u8) -> AddrIter<K, D> {
         AddrIter {
             generator: &self.generator,
-            network: self.chain.into(),
+            network: self.network.into(),
             keychain,
             index: NormalIndex::ZERO,
             _phantom: PhantomData,
@@ -255,7 +255,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2> {
 }
 
 impl<K, D: Descriptor<K>> Wallet<K, D, NoLayer2> {
-    pub fn new_standard(descr: D, network: Chain) -> Self {
+    pub fn new_standard(descr: D, network: Network) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
@@ -266,7 +266,7 @@ impl<K, D: Descriptor<K>> Wallet<K, D, NoLayer2> {
 
     pub fn with_standard<I: Indexer>(
         descr: D,
-        network: Chain,
+        network: Network,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
         let mut wallet = Wallet::new_standard(descr, network);
@@ -275,7 +275,7 @@ impl<K, D: Descriptor<K>> Wallet<K, D, NoLayer2> {
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
+    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Wallet {
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
             data: empty!(),
@@ -288,7 +288,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         descr: D,
         l2_descr: L2::Descr,
         layer2: L2,
-        network: Chain,
+        network: Network,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
         let mut wallet = Wallet::new_layer2(descr, l2_descr, layer2, network);

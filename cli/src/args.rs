@@ -90,7 +90,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         eprint!("Loading descriptor");
         let mut runtime: Runtime<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {
             eprint!(" from command-line argument ... ");
-            Runtime::new_standard(d.into(), self.general.chain)
+            Runtime::new_standard(d.into(), self.general.network)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
             eprint!(" from specified wallet directory ... ");
             Runtime::load_standard(wallet_path)?

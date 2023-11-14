@@ -21,7 +21,7 @@ path = "src/bin/bp.rs"
 [dependencies]
 amplify = { workspace = true, features = ["serde"] }
 strict_encoding = { workspace = true }
-bp-wallet = { version = "0.10.0-beta.1", path = "..", features = ["serde", "fs"] }
+bp-wallet = { version = "0.11.0-beta.1", path = "..", features = ["serde", "fs"] }
 bp-std = { workspace = true, features = ["serde"] }
 descriptors = { workspace = true, features = ["serde"] }
 psbt = { workspace = true, features = ["serde"] }
@@ -29,7 +29,7 @@ bp-esplora = { workspace = true }
 base64 = "0.21.4"
 log = { workspace = true }
 env_logger = "0.10.0"
-clap = { version = "4.4.6", features = ["derive", "env"] }
+clap = { version = "4.4.8", features = ["derive", "env"] }
 shellexpand = "3.1.0"
 serde_crate = { workspace = true }
 serde_yaml = { workspace = true }

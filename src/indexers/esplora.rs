@@ -155,7 +155,7 @@ impl Indexer for BlockingClient {
                             .balance
                             .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
                     } else if debit.beneficiary.is_unknown() {
-                        Address::with(&s, descriptor.chain())
+                        Address::with(&s, descriptor.network())
                             .map(|addr| {
                                 debit.beneficiary = Party::Counterparty(addr);
                             })
@@ -179,7 +179,7 @@ impl Indexer for BlockingClient {
                             .balance
                             .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
                     } else if credit.payer.is_unknown() {
-                        Address::with(&s, descriptor.chain())
+                        Address::with(&s, descriptor.network())
                             .map(|addr| {
                                 credit.payer = Party::Counterparty(addr);
                             })

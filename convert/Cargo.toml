@@ -17,8 +17,8 @@ name = "bconv"
 
 [dependencies]
 amplify = "4.0.0"
-secp256k1 = "0.27.0"
-bitcoin = "0.30.1"
+secp256k1 = "0.28.0"
+bitcoin = "0.31.0"
 bp-wallet = { path = ".." }
 
 [patch.crates-io]

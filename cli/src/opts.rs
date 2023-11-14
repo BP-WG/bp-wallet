@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use bpstd::{Chain, XpubDerivable};
+use bpstd::{Network, XpubDerivable};
 use clap::ValueHint;
 use descriptors::{Descriptor, DescriptorStd, TrKey, Wpkh};
 use strict_encoding::Ident;
@@ -131,7 +131,7 @@ pub struct GeneralOpts {
 
     /// Blockchain to use.
     #[arg(short, long, global = true, default_value = "testnet", env = "LNPBP_NETWORK")]
-    pub chain: Chain,
+    pub network: Network,
 }
 
 impl GeneralOpts {
@@ -142,7 +142,7 @@ impl GeneralOpts {
 
     pub fn base_dir(&self) -> PathBuf {
         let mut dir = self.data_dir.clone();
-        dir.push(self.chain.to_string());
+        dir.push(self.network.to_string());
         dir
     }
 

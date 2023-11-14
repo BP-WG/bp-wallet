@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::{error, io};
 
 use amplify::IoError;
-use bpstd::{Chain, XpubDerivable};
+use bpstd::{Network, XpubDerivable};
 use descriptors::{Descriptor, DescriptorStd};
 
 use crate::wallet::fs::Warning;
@@ -107,7 +107,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for Runtime<D, K, L2> {
 }
 
 impl<K, D: Descriptor<K>> Runtime<D, K> {
-    pub fn new_standard(descr: D, network: Chain) -> Self {
+    pub fn new_standard(descr: D, network: Network) -> Self {
         Runtime {
             path: None,
             wallet: Wallet::new_standard(descr, network),
@@ -117,7 +117,7 @@ impl<K, D: Descriptor<K>> Runtime<D, K> {
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Runtime<D, K, L2> {
-    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Chain) -> Self {
+    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Runtime {
             path: None,
             wallet: Wallet::new_layer2(descr, l2_descr, layer2, network),
@@ -159,7 +159,7 @@ where for<'de> D: serde::Serialize + serde::Deserialize<'de>
 
     pub fn load_standard_or_init<E>(
         data_dir: PathBuf,
-        chain: Chain,
+        network: Network,
         init: impl FnOnce(LoadError) -> Result<D, E>,
     ) -> Result<Self, LoadError>
     where
@@ -167,7 +167,7 @@ where for<'de> D: serde::Serialize + serde::Deserialize<'de>
     {
         Self::load_standard(data_dir).or_else(|err| {
             let descriptor = init(err)?;
-            Ok(Self::new_standard(descriptor, chain))
+            Ok(Self::new_standard(descriptor, network))
         })
     }
 }
@@ -191,7 +191,7 @@ where
 
     pub fn load_layer2_or_init<E1, E2>(
         data_dir: PathBuf,
-        chain: Chain,
+        network: Network,
         init: impl FnOnce(LoadError<L2::LoadError>) -> Result<D, E1>,
         init_l2: impl FnOnce() -> Result<(L2, L2::Descr), E2>,
     ) -> Result<Self, LoadError<L2::LoadError>>
@@ -202,7 +202,7 @@ where
         Self::load_layer2(data_dir).or_else(|err| {
             let descriptor = init(err)?;
             let (layer2, l2_descr) = init_l2()?;
-            Ok(Self::new_layer2(descriptor, l2_descr, layer2, chain))
+            Ok(Self::new_layer2(descriptor, l2_descr, layer2, network))
         })
     }
 
