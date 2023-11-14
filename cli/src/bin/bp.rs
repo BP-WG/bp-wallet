@@ -47,7 +47,8 @@ fn run() -> Result<(), RuntimeError> {
     eprintln!("BP: command-line wallet for bitcoin protocol");
     eprintln!("    by LNP/BP Standards Association\n");
 
+    // TODO: Update arguments basing on the configuration
     let conf = Config::load(&args.conf_path("bp"));
-    debug!("Executing command: {:?}", args.command);
+    debug!("Executing command: {}", args.command);
     args.exec(conf, "bp")
 }

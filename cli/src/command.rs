@@ -32,24 +32,28 @@ use strict_encoding::Ident;
 use crate::opts::DescriptorOpts;
 use crate::{Args, Config, Exec, RuntimeError, WalletAddr};
 
-#[derive(Subcommand, Clone, PartialEq, Eq, Debug)]
+#[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
     /// List known wallets
+    #[display("list")]
     List,
 
     /// Get or set default wallet
+    #[display("default")]
     Default {
         /// Name of the wallet to make it default
         default: Option<Ident>,
     },
 
     /// Create a wallet
+    #[display("create")]
     Create {
         /// The name for the new wallet
         name: Ident,
     },
 
     /// List wallet balance with additional optional details
+    #[display("balance")]
     Balance {
         /// Print balance for each individual address
         #[clap(short, long)]
@@ -61,6 +65,7 @@ pub enum Command {
     },
 
     /// Generate a new wallet address(es)
+    #[display("addr")]
     Addr {
         /// Use change keychain
         #[clap(short = '1', long)]
@@ -80,6 +85,7 @@ pub enum Command {
     },
 
     /// Display history of wallet operations
+    #[display("history")]
     History {
         /// Print full transaction ids
         #[clap(long)]
@@ -91,6 +97,7 @@ pub enum Command {
     },
 
     /// Compose a new PSBT to pay invoice
+    #[display("construct")]
     Construct {
         /// Encode PSBT as V2
         #[clap(short = '2')]

@@ -129,7 +129,7 @@ pub struct GeneralOpts {
     )]
     pub data_dir: PathBuf,
 
-    /// Blockchain to use.
+    /// Network to use.
     #[arg(short, long, global = true, default_value = "testnet", env = "LNPBP_NETWORK")]
     pub network: Network,
 }
