@@ -58,10 +58,3 @@ all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
-
-[patch.crates-io]
-bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "v0.11" }
-bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-psbt = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client", branch = "master" }
