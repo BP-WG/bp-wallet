@@ -27,7 +27,7 @@ use std::{error, io};
 
 use amplify::IoError;
 use bpstd::{Network, XpubDerivable};
-use descriptors::{Descriptor, DescriptorStd};
+use descriptors::{Descriptor, StdDescr};
 
 use crate::wallet::fs::Warning;
 use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};
@@ -99,7 +99,7 @@ pub enum StoreError<L2: error::Error = Infallible> {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: Descriptor<K> = DescriptorStd, K = XpubDerivable, L2: Layer2 = NoLayer2> {
+pub struct Runtime<D: Descriptor<K> = StdDescr, K = XpubDerivable, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
     wallet: Wallet<K, D, L2>,

@@ -361,8 +361,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "846c1beb631a1768371dd3f1afb6d6742588ee01d2bf61b5b368d1d5f19bbec7"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#a799eede0c161ab51ba71521bcdee289886d925c"
 dependencies = [
  "amplify",
  "bech32",
@@ -629,8 +628,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1538d1e2b6a64a815951b95db9cd8c5275bbd6a29fa96448005ad5755b1c033c"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#a799eede0c161ab51ba71521bcdee289886d925c"
 dependencies = [
  "amplify",
  "bp-std",
@@ -1273,8 +1271,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddc077510950b86b180f5a2bd4f309ab6728f9b8ca1fdf3e84898f400bd7429f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#a799eede0c161ab51ba71521bcdee289886d925c"
 dependencies = [
  "amplify",
  "base64",
