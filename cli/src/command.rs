@@ -23,6 +23,7 @@
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
+use std::process::exit;
 
 use bpstd::{Idx, NormalIndex, Sats, SeqNo};
 use bpwallet::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
@@ -161,6 +162,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Create { name } => {
+                if !self.wallet.descriptor_opts.is_some() {
+                    eprintln!("Error: you must provide an argument specifying wallet descriptor");
+                    exit(1);
+                }
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
