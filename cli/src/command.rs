@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::process::exit;
 
 use bpstd::{Idx, NormalIndex, Sats, SeqNo};
-use bpwallet::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
+use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
 
@@ -336,8 +336,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
                 match psbt_file {
                     Some(file_name) => {
-                        let mut psbt_file = File::create(file_name)?;
-                        psbt.encode(ver, &mut psbt_file)?;
+                        let mut psbt_file = File::create(file_name).map_err(StoreError::from)?;
+                        psbt.encode(ver, &mut psbt_file).map_err(StoreError::from)?;
                     }
                     None => match ver {
                         PsbtVer::V0 => println!("{psbt}"),
