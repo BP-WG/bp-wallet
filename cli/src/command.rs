@@ -66,8 +66,8 @@ pub enum Command {
     },
 
     /// Generate a new wallet address(es)
-    #[display("addr")]
-    Addr {
+    #[display("address")]
+    Address {
         /// Use change keychain
         #[clap(short = '1', long)]
         change: bool,
@@ -77,12 +77,12 @@ pub enum Command {
         index: Option<NormalIndex>,
 
         /// Do not shift the last used index
-        #[clap(short = 'N', long, conflicts_with_all = ["change", "index"])]
-        no_shift: bool,
+        #[clap(short = 'D', long, conflicts_with_all = ["change", "index"])]
+        dry_run: bool,
 
         /// Number of addresses to generate
-        #[clap(short, long, default_value = "1")]
-        no: u8,
+        #[clap(short = 'C', long, default_value = "1")]
+        count: u8,
     },
 
     /// Display history of wallet operations
@@ -246,11 +246,11 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 self.resolver.sync = false;
                 self.exec(config, name)?;
             }
-            Command::Addr {
+            Command::Address {
                 change,
                 index,
-                no_shift,
-                no,
+                dry_run: no_shift,
+                count: no,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
                 let keychain = *change as u8;
