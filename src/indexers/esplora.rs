@@ -211,8 +211,8 @@ impl Indexer for BlockingClient {
 
     fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
-        descr: &WalletDescr<K, D, L2::Descr>,
-        cache: &mut WalletCache<L2::Cache>,
+        _descr: &WalletDescr<K, D, L2::Descr>,
+        _cache: &mut WalletCache<L2::Cache>,
     ) -> (usize, Vec<Self::Error>) {
         todo!()
     }
