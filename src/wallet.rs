@@ -113,11 +113,11 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
         }
     }
 
-    pub fn addresses(&self, keychain: Keychain) -> AddrIter<K, D> {
+    pub fn addresses(&self, keychain: impl Into<Keychain>) -> AddrIter<K, D> {
         AddrIter {
             generator: &self.generator,
             network: self.network.into(),
-            keychain,
+            keychain: keychain.into(),
             index: NormalIndex::ZERO,
             _phantom: PhantomData,
         }
