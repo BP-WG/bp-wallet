@@ -361,7 +361,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#e3bf159572bc2dd72d97d33cf70ed0fe49746b4d"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#72a734ed66b5ef4cb36d99b2b08bca457151a37e"
 dependencies = [
  "amplify",
  "bech32",
@@ -628,7 +628,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#e3bf159572bc2dd72d97d33cf70ed0fe49746b4d"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#72a734ed66b5ef4cb36d99b2b08bca457151a37e"
 dependencies = [
  "amplify",
  "bp-std",
@@ -1271,7 +1271,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#e3bf159572bc2dd72d97d33cf70ed0fe49746b4d"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#72a734ed66b5ef4cb36d99b2b08bca457151a37e"
 dependencies = [
  "amplify",
  "base64",

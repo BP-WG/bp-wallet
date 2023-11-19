@@ -110,7 +110,7 @@ impl Indexer for BlockingClient {
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
-            for derive in descriptor.addresses(*keychain) {
+            for derive in descriptor.addresses(keychain) {
                 let script = derive.addr.script_pubkey();
 
                 eprint!(".");
