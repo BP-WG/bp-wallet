@@ -45,12 +45,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p bp-runtime --no-default-features --features=${{ matrix.feature }}
+          args: --no-default-features --features=${{ matrix.feature }}
       - name: Defaults + ${{ matrix.feature }}
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p bp-runtime --features=${{ matrix.feature }}
+          args: --features=${{ matrix.feature }}
   platforms:
     runs-on: ${{ matrix.os }}
     strategy:
