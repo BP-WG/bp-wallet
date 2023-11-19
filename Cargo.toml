@@ -3,7 +3,7 @@ members = [".", "cli"]
 exclude = ["convert"]
 
 [workspace.package]
-version = "0.11.0-beta.1"
+version = "0.11.0-beta.2"
 keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
 categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
@@ -16,9 +16,9 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.5.0"
 strict_encoding = "2.6.1"
-bp-std = "0.11.0-beta.1"
-psbt = "0.11.0-beta.1"
-descriptors = "0.11.0-beta.1"
+bp-std = "0.11.0-beta.2"
+psbt = "0.11.0-beta.2"
+descriptors = "0.11.0-beta.2"
 bp-esplora = "0.11.0-beta.1"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_yaml = "0.9.19"
@@ -58,8 +58,3 @@ all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
-
-[patch.crates-io]
-bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
-descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
-psbt = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
