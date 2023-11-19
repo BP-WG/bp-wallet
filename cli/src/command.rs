@@ -25,7 +25,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
-use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats, SeqNo};
+use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
 use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
@@ -101,7 +101,7 @@ pub enum Command {
         details: bool,
     },
 
-    /// Compose a new PSBT to pay invoice
+    /// Compose a new PSBT for bitcoin payment
     #[display("construct")]
     Construct {
         /// Encode PSBT as V2
@@ -332,12 +332,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 psbt: psbt_file,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                let params = TxParams {
-                    fee: *fee,
-                    lock_time: None,
-                    // TODO: Support lock time and RBFs
-                    seq_no: SeqNo::from_consensus_u32(0),
-                };
+                // TODO: Support lock time and RBFs
+                let params = TxParams::with(*fee);
                 // Do coin selection
                 let coins: Vec<_> = match invoice.amount {
                     Amount::Fixed(sats) => {
