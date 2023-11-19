@@ -23,9 +23,10 @@
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
+use std::process::exit;
 
-use bpstd::{Idx, NormalIndex, Sats, SeqNo};
-use bpwallet::{coinselect, Amount, Invoice, OpType, TxParams, WalletUtxo};
+use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
+use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
 
@@ -65,23 +66,27 @@ pub enum Command {
     },
 
     /// Generate a new wallet address(es)
-    #[display("addr")]
-    Addr {
+    #[display("address")]
+    Address {
         /// Use change keychain
         #[clap(short = '1', long)]
         change: bool,
+
+        /// Use custom keychain
+        #[clap(short, long, conflicts_with = "change")]
+        keychain: Option<Keychain>,
 
         /// Use custom address index
         #[clap(short, long)]
         index: Option<NormalIndex>,
 
         /// Do not shift the last used index
-        #[clap(short = 'N', long, conflicts_with_all = ["change", "index"])]
-        no_shift: bool,
+        #[clap(short = 'D', long, conflicts_with_all = ["change", "index"])]
+        dry_run: bool,
 
         /// Number of addresses to generate
-        #[clap(short, long, default_value = "1")]
-        no: u8,
+        #[clap(short = 'C', long, default_value = "1")]
+        count: u8,
     },
 
     /// Display history of wallet operations
@@ -96,7 +101,7 @@ pub enum Command {
         details: bool,
     },
 
-    /// Compose a new PSBT to pay invoice
+    /// Compose a new PSBT for bitcoin payment
     #[display("construct")]
     Construct {
         /// Encode PSBT as V2
@@ -161,6 +166,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Create { name } => {
+                if !self.wallet.descriptor_opts.is_some() {
+                    eprintln!("Error: you must provide an argument specifying wallet descriptor");
+                    exit(1);
+                }
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
@@ -241,14 +250,26 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 self.resolver.sync = false;
                 self.exec(config, name)?;
             }
-            Command::Addr {
+            Command::Address {
                 change,
+                keychain,
                 index,
-                no_shift,
-                no,
+                dry_run: no_shift,
+                count: no,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                let keychain = *change as u8;
+                let keychain = match (change, keychain) {
+                    (false, None) => runtime.default_keychain(),
+                    (true, None) => (*change as u8).into(),
+                    (false, Some(keychain)) => *keychain,
+                    _ => unreachable!(),
+                };
+                if !runtime.keychains().contains(&keychain) {
+                    eprintln!(
+                        "Error: the specified keychain {keychain} is not a part of the descriptor"
+                    );
+                    exit(1);
+                }
                 let index = index.unwrap_or_else(|| runtime.next_index(keychain, !*no_shift));
                 println!("\nTerm.\tAddress");
                 for derived_addr in
@@ -311,12 +332,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 psbt: psbt_file,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                let params = TxParams {
-                    fee: *fee,
-                    lock_time: None,
-                    // TODO: Support lock time and RBFs
-                    seq_no: SeqNo::from_consensus_u32(0),
-                };
+                // TODO: Support lock time and RBFs
+                let params = TxParams::with(*fee);
                 // Do coin selection
                 let coins: Vec<_> = match invoice.amount {
                     Amount::Fixed(sats) => {
@@ -331,8 +348,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
                 match psbt_file {
                     Some(file_name) => {
-                        let mut psbt_file = File::create(file_name)?;
-                        psbt.encode(ver, &mut psbt_file)?;
+                        let mut psbt_file = File::create(file_name).map_err(StoreError::from)?;
+                        psbt.encode(ver, &mut psbt_file).map_err(StoreError::from)?;
                     }
                     None => match ver {
                         PsbtVer::V0 => println!("{psbt}"),

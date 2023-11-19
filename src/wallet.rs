@@ -26,7 +26,8 @@ use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
 use bpstd::{
-    Address, AddressNetwork, DerivedAddr, Idx, Network, NormalIndex, Outpoint, Sats, Txid, Vout,
+    Address, AddressNetwork, DerivedAddr, Idx, Keychain, Network, NormalIndex, Outpoint, Sats,
+    Txid, Vout,
 };
 use descriptors::Descriptor;
 
@@ -49,7 +50,7 @@ pub enum NonWalletItem {
 pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     generator: &'descr D,
     network: AddressNetwork,
-    keychain: u8,
+    keychain: Keychain,
     index: NormalIndex,
     _phantom: PhantomData<K>,
 }
@@ -112,11 +113,11 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
         }
     }
 
-    pub fn addresses(&self, keychain: u8) -> AddrIter<K, D> {
+    pub fn addresses(&self, keychain: impl Into<Keychain>) -> AddrIter<K, D> {
         AddrIter {
             generator: &self.generator,
             network: self.network.into(),
-            keychain,
+            keychain: keychain.into(),
             index: NormalIndex::ZERO,
             _phantom: PhantomData,
         }
@@ -146,7 +147,7 @@ pub struct WalletData<L2: Layer2Data> {
     pub txin_annotations: BTreeMap<Outpoint, String>,
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
-    pub last_used: BTreeMap<u8, NormalIndex>,
+    pub last_used: BTreeMap<Keychain, NormalIndex>,
 }
 
 #[cfg_attr(
@@ -165,7 +166,7 @@ pub struct WalletCache<L2: Layer2Cache> {
     pub(crate) headers: BTreeSet<BlockInfo>,
     pub(crate) tx: BTreeMap<Txid, WalletTx>,
     pub(crate) utxo: BTreeSet<Outpoint>,
-    pub(crate) addr: BTreeMap<u8, BTreeSet<WalletAddr>>,
+    pub(crate) addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
     pub(crate) layer2: L2,
 }
 
@@ -201,7 +202,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         indexer.update::<K, D, L2>(descriptor, self)
     }
 
-    pub fn addresses_on(&self, keychain: u8) -> &BTreeSet<WalletAddr> {
+    pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
         self.addr.get(&keychain).unwrap_or_else(|| {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
         })
@@ -315,7 +316,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
-    pub fn next_index(&mut self, keychain: u8, shift: bool) -> NormalIndex {
+    pub fn next_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
+        let keychain = keychain.into();
         let idx = self
             .address_coins()
             .keys()

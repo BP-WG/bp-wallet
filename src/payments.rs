@@ -108,6 +108,21 @@ pub struct Invoice {
     pub amount: Amount,
 }
 
+impl Invoice {
+    pub fn new(beneficiary: Address, amount: impl Into<Amount>) -> Invoice {
+        Invoice {
+            beneficiary,
+            amount: amount.into(),
+        }
+    }
+    pub fn with_max(beneficiary: Address) -> Invoice {
+        Invoice {
+            beneficiary,
+            amount: Amount::Max,
+        }
+    }
+}
+
 impl FromStr for Invoice {
     type Err = InvoiceParseError;
 
@@ -125,6 +140,16 @@ pub struct TxParams {
     pub fee: Sats,
     pub lock_time: Option<LockTime>,
     pub seq_no: SeqNo,
+}
+
+impl TxParams {
+    pub fn with(fee: Sats) -> Self {
+        TxParams {
+            fee,
+            lock_time: None,
+            seq_no: SeqNo::from_consensus_u32(0),
+        }
+    }
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {

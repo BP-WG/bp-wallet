@@ -27,7 +27,7 @@ use std::{error, io};
 
 use amplify::IoError;
 use bpstd::{Network, XpubDerivable};
-use descriptors::{Descriptor, DescriptorStd};
+use descriptors::{Descriptor, StdDescr};
 
 use crate::wallet::fs::Warning;
 use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};
@@ -37,10 +37,6 @@ use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};
 #[display(inner)]
 pub enum RuntimeError<L2: error::Error = Infallible> {
     #[from]
-    #[from(io::Error)]
-    Io(IoError),
-
-    #[from]
     Load(LoadError<L2>),
 
     #[from]
@@ -49,48 +45,61 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
     #[from]
     ConstructPsbt(ConstructionError),
 
-    #[from]
     #[cfg(feature = "esplora")]
+    /// error querying esplora server.
+    ///
+    /// {0}
+    #[from]
+    #[display(doc_comments)]
     Esplora(esplora::Error),
 }
 
 #[derive(Debug, Display, Error, From)]
-#[display(inner)]
+#[display(doc_comments)]
 pub enum LoadError<L2: error::Error = Infallible> {
+    /// I/O error loading wallet - {0}
     #[from]
     #[from(io::Error)]
     Io(IoError),
 
+    /// unable to parse TOML file - {0}
     #[from]
     Toml(toml::de::Error),
 
+    #[display(inner)]
     Layer2(L2),
 
+    #[display(inner)]
     #[from]
     Custom(String),
 }
 
 #[derive(Debug, Display, Error, From)]
-#[display(inner)]
+#[display(doc_comments)]
 pub enum StoreError<L2: error::Error = Infallible> {
+    /// I/O error storing wallet - {0}
     #[from]
     #[from(io::Error)]
     Io(IoError),
 
+    /// unable to serialize wallet data as TOML file - {0}
     #[from]
     Toml(toml::ser::Error),
 
+    /// unable to serialize wallet cache as YAML file - {0}
     #[from]
     Yaml(serde_yaml::Error),
 
+    #[display(inner)]
     Layer2(L2),
 
+    #[display(inner)]
     #[from]
     Custom(String),
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: Descriptor<K> = DescriptorStd, K = XpubDerivable, L2: Layer2 = NoLayer2> {
+pub struct Runtime<D: Descriptor<K> = StdDescr, K = XpubDerivable, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
     wallet: Wallet<K, D, L2>,

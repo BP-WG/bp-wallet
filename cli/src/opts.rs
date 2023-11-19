@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 use bpstd::{Network, XpubDerivable};
 use clap::ValueHint;
-use descriptors::{Descriptor, DescriptorStd, TrKey, Wpkh};
+use descriptors::{Descriptor, StdDescr, TrKey, Wpkh};
 use strict_encoding::Ident;
 
 pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";
@@ -81,7 +81,7 @@ pub struct DescrStdOpts {
 }
 
 impl DescriptorOpts for DescrStdOpts {
-    type Descr = DescriptorStd;
+    type Descr = StdDescr;
 
     fn is_some(&self) -> bool { self.tr_key_only.is_some() | self.wpkh.is_some() }
     fn descriptor(&self) -> Option<Self::Descr> {
