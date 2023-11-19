@@ -25,7 +25,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
-use bpstd::{IdxBase, NormalIndex, Sats, SeqNo};
+use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats, SeqNo};
 use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
@@ -71,6 +71,10 @@ pub enum Command {
         /// Use change keychain
         #[clap(short = '1', long)]
         change: bool,
+
+        /// Use custom keychain
+        #[clap(short, long, conflicts_with = "change")]
+        keychain: Option<Keychain>,
 
         /// Use custom address index
         #[clap(short, long)]
@@ -248,12 +252,24 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             }
             Command::Address {
                 change,
+                keychain,
                 index,
                 dry_run: no_shift,
                 count: no,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                let keychain = (*change as u8).into();
+                let keychain = match (change, keychain) {
+                    (false, None) => runtime.default_keychain(),
+                    (true, None) => (*change as u8).into(),
+                    (false, Some(keychain)) => *keychain,
+                    _ => unreachable!(),
+                };
+                if !runtime.keychains().contains(&keychain) {
+                    eprintln!(
+                        "Error: the specified keychain {keychain} is not a part of the descriptor"
+                    );
+                    exit(1);
+                }
                 let index = index.unwrap_or_else(|| runtime.next_index(keychain, !*no_shift));
                 println!("\nTerm.\tAddress");
                 for derived_addr in
