@@ -25,7 +25,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
-use bpstd::{Idx, NormalIndex, Sats, SeqNo};
+use bpstd::{IdxBase, NormalIndex, Sats, SeqNo};
 use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
@@ -253,7 +253,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 count: no,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                let keychain = *change as u8;
+                let keychain = (*change as u8).into();
                 let index = index.unwrap_or_else(|| runtime.next_index(keychain, !*no_shift));
                 println!("\nTerm.\tAddress");
                 for derived_addr in

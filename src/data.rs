@@ -28,7 +28,7 @@ use std::str::FromStr;
 use amplify::hex;
 use amplify::hex::FromHex;
 use bpstd::{
-    Address, BlockHash, BlockHeader, DerivedAddr, LockTime, NormalIndex, Outpoint, Sats,
+    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Sats,
     ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };
 use psbt::Prevout;
@@ -396,7 +396,7 @@ where T: Default
 impl<T> WalletAddr<T>
 where T: Default
 {
-    pub fn new(addr: Address, keychain: u8, index: NormalIndex) -> Self {
+    pub fn new(addr: Address, keychain: Keychain, index: NormalIndex) -> Self {
         WalletAddr::<T>::from(DerivedAddr::new(addr, keychain, index))
     }
 }
