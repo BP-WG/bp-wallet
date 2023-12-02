@@ -102,24 +102,19 @@ impl FromStr for Amount {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
-#[display("{amount}@{beneficiary}", alt = "bitcoin:{beneficiary}?amount={amount}")]
-pub struct Invoice {
-    pub beneficiary: Address,
-    pub amount: Amount,
+pub enum Invoice {
+    #[display("{1}@{0}", alt = "bitcoin:{0}?amount={1}")]
+    Beneficiary(Address, Amount),
+    #[display("")]
+    Aggregate,
 }
 
 impl Invoice {
     pub fn new(beneficiary: Address, amount: impl Into<Amount>) -> Invoice {
-        Invoice {
-            beneficiary,
-            amount: amount.into(),
-        }
+        Invoice::Beneficiary(beneficiary, amount.into())
     }
     pub fn with_max(beneficiary: Address) -> Invoice {
-        Invoice {
-            beneficiary,
-            amount: Amount::Max,
-        }
+        Invoice::Beneficiary(beneficiary, Amount::Max)
     }
 }
 
@@ -128,10 +123,7 @@ impl FromStr for Invoice {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (amount, beneficiary) = s.split_once('@').ok_or(InvoiceParseError::InvalidFormat)?;
-        Ok(Invoice {
-            beneficiary: Address::from_str(beneficiary)?,
-            amount: Amount::from_str(amount)?,
-        })
+        Ok(Invoice::Beneficiary(Address::from_str(beneficiary)?, Amount::from_str(amount)?))
     }
 }
 
@@ -186,41 +178,46 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 2. Add outputs
         // TODO: Check address network
-
-        // 2. Add outputs and change
         let input_value = psbt.input_sum();
-        if let Amount::Fixed(value) = invoice.amount {
-            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
+        let output_value = match invoice {
+            Invoice::Beneficiary(beneficiary, Amount::Fixed(value)) => {
+                psbt.construct_output_expect(beneficiary.script_pubkey(), value);
+                psbt.output_sum()
+            }
+            Invoice::Beneficiary(beneficiary, Amount::Max) => {
+                let value = input_value.checked_sub(params.fee).ok_or(
+                    ConstructionError::InputsNotCoverFee {
+                        input_value,
+                        fee: params.fee,
+                    },
+                )?;
+                psbt.construct_output_expect(beneficiary.script_pubkey(), value);
+                value
+            }
+            Invoice::Aggregate => input_value,
+        };
 
-            let output_value = psbt.output_sum();
-            let change = psbt.construct_change_expect(
+        // 3. Add change
+        let output_value = input_value
+            .checked_sub(output_value)
+            .ok_or(ConstructionError::OutputExceedsInputs {
+                input_value,
+                output_value,
+            })?
+            .checked_sub(params.fee)
+            .ok_or(ConstructionError::NoFundsForFee {
+                input_value,
+                output_value,
+                fee: params.fee,
+            })?;
+        if output_value > Sats::ZERO {
+            psbt.construct_change_expect(
                 &self.descr.generator,
                 self.cache.last_change,
-                Sats::ZERO,
+                output_value,
             );
-            change.amount = input_value
-                .checked_sub(output_value)
-                .ok_or(ConstructionError::OutputExceedsInputs {
-                    input_value,
-                    output_value,
-                })?
-                .checked_sub(params.fee)
-                .ok_or(ConstructionError::NoFundsForFee {
-                    input_value,
-                    output_value,
-                    fee: params.fee,
-                })?;
-        } else {
-            let value = input_value.checked_sub(params.fee).ok_or(
-                ConstructionError::InputsNotCoverFee {
-                    input_value,
-                    fee: params.fee,
-                },
-            )?;
-            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
+            self.cache.last_change.wrapping_inc_assign();
         }
-
-        self.cache.last_change.wrapping_inc_assign();
 
         psbt.complete_construction();
 

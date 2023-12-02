@@ -335,13 +335,14 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 // TODO: Support lock time and RBFs
                 let params = TxParams::with(*fee);
                 // Do coin selection
-                let coins: Vec<_> = match invoice.amount {
-                    Amount::Fixed(sats) => {
-                        runtime.wallet().coinselect(sats, coinselect::all).collect()
+                let coins: Vec<_> = match invoice {
+                    Invoice::Beneficiary(_, Amount::Fixed(sats)) => {
+                        runtime.wallet().coinselect(*sats, coinselect::all).collect()
                     }
-                    Amount::Max => {
+                    Invoice::Beneficiary(_, Amount::Max) => {
                         runtime.wallet().all_utxos().map(WalletUtxo::into_outpoint).collect()
                     }
+                    _ => unreachable!(),
                 };
                 let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
                 let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
