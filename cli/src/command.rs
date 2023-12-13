@@ -344,7 +344,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     }
                     _ => unreachable!(),
                 };
-                let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
+                let (psbt, _) = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
                 let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
                 match psbt_file {

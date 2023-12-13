@@ -23,7 +23,7 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, SeqNo};
+use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, SeqNo, Vout};
 use descriptors::Descriptor;
 use psbt::{Psbt, PsbtError, PsbtVer};
 
@@ -144,13 +144,19 @@ impl TxParams {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct PsbtMeta {
+    pub change_vout: Option<Vout>,
+}
+
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn construct_psbt(
         &mut self,
-        coins: &[Outpoint],
+        coins: impl AsRef<[Outpoint]>,
         invoice: Invoice,
         params: TxParams,
-    ) -> Result<Psbt, ConstructionError> {
+    ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
+        let coins = coins.as_ref();
         if coins.is_empty() {
             return Err(ConstructionError::NoInputs);
         }
@@ -210,17 +216,22 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 output_value,
                 fee: params.fee,
             })?;
-        if output_value > Sats::ZERO {
-            psbt.construct_change_expect(
-                &self.descr.generator,
-                self.cache.last_change,
-                output_value,
-            );
+        let change_vout = if output_value > Sats::ZERO {
+            let change_vout = psbt
+                .construct_change_expect(
+                    &self.descr.generator,
+                    self.cache.last_change,
+                    output_value,
+                )
+                .index();
             self.cache.last_change.wrapping_inc_assign();
-        }
+            Some(Vout::from_u32(change_vout as u32))
+        } else {
+            None
+        };
 
         psbt.complete_construction();
 
-        Ok(psbt)
+        Ok((psbt, PsbtMeta { change_vout }))
     }
 }
