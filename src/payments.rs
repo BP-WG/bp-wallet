@@ -38,6 +38,9 @@ pub enum ConstructionError {
     /// impossible to construct transaction having no inputs.
     NoInputs,
 
+    /// the total payment amount ({0} sats) exceeds number of sats in existence.
+    Overflow(Sats),
+
     /// attempt to spend more than present in transaction inputs. Total transaction inputs are
     /// {input_value} sats, but output is {output_value} sats.
     OutputExceedsInputs {
@@ -99,7 +102,7 @@ impl Amount {
     }
 
     #[inline]
-    pub fn is_max(&self) -> bool { self == Amount::Max }
+    pub fn is_max(&self) -> bool { *self == Amount::Max }
 }
 
 impl FromStr for Amount {
@@ -179,14 +182,9 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn construct_psbt<'a, 'b>(
         &mut self,
         coins: impl IntoIterator<Item = &'a Outpoint>,
-        beneficiaries: impl Iterator<Item = &'b Beneficiary>,
+        beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
         params: TxParams,
     ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
-        let coins = coins.as_ref();
-        if coins.is_empty() {
-            return Err(ConstructionError::NoInputs);
-        }
-
         let mut psbt = Psbt::create(PsbtVer::V2);
 
         // Set locktime
@@ -207,20 +205,24 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 params.seq_no,
             );
         }
+        if psbt.inputs().count() == 0 {
+            return Err(ConstructionError::NoInputs);
+        }
 
         // 2. Add outputs
         let input_value = psbt.input_sum();
         let mut max = Vec::new();
+        let mut output_value = Sats::ZERO;
         for beneficiary in beneficiaries {
-            let out = psbt.construct_output_expect(
-                beneficiary.script_pubkey(),
-                beneficiary.amount.unwrap_or(Sats::ZERO),
-            );
+            let amount = beneficiary.amount.unwrap_or(Sats::ZERO);
+            output_value
+                .checked_add_assign(amount)
+                .ok_or(ConstructionError::Overflow(output_value))?;
+            let out = psbt.construct_output_expect(beneficiary.script_pubkey(), amount);
             if beneficiary.amount.is_max() {
-                max.push(out);
+                max.push(out.index());
             }
         }
-        let output_value = psbt.output_sum();
         let mut remaining_value = input_value
             .checked_sub(output_value)
             .ok_or(ConstructionError::OutputExceedsInputs {
@@ -234,9 +236,11 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 fee: params.fee,
             })?;
         if !max.is_empty() {
-            let portion = Sats(remaining_value.0 / max.len());
-            for out in max {
-                out.amount = portion;
+            let portion = remaining_value / max.len();
+            for out in psbt.outputs_mut() {
+                if max.contains(&out.index()) {
+                    out.amount = portion;
+                }
             }
             remaining_value = Sats::ZERO;
         }

@@ -60,5 +60,9 @@ fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
 
 [patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "v0.11" }
 bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
 bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
+bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client", branch = "master" }
