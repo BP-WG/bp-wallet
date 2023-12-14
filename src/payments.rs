@@ -52,9 +52,6 @@ pub enum ConstructionError {
         output_value: Sats,
         fee: Sats,
     },
-
-    /// not enough funds to pay fee of {fee} sats even using all inputs ({input_value} sats).
-    InputsNotCoverFee { input_value: Sats, fee: Sats },
 }
 
 #[derive(Clone, Debug, Display, Error, From)]
@@ -85,6 +82,19 @@ pub enum Amount {
     Fixed(Sats),
     #[display("MAX")]
     Max,
+}
+
+impl Amount {
+    pub fn sats(&self) -> Option<Sats> {
+        match self {
+            Amount::Fixed(sats) => Some(*sats),
+            Amount::Max => None,
+        }
+    }
+
+    pub fn unwrap_or(&self, default: impl Into<Sats>) -> Sats {
+        self.sats().unwrap_or(default.into())
+    }
 }
 
 impl FromStr for Amount {
@@ -152,8 +162,8 @@ pub struct PsbtMeta {
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn construct_psbt(
         &mut self,
-        coins: impl AsRef<[Outpoint]>,
-        invoice: Invoice,
+        coins: impl IntoIterator<Item = Outpoint>,
+        beneficiaries: impl Iterator<Item = (Address, Amount)>,
         params: TxParams,
     ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
         let coins = coins.as_ref();
@@ -173,7 +183,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            let utxo = self.utxo(*coin).expect("wallet data inconsistency");
+            let utxo = self.utxo(coin).expect("wallet data inconsistency");
             psbt.construct_input_expect(
                 utxo.to_prevout(),
                 &self.descr.generator,
@@ -183,28 +193,17 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         }
 
         // 2. Add outputs
-        // TODO: Check address network
         let input_value = psbt.input_sum();
-        let output_value = match invoice {
-            Invoice::Beneficiary(beneficiary, Amount::Fixed(value)) => {
-                psbt.construct_output_expect(beneficiary.script_pubkey(), value);
-                psbt.output_sum()
+        let mut max = Vec::new();
+        for (address, amount) in beneficiaries {
+            let out =
+                psbt.construct_output_expect(address.script_pubkey(), amount.unwrap_or(Sats::ZERO));
+            if amount.is_max() {
+                max.push(out);
             }
-            Invoice::Beneficiary(beneficiary, Amount::Max) => {
-                let value = input_value.checked_sub(params.fee).ok_or(
-                    ConstructionError::InputsNotCoverFee {
-                        input_value,
-                        fee: params.fee,
-                    },
-                )?;
-                psbt.construct_output_expect(beneficiary.script_pubkey(), value);
-                value
-            }
-            Invoice::Aggregate => input_value,
-        };
-
-        // 3. Add change
-        let output_value = input_value
+        }
+        let output_value = psbt.output_sum();
+        let mut remaining_value = input_value
             .checked_sub(output_value)
             .ok_or(ConstructionError::OutputExceedsInputs {
                 input_value,
@@ -216,12 +215,21 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 output_value,
                 fee: params.fee,
             })?;
-        let change_vout = if output_value > Sats::ZERO {
+        if !max.is_empty() {
+            let portion = Sats(remaining_value.0 / max.len());
+            for out in max {
+                out.amount = portion;
+            }
+            remaining_value = Sats::ZERO;
+        }
+
+        // 3. Add change - only if exceeded the dust limit
+        let change_vout = if remaining_value > self.descr.generator.class().dust_limit() {
             let change_vout = psbt
                 .construct_change_expect(
                     &self.descr.generator,
                     self.cache.last_change,
-                    output_value,
+                    remaining_value,
                 )
                 .index();
             self.cache.last_change.wrapping_inc_assign();
