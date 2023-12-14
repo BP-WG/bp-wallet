@@ -23,7 +23,7 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, SeqNo, Vout};
+use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo, Vout};
 use descriptors::Descriptor;
 use psbt::{Psbt, PsbtError, PsbtVer};
 
@@ -85,6 +85,7 @@ pub enum Amount {
 }
 
 impl Amount {
+    #[inline]
     pub fn sats(&self) -> Option<Sats> {
         match self {
             Amount::Fixed(sats) => Some(*sats),
@@ -92,9 +93,13 @@ impl Amount {
         }
     }
 
+    #[inline]
     pub fn unwrap_or(&self, default: impl Into<Sats>) -> Sats {
         self.sats().unwrap_or(default.into())
     }
+
+    #[inline]
+    pub fn is_max(&self) -> bool { self == Amount::Max }
 }
 
 impl FromStr for Amount {
@@ -112,28 +117,39 @@ impl FromStr for Amount {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
-pub enum Invoice {
-    #[display("{1}@{0}", alt = "bitcoin:{0}?amount={1}")]
-    Beneficiary(Address, Amount),
-    #[display("")]
-    Aggregate,
+#[display("{amount}@{address}", alt = "bitcoin:{address}?amount={amount}")]
+pub struct Beneficiary {
+    pub address: Address,
+    pub amount: Amount,
 }
 
-impl Invoice {
-    pub fn new(beneficiary: Address, amount: impl Into<Amount>) -> Invoice {
-        Invoice::Beneficiary(beneficiary, amount.into())
+impl Beneficiary {
+    #[inline]
+    pub fn new(address: Address, amount: impl Into<Amount>) -> Self {
+        Beneficiary {
+            address,
+            amount: amount.into(),
+        }
     }
-    pub fn with_max(beneficiary: Address) -> Invoice {
-        Invoice::Beneficiary(beneficiary, Amount::Max)
+    #[inline]
+    pub fn with_max(address: Address) -> Self {
+        Beneficiary {
+            address,
+            amount: Amount::Max,
+        }
     }
+    #[inline]
+    pub fn is_max(&self) -> bool { self.amount.is_max() }
+    #[inline]
+    pub fn script_pubkey(&self) -> ScriptPubkey { self.address.script_pubkey() }
 }
 
-impl FromStr for Invoice {
+impl FromStr for Beneficiary {
     type Err = InvoiceParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (amount, beneficiary) = s.split_once('@').ok_or(InvoiceParseError::InvalidFormat)?;
-        Ok(Invoice::Beneficiary(Address::from_str(beneficiary)?, Amount::from_str(amount)?))
+        Ok(Beneficiary::new(Address::from_str(beneficiary)?, Amount::from_str(amount)?))
     }
 }
 
@@ -160,10 +176,10 @@ pub struct PsbtMeta {
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn construct_psbt(
+    pub fn construct_psbt<'a, 'b>(
         &mut self,
-        coins: impl IntoIterator<Item = Outpoint>,
-        beneficiaries: impl Iterator<Item = (Address, Amount)>,
+        coins: impl IntoIterator<Item = &'a Outpoint>,
+        beneficiaries: impl Iterator<Item = &'b Beneficiary>,
         params: TxParams,
     ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
         let coins = coins.as_ref();
@@ -183,7 +199,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            let utxo = self.utxo(coin).expect("wallet data inconsistency");
+            let utxo = self.utxo(*coin).expect("wallet data inconsistency");
             psbt.construct_input_expect(
                 utxo.to_prevout(),
                 &self.descr.generator,
@@ -195,10 +211,12 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         // 2. Add outputs
         let input_value = psbt.input_sum();
         let mut max = Vec::new();
-        for (address, amount) in beneficiaries {
-            let out =
-                psbt.construct_output_expect(address.script_pubkey(), amount.unwrap_or(Sats::ZERO));
-            if amount.is_max() {
+        for beneficiary in beneficiaries {
+            let out = psbt.construct_output_expect(
+                beneficiary.script_pubkey(),
+                beneficiary.amount.unwrap_or(Sats::ZERO),
+            );
+            if beneficiary.amount.is_max() {
                 max.push(out);
             }
         }
