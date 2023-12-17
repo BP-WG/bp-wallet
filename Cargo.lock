@@ -69,11 +69,12 @@ dependencies = [
 
 [[package]]
 name = "amplify_num"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddce3bc63e807ea02065e8d8b702695f3d302ae4158baddff8b0ce5c73947251"
+checksum = "9681187211554ab98f138ba159e90861b136c20afc680dcff2ba82d020721e27"
 dependencies = [
  "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -232,7 +233,7 @@ dependencies = [
 [[package]]
 name = "bp-consensus"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-core?branch=v0.11#31e9b11b96a8678afa3d39a774bfa686cb9c0def"
+source = "git+https://github.com/BP-WG/bp-core?branch=doubleanchors#d3a57c213f34d9012101b9969cdc8b0d60a6fe60"
 dependencies = [
  "amplify",
  "chrono",
@@ -245,7 +246,7 @@ dependencies = [
 [[package]]
 name = "bp-derive"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#04dc07f0c93359d5ceef26efc28365a7a507866f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -274,7 +275,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#04dc07f0c93359d5ceef26efc28365a7a507866f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
 dependencies = [
  "amplify",
  "bech32",
@@ -286,7 +287,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#04dc07f0c93359d5ceef26efc28365a7a507866f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -429,8 +430,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 [[package]]
 name = "commit_encoding_derive"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00033f14d67c4169d588f085ea2faeb7b610cf03a74d42ea09eeba31abef2047"
+source = "git+https://github.com/LNP-BP/client_side_validation?branch=v0.11#6b634bccd96d2cb857a44ae48417f8e35ecb3de7"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -442,8 +442,7 @@ dependencies = [
 [[package]]
 name = "commit_verify"
 version = "0.11.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c1a7d13181451d927abcc477d4565f23eb06ab36820599cc75ed3161147daa"
+source = "git+https://github.com/LNP-BP/client_side_validation?branch=v0.11#6b634bccd96d2cb857a44ae48417f8e35ecb3de7"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -544,7 +543,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#04dc07f0c93359d5ceef26efc28365a7a507866f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1171,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#04dc07f0c93359d5ceef26efc28365a7a507866f"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
 dependencies = [
  "amplify",
  "base64",
@@ -1686,18 +1685,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.50"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9a7210f5c9a7156bb50aa36aed4c95afb51df0df00713949448cf9e97d382d2"
+checksum = "f11c217e1416d6f036b870f14e0413d480dbf28edbee1f877abaf0206af43bb7"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.50"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266b2e40bc00e5a6c09c3584011e08b06f123c00362c92b975ba9843aaaa14b8"
+checksum = "01742297787513b79cf8e29d1056ede1313e2420b7b3b15d0a768b4921f549df"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1893,9 +1892,9 @@ dependencies = [
 
 [[package]]
 name = "unsafe-libyaml"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28467d3e1d3c6586d8f25fa243f544f5800fec42d97032474e17222c2b75cfa"
+checksum = "ab4c90930b95a82d00dc9e9ac071b4991924390d46cbd0dfe566148667605e4b"
 
 [[package]]
 name = "untrusted"
