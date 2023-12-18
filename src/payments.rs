@@ -182,7 +182,7 @@ pub struct PsbtMeta {
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn construct_psbt<'a, 'b>(
         &mut self,
-        coins: impl IntoIterator<Item = &'a Outpoint>,
+        coins: impl IntoIterator<Item = Outpoint>,
         beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
         params: TxParams,
     ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
@@ -198,7 +198,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            let utxo = self.utxo(*coin).expect("wallet data inconsistency");
+            let utxo = self.utxo(coin).expect("wallet data inconsistency");
             psbt.construct_input_expect(
                 utxo.to_prevout(),
                 &self.descr.generator,
