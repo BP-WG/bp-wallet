@@ -79,8 +79,9 @@ pub struct Btc {
 }
  */
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum Amount {
+    #[from]
     #[display(inner)]
     Fixed(Sats),
     #[display("MAX")]
