@@ -233,7 +233,7 @@ dependencies = [
 [[package]]
 name = "bp-consensus"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-core?branch=doubleanchors#d3a57c213f34d9012101b9969cdc8b0d60a6fe60"
+source = "git+https://github.com/BP-WG/bp-core?branch=v0.11#14175ef6668ccbdc15a33d6b94926b0ea663a8d6"
 dependencies = [
  "amplify",
  "chrono",
@@ -246,7 +246,7 @@ dependencies = [
 [[package]]
 name = "bp-derive"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#64dc394e6b4d33d4f12a9b1eccd6429d6aa5bbe4"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -275,7 +275,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#64dc394e6b4d33d4f12a9b1eccd6429d6aa5bbe4"
 dependencies = [
  "amplify",
  "bech32",
@@ -287,7 +287,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#64dc394e6b4d33d4f12a9b1eccd6429d6aa5bbe4"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -543,7 +543,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#64dc394e6b4d33d4f12a9b1eccd6429d6aa5bbe4"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -835,9 +835,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.27"
+version = "0.14.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffb1cfd654a8219eaef89881fdb3bb3b1cdc5fa75ded05d6933b2b382e395468"
+checksum = "bf96e135eb83a2a8ddf766e426a841d8ddd7449d5f00d34ea02b41d2f19eef80"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -850,7 +850,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2",
  "tokio",
  "tower-service",
  "tracing",
@@ -1170,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#c14bae37ef0d405cc04ec6ebb9f22817b9e188e3"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#64dc394e6b4d33d4f12a9b1eccd6429d6aa5bbe4"
 dependencies = [
  "amplify",
  "base64",
@@ -1544,16 +1544,6 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f7916fc008ca5542385b89a3d3ce689953c143e9304a9bf8beec1de48994c0d"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "socket2"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5fac59a5cb5dd637972e5fca70daf0523c9067fcdc4842f053dae04a18f8e9"
@@ -1758,7 +1748,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
- "socket2 0.5.5",
+ "socket2",
  "windows-sys 0.48.0",
 ]
 

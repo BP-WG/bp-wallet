@@ -61,7 +61,7 @@ serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
 
 [patch.crates-io]
 commit_verify = { git = "https://github.com/LNP-BP/client_side_validation", branch = "v0.11" }
-bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "doubleanchors" }
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "v0.11" }
 bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
 bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
 descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }

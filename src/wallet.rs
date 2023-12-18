@@ -26,8 +26,8 @@ use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
 use bpstd::{
-    Address, AddressNetwork, DerivedAddr, Idx, Keychain, Network, NormalIndex, Outpoint, Sats,
-    Txid, Vout,
+    Address, AddressNetwork, DerivedAddr, Idx, IdxBase, Keychain, Network, NormalIndex, Outpoint,
+    Sats, Txid, Vout,
 };
 use descriptors::Descriptor;
 
@@ -332,6 +332,16 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             *last_index = cmp::max(*last_index, idx);
         }
         idx
+    }
+
+    pub fn next_address(&mut self, keychain: impl Into<Keychain>, shift: bool) -> Address {
+        let keychain = keychain.into();
+        let index = self.next_index(keychain, shift);
+        self.addresses(keychain)
+            .skip(index.index() as usize)
+            .next()
+            .expect("address iterator always can produce address")
+            .addr
     }
 
     pub fn balance(&self) -> Sats { self.cache.coins().map(|utxo| utxo.amount).sum::<Sats>() }
