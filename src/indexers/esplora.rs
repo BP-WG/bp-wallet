@@ -116,7 +116,10 @@ impl Indexer for BlockingClient {
                 eprint!(".");
                 let mut txids = Vec::new();
                 match self.scripthash_txs(&script, None) {
-                    Err(err) => errors.push(err),
+                    Err(err) => {
+                        errors.push(err);
+                        break;
+                    }
                     Ok(txes) if txes.is_empty() => {
                         empty_count += 1;
                         if empty_count >= BATCH_SIZE as usize {
