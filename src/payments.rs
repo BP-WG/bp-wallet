@@ -261,8 +261,6 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             None
         };
 
-        psbt.complete_construction();
-
         Ok((psbt, PsbtMeta { change_vout }))
     }
 }
