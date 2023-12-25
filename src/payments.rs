@@ -23,7 +23,10 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo, Vout};
+use bpstd::{
+    Address, AddressParseError, Keychain, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo, Terminal,
+    Vout,
+};
 use descriptors::Descriptor;
 use psbt::{Psbt, PsbtError, PsbtVer};
 
@@ -162,6 +165,7 @@ pub struct TxParams {
     pub fee: Sats,
     pub lock_time: Option<LockTime>,
     pub seq_no: SeqNo,
+    pub change_keychain: Keychain,
 }
 
 impl TxParams {
@@ -170,6 +174,7 @@ impl TxParams {
             fee,
             lock_time: None,
             seq_no: SeqNo::from_consensus_u32(0),
+            change_keychain: Keychain::INNER,
         }
     }
 }
@@ -177,11 +182,25 @@ impl TxParams {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct PsbtMeta {
     pub change_vout: Option<Vout>,
+    pub change_terminal: Option<Terminal>,
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn construct_psbt<'a, 'b>(
+    pub fn construct_psbt_autochange<'a, 'b>(
         &mut self,
+        coins: impl IntoIterator<Item = Outpoint>,
+        beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
+        params: TxParams,
+    ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
+        let (psbt, meta) = self.construct_psbt(coins, beneficiaries, params)?;
+        if let Some(change) = meta.change_terminal {
+            self.cache.last_change = self.cache.last_change.max(change.index);
+        }
+        Ok((psbt, meta))
+    }
+
+    pub fn construct_psbt<'a, 'b>(
+        &self,
         coins: impl IntoIterator<Item = Outpoint>,
         beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
         params: TxParams,
@@ -247,20 +266,21 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         }
 
         // 3. Add change - only if exceeded the dust limit
-        let change_vout = if remaining_value > self.descr.generator.class().dust_limit() {
+        let (change_vout, change_terminal) = if remaining_value
+            > self.descr.generator.class().dust_limit()
+        {
+            let change_terminal = Terminal::new(params.change_keychain, self.cache.last_change);
             let change_vout = psbt
-                .construct_change_expect(
-                    &self.descr.generator,
-                    self.cache.last_change,
-                    remaining_value,
-                )
+                .construct_change_expect(&self.descr.generator, change_terminal, remaining_value)
                 .index();
-            self.cache.last_change.wrapping_inc_assign();
-            Some(Vout::from_u32(change_vout as u32))
+            (Some(Vout::from_u32(change_vout as u32)), Some(change_terminal))
         } else {
-            None
+            (None, None)
         };
 
-        Ok((psbt, PsbtMeta { change_vout }))
+        Ok((psbt, PsbtMeta {
+            change_vout,
+            change_terminal,
+        }))
     }
 }

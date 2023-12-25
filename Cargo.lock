@@ -246,7 +246,7 @@ dependencies = [
 [[package]]
 name = "bp-derive"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#6649ca23a397d8197d13046f429dfbc0c5a9bdfb"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#b449ccba924b2ff2d04efe6f5391ec07bd0d0544"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -260,7 +260,7 @@ dependencies = [
 [[package]]
 name = "bp-esplora"
 version = "0.11.0-beta.1"
-source = "git+https://github.com/BP-WG/bp-esplora-client?branch=master#bc5ff6bdd74214f877dcb9639ec33a1f17e13079"
+source = "git+https://github.com/BP-WG/bp-esplora-client?branch=master#49d9a56638eaecd7652bc046d4550b1446daf1ec"
 dependencies = [
  "amplify",
  "bp-std",
@@ -275,7 +275,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#6649ca23a397d8197d13046f429dfbc0c5a9bdfb"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#b449ccba924b2ff2d04efe6f5391ec07bd0d0544"
 dependencies = [
  "amplify",
  "bech32",
@@ -287,7 +287,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#6649ca23a397d8197d13046f429dfbc0c5a9bdfb"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#b449ccba924b2ff2d04efe6f5391ec07bd0d0544"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -412,7 +412,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -516,7 +516,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -527,7 +527,7 @@ checksum = "836a9bbc7ad63342d6d6e7b815ccab164bc77a2d95d84bc3117a8c0d5c98e2d5"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -543,7 +543,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#6649ca23a397d8197d13046f429dfbc0c5a9bdfb"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#b449ccba924b2ff2d04efe6f5391ec07bd0d0544"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1095,7 +1095,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -1170,7 +1170,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.2"
-source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#6649ca23a397d8197d13046f429dfbc0c5a9bdfb"
+source = "git+https://github.com/BP-WG/bp-std?branch=v0.11#b449ccba924b2ff2d04efe6f5391ec07bd0d0544"
 dependencies = [
  "amplify",
  "base64",
@@ -1426,7 +1426,7 @@ checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -1497,7 +1497,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -1621,9 +1621,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.42"
+version = "2.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b7d0a2c048d661a1a59fcd7355baa232f7ed34e0ee4df2eef3c1c1c0d3852d8"
+checksum = "ee659fb5f3d355364e1f3e5bc10fb82068efbf824a1e9d1c9504244a6469ad53"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1690,7 +1690,7 @@ checksum = "01742297787513b79cf8e29d1056ede1313e2420b7b3b15d0a768b4921f549df"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
 ]
 
 [[package]]
@@ -1976,7 +1976,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
  "wasm-bindgen-shared",
 ]
 
@@ -2010,7 +2010,7 @@ checksum = "f0eb82fcb7930ae6219a7ecfd55b217f5f0893484b7a13022ebb2b2bf20b5283"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.42",
+ "syn 2.0.43",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
