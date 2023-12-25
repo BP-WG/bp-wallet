@@ -23,11 +23,11 @@
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Deref};
+use std::ops::{AddAssign, Deref, DerefMut};
 
 use bpstd::{
-    Address, AddressNetwork, DerivedAddr, Idx, Keychain, Network, NormalIndex, Outpoint, Sats,
-    Txid, Vout,
+    Address, AddressNetwork, DerivedAddr, Idx, IdxBase, Keychain, Network, NormalIndex, Outpoint,
+    Sats, Txid, Vout,
 };
 use descriptors::Descriptor;
 
@@ -128,6 +128,10 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> 
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.generator }
+}
+
+impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L2> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.generator }
 }
 
 #[cfg_attr(
@@ -255,6 +259,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2> {
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
+impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for Wallet<K, D, L2> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.descr }
+}
+
 impl<K, D: Descriptor<K>> Wallet<K, D, NoLayer2> {
     pub fn new_standard(descr: D, network: Network) -> Self {
         Wallet {
@@ -332,6 +340,16 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             *last_index = cmp::max(*last_index, idx);
         }
         idx
+    }
+
+    pub fn next_address(&mut self, keychain: impl Into<Keychain>, shift: bool) -> Address {
+        let keychain = keychain.into();
+        let index = self.next_index(keychain, shift);
+        self.addresses(keychain)
+            .skip(index.index() as usize)
+            .next()
+            .expect("address iterator always can produce address")
+            .addr
     }
 
     pub fn balance(&self) -> Sats { self.cache.coins().map(|utxo| utxo.amount).sum::<Sats>() }

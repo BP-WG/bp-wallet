@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::process::exit;
 
 use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
-use bpwallet::{coinselect, Amount, Invoice, OpType, StoreError, TxParams, WalletUtxo};
+use bpwallet::{coinselect, Amount, Beneficiary, OpType, StoreError, TxParams, WalletUtxo};
 use psbt::PsbtVer;
 use strict_encoding::Ident;
 
@@ -110,7 +110,11 @@ pub enum Command {
 
         /// Bitcoin invoice in form of `<sats>@<address>`. To spend full wallet balance use
         /// `MAX` for the amount.
-        invoice: Invoice,
+        ///
+        /// If multiple `MAX` addresses provided the wallet balance is split between them in equal
+        /// proportions.
+        #[clap(long)]
+        to: Vec<Beneficiary>,
 
         /// Fee
         fee: Sats,
@@ -327,24 +331,37 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             }
             Command::Construct {
                 v2,
-                invoice,
+                to: beneficiaries,
                 fee,
                 psbt: psbt_file,
             } => {
                 let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
-                // TODO: Support lock time and RBFs
-                let params = TxParams::with(*fee);
+
                 // Do coin selection
-                let coins: Vec<_> = match invoice.amount {
-                    Amount::Fixed(sats) => {
+                let total_amount =
+                    beneficiaries.iter().try_fold(Sats::ZERO, |sats, b| match b.amount {
+                        Amount::Max => Err(()),
+                        Amount::Fixed(s) => sats.checked_add(s).ok_or(()),
+                    });
+                let coins: Vec<_> = match total_amount {
+                    Ok(sats) if sats > Sats::ZERO => {
                         runtime.wallet().coinselect(sats, coinselect::all).collect()
                     }
-                    Amount::Max => {
+                    _ => {
+                        eprintln!(
+                            "Warning: you are not paying to anybody but just aggregating all your \
+                             balances to a single UTXO",
+                        );
                         runtime.wallet().all_utxos().map(WalletUtxo::into_outpoint).collect()
                     }
                 };
-                let psbt = runtime.wallet_mut().construct_psbt(&coins, *invoice, params)?;
+
+                // TODO: Support lock time and RBFs
+                let params = TxParams::with(*fee);
+                let (psbt, _) =
+                    runtime.wallet_mut().construct_psbt_autochange(coins, beneficiaries, params)?;
                 let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
+
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
                 match psbt_file {
                     Some(file_name) => {

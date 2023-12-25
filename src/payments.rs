@@ -23,7 +23,10 @@
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use bpstd::{Address, AddressParseError, Idx, LockTime, Outpoint, Sats, SeqNo};
+use bpstd::{
+    Address, AddressParseError, Keychain, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo, Terminal,
+    Vout,
+};
 use descriptors::Descriptor;
 use psbt::{Psbt, PsbtError, PsbtVer};
 
@@ -37,6 +40,9 @@ pub enum ConstructionError {
 
     /// impossible to construct transaction having no inputs.
     NoInputs,
+
+    /// the total payment amount ({0} sats) exceeds number of sats in existence.
+    Overflow(Sats),
 
     /// attempt to spend more than present in transaction inputs. Total transaction inputs are
     /// {input_value} sats, but output is {output_value} sats.
@@ -52,9 +58,6 @@ pub enum ConstructionError {
         output_value: Sats,
         fee: Sats,
     },
-
-    /// not enough funds to pay fee of {fee} sats even using all inputs ({input_value} sats).
-    InputsNotCoverFee { input_value: Sats, fee: Sats },
 }
 
 #[derive(Clone, Debug, Display, Error, From)]
@@ -79,12 +82,31 @@ pub struct Btc {
 }
  */
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, From)]
 pub enum Amount {
+    #[from]
     #[display(inner)]
     Fixed(Sats),
     #[display("MAX")]
     Max,
+}
+
+impl Amount {
+    #[inline]
+    pub fn sats(&self) -> Option<Sats> {
+        match self {
+            Amount::Fixed(sats) => Some(*sats),
+            Amount::Max => None,
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_or(&self, default: impl Into<Sats>) -> Sats {
+        self.sats().unwrap_or(default.into())
+    }
+
+    #[inline]
+    pub fn is_max(&self) -> bool { *self == Amount::Max }
 }
 
 impl FromStr for Amount {
@@ -102,36 +124,39 @@ impl FromStr for Amount {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display)]
-#[display("{amount}@{beneficiary}", alt = "bitcoin:{beneficiary}?amount={amount}")]
-pub struct Invoice {
-    pub beneficiary: Address,
+#[display("{amount}@{address}", alt = "bitcoin:{address}?amount={amount}")]
+pub struct Beneficiary {
+    pub address: Address,
     pub amount: Amount,
 }
 
-impl Invoice {
-    pub fn new(beneficiary: Address, amount: impl Into<Amount>) -> Invoice {
-        Invoice {
-            beneficiary,
+impl Beneficiary {
+    #[inline]
+    pub fn new(address: Address, amount: impl Into<Amount>) -> Self {
+        Beneficiary {
+            address,
             amount: amount.into(),
         }
     }
-    pub fn with_max(beneficiary: Address) -> Invoice {
-        Invoice {
-            beneficiary,
+    #[inline]
+    pub fn with_max(address: Address) -> Self {
+        Beneficiary {
+            address,
             amount: Amount::Max,
         }
     }
+    #[inline]
+    pub fn is_max(&self) -> bool { self.amount.is_max() }
+    #[inline]
+    pub fn script_pubkey(&self) -> ScriptPubkey { self.address.script_pubkey() }
 }
 
-impl FromStr for Invoice {
+impl FromStr for Beneficiary {
     type Err = InvoiceParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (amount, beneficiary) = s.split_once('@').ok_or(InvoiceParseError::InvalidFormat)?;
-        Ok(Invoice {
-            beneficiary: Address::from_str(beneficiary)?,
-            amount: Amount::from_str(amount)?,
-        })
+        Ok(Beneficiary::new(Address::from_str(beneficiary)?, Amount::from_str(amount)?))
     }
 }
 
@@ -140,6 +165,7 @@ pub struct TxParams {
     pub fee: Sats,
     pub lock_time: Option<LockTime>,
     pub seq_no: SeqNo,
+    pub change_keychain: Keychain,
 }
 
 impl TxParams {
@@ -148,21 +174,37 @@ impl TxParams {
             fee,
             lock_time: None,
             seq_no: SeqNo::from_consensus_u32(0),
+            change_keychain: Keychain::INNER,
         }
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn construct_psbt(
-        &mut self,
-        coins: &[Outpoint],
-        invoice: Invoice,
-        params: TxParams,
-    ) -> Result<Psbt, ConstructionError> {
-        if coins.is_empty() {
-            return Err(ConstructionError::NoInputs);
-        }
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct PsbtMeta {
+    pub change_vout: Option<Vout>,
+    pub change_terminal: Option<Terminal>,
+}
 
+impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
+    pub fn construct_psbt_autochange<'a, 'b>(
+        &mut self,
+        coins: impl IntoIterator<Item = Outpoint>,
+        beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
+        params: TxParams,
+    ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
+        let (psbt, meta) = self.construct_psbt(coins, beneficiaries, params)?;
+        if let Some(change) = meta.change_terminal {
+            self.cache.last_change = self.cache.last_change.max(change.index);
+        }
+        Ok((psbt, meta))
+    }
+
+    pub fn construct_psbt<'a, 'b>(
+        &self,
+        coins: impl IntoIterator<Item = Outpoint>,
+        beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
+        params: TxParams,
+    ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
         let mut psbt = Psbt::create(PsbtVer::V2);
 
         // Set locktime
@@ -175,7 +217,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
         // 1. Add inputs
         for coin in coins {
-            let utxo = self.utxo(*coin).expect("wallet data inconsistency");
+            let utxo = self.utxo(coin).expect("wallet data inconsistency");
             psbt.construct_input_expect(
                 utxo.to_prevout(),
                 &self.descr.generator,
@@ -183,47 +225,62 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 params.seq_no,
             );
         }
-
-        // 2. Add outputs
-        // TODO: Check address network
-
-        // 2. Add outputs and change
-        let input_value = psbt.input_sum();
-        if let Amount::Fixed(value) = invoice.amount {
-            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
-
-            let output_value = psbt.output_sum();
-            let change = psbt.construct_change_expect(
-                &self.descr.generator,
-                self.cache.last_change,
-                Sats::ZERO,
-            );
-            change.amount = input_value
-                .checked_sub(output_value)
-                .ok_or(ConstructionError::OutputExceedsInputs {
-                    input_value,
-                    output_value,
-                })?
-                .checked_sub(params.fee)
-                .ok_or(ConstructionError::NoFundsForFee {
-                    input_value,
-                    output_value,
-                    fee: params.fee,
-                })?;
-        } else {
-            let value = input_value.checked_sub(params.fee).ok_or(
-                ConstructionError::InputsNotCoverFee {
-                    input_value,
-                    fee: params.fee,
-                },
-            )?;
-            psbt.construct_output_expect(invoice.beneficiary.script_pubkey(), value);
+        if psbt.inputs().count() == 0 {
+            return Err(ConstructionError::NoInputs);
         }
 
-        self.cache.last_change.wrapping_inc_assign();
+        // 2. Add outputs
+        let input_value = psbt.input_sum();
+        let mut max = Vec::new();
+        let mut output_value = Sats::ZERO;
+        for beneficiary in beneficiaries {
+            let amount = beneficiary.amount.unwrap_or(Sats::ZERO);
+            output_value
+                .checked_add_assign(amount)
+                .ok_or(ConstructionError::Overflow(output_value))?;
+            let out = psbt.construct_output_expect(beneficiary.script_pubkey(), amount);
+            if beneficiary.amount.is_max() {
+                max.push(out.index());
+            }
+        }
+        let mut remaining_value = input_value
+            .checked_sub(output_value)
+            .ok_or(ConstructionError::OutputExceedsInputs {
+                input_value,
+                output_value,
+            })?
+            .checked_sub(params.fee)
+            .ok_or(ConstructionError::NoFundsForFee {
+                input_value,
+                output_value,
+                fee: params.fee,
+            })?;
+        if !max.is_empty() {
+            let portion = remaining_value / max.len();
+            for out in psbt.outputs_mut() {
+                if max.contains(&out.index()) {
+                    out.amount = portion;
+                }
+            }
+            remaining_value = Sats::ZERO;
+        }
 
-        psbt.complete_construction();
+        // 3. Add change - only if exceeded the dust limit
+        let (change_vout, change_terminal) = if remaining_value
+            > self.descr.generator.class().dust_limit()
+        {
+            let change_terminal = Terminal::new(params.change_keychain, self.cache.last_change);
+            let change_vout = psbt
+                .construct_change_expect(&self.descr.generator, change_terminal, remaining_value)
+                .index();
+            (Some(Vout::from_u32(change_vout as u32)), Some(change_terminal))
+        } else {
+            (None, None)
+        };
 
-        Ok(psbt)
+        Ok((psbt, PsbtMeta {
+            change_vout,
+            change_terminal,
+        }))
     }
 }
