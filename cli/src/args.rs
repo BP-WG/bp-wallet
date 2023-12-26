@@ -117,7 +117,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         }
 
         if sync || self.wallet.descriptor_opts.is_some() {
-            eprint!("Syncing ...");
+            eprint!("Syncing");
             let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
             if let Err(errors) = runtime.sync(&indexer) {
                 eprintln!(" partial, some requests has failed:");
