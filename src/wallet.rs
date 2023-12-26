@@ -134,6 +134,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.generator }
 }
 
+#[cfg_attr(feature = "serde", cfg_eval, serde_as)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
@@ -151,6 +152,7 @@ pub struct WalletData<L2: Layer2Data> {
     pub txin_annotations: BTreeMap<Outpoint, String>,
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<serde_with::DisplayFromStr, _>"))]
     pub last_used: BTreeMap<Keychain, NormalIndex>,
 }
 

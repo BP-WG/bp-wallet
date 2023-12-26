@@ -21,8 +21,10 @@ psbt = "0.11.0-beta.3"
 descriptors = "0.11.0-beta.3"
 bp-esplora = "0.11.0-beta.2"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
+serde_with = "3.4.0"
 serde_yaml = "0.9.19"
 toml = "0.8.2"
+cfg_eval = "0.1.2"
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
 
 [package]
@@ -49,12 +51,14 @@ bp-esplora = { workspace = true, optional = true }
 psbt = { workspace = true }
 descriptors = { workspace = true }
 serde_crate = { workspace = true, optional = true }
+serde_with = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
+cfg_eval = { workspace = true, optional = true }
 
 [features]
 default = ["esplora"]
 all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
-serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
+serde = ["cfg_eval", "serde_crate", "serde_with", "serde_yaml", "toml", "bp-std/serde"]
