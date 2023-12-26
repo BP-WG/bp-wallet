@@ -381,7 +381,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 // TODO: Support lock time and RBFs
                 let params = TxParams::with(*fee);
                 let (psbt, _) =
-                    runtime.wallet_mut().construct_psbt_autochange(coins, beneficiaries, params)?;
+                    runtime.wallet_mut().construct_psbt(coins, beneficiaries, params)?;
                 let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
 
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
