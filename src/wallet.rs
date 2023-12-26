@@ -328,7 +328,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn next_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
         let keychain = keychain.into();
-        let idx = self
+        let mut idx = self
             .address_coins()
             .keys()
             .filter(|ad| ad.terminal.keychain == keychain)
@@ -337,9 +337,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             .as_ref()
             .map(NormalIndex::saturating_inc)
             .unwrap_or_default();
+        let last_index = self.data.last_used.entry(keychain).or_default();
+        idx = cmp::max(*last_index, idx);
         if shift {
-            let last_index = self.data.last_used.entry(keychain).or_default();
-            *last_index = cmp::max(*last_index, idx);
+            *last_index = idx.saturating_add(1u32);
         }
         idx
     }
