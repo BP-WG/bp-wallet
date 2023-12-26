@@ -310,7 +310,9 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     "Txid",
                     if *txid { 64 } else { 18 }
                 );
-                for row in runtime.history() {
+                let mut rows = runtime.history().collect::<Vec<_>>();
+                rows.sort_by_key(|row| row.height);
+                for row in rows {
                     println!(
                         "{}\t{}\t{}{: >12}\t{: >8.2}",
                         row.height,

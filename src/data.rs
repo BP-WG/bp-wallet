@@ -97,12 +97,12 @@ impl MiningInfo {
     derive(serde::Serialize, serde::Deserialize),
     serde(crate = "serde_crate", rename_all = "camelCase")
 )]
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum TxStatus<T = MiningInfo> {
-    Mined(T),
+    Unknown,
     Mempool,
     Channel,
-    Unknown,
+    Mined(T),
 }
 
 impl<T> TxStatus<T> {
