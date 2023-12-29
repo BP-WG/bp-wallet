@@ -165,6 +165,7 @@ pub struct TxParams {
     pub fee: Sats,
     pub lock_time: Option<LockTime>,
     pub seq_no: SeqNo,
+    pub change_shift: bool,
     pub change_keychain: Keychain,
 }
 
@@ -174,6 +175,7 @@ impl TxParams {
             fee,
             lock_time: None,
             seq_no: SeqNo::from_consensus_u32(0),
+            change_shift: true,
             change_keychain: Keychain::INNER,
         }
     }
@@ -186,21 +188,8 @@ pub struct PsbtMeta {
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn construct_psbt_autochange<'a, 'b>(
-        &mut self,
-        coins: impl IntoIterator<Item = Outpoint>,
-        beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
-        params: TxParams,
-    ) -> Result<(Psbt, PsbtMeta), ConstructionError> {
-        let (psbt, meta) = self.construct_psbt(coins, beneficiaries, params)?;
-        if let Some(change) = meta.change_terminal {
-            self.cache.last_change = self.cache.last_change.max(change.index);
-        }
-        Ok((psbt, meta))
-    }
-
     pub fn construct_psbt<'a, 'b>(
-        &self,
+        &mut self,
         coins: impl IntoIterator<Item = Outpoint>,
         beneficiaries: impl IntoIterator<Item = &'b Beneficiary>,
         params: TxParams,
@@ -269,7 +258,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         let (change_vout, change_terminal) = if remaining_value
             > self.descr.generator.class().dust_limit()
         {
-            let change_terminal = Terminal::new(params.change_keychain, self.cache.last_change);
+            let change_index = self.next_index(params.change_keychain, params.change_shift);
+            let change_terminal = Terminal::new(params.change_keychain, change_index);
             let change_vout = psbt
                 .construct_change_expect(&self.descr.generator, change_terminal, remaining_value)
                 .index();

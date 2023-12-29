@@ -37,7 +37,7 @@ mod command;
 
 pub use args::{Args, Exec};
 pub use bpwallet::*;
-pub use command::Command;
+pub use command::{BpCommand, Command};
 pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{

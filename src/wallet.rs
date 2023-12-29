@@ -134,6 +134,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.generator }
 }
 
+#[cfg_attr(feature = "serde", cfg_eval, serde_as)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
@@ -151,6 +152,7 @@ pub struct WalletData<L2: Layer2Data> {
     pub txin_annotations: BTreeMap<Outpoint, String>,
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
+    #[cfg_attr(feature = "serde", serde_as(as = "BTreeMap<serde_with::DisplayFromStr, _>"))]
     pub last_used: BTreeMap<Keychain, NormalIndex>,
 }
 
@@ -326,7 +328,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn next_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
         let keychain = keychain.into();
-        let idx = self
+        let mut idx = self
             .address_coins()
             .keys()
             .filter(|ad| ad.terminal.keychain == keychain)
@@ -335,9 +337,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             .as_ref()
             .map(NormalIndex::saturating_inc)
             .unwrap_or_default();
+        let last_index = self.data.last_used.entry(keychain).or_default();
+        idx = cmp::max(*last_index, idx);
         if shift {
-            let last_index = self.data.last_used.entry(keychain).or_default();
-            *last_index = cmp::max(*last_index, idx);
+            *last_index = idx.saturating_add(1u32);
         }
         idx
     }

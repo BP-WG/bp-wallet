@@ -26,7 +26,7 @@ extern crate serde_crate as serde;
 
 use std::process::ExitCode;
 
-use bp_util::{Args, Command, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
+use bp_util::{Args, BpCommand, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
 use clap::Parser;
 
 fn main() -> ExitCode {
@@ -39,7 +39,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), RuntimeError> {
-    let mut args = Args::<Command, DescrStdOpts>::parse();
+    let mut args = Args::<BpCommand, DescrStdOpts>::parse();
     args.process();
     LogLevel::from_verbosity_flag_count(args.verbose).apply();
     trace!("Command-line arguments: {:#?}", &args);

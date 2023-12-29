@@ -53,18 +53,6 @@ pub enum Command {
         name: Ident,
     },
 
-    /// List wallet balance with additional optional details
-    #[display("balance")]
-    Balance {
-        /// Print balance for each individual address
-        #[clap(short, long)]
-        addr: bool,
-
-        /// Print information about individual UTXOs
-        #[clap(short, long)]
-        utxo: bool,
-    },
-
     /// Generate a new wallet address(es)
     #[display("address")]
     Address {
@@ -87,6 +75,25 @@ pub enum Command {
         /// Number of addresses to generate
         #[clap(short = 'C', long, default_value = "1")]
         count: u8,
+    },
+}
+
+#[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
+pub enum BpCommand {
+    #[clap(flatten)]
+    #[display(inner)]
+    General(Command),
+
+    /// List wallet balance with additional optional details
+    #[display("balance")]
+    Balance {
+        /// Print balance for each individual address
+        #[clap(short, long)]
+        addr: bool,
+
+        /// Print information about individual UTXOs
+        #[clap(short, long)]
+        utxo: bool,
     },
 
     /// Display history of wallet operations
@@ -128,7 +135,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     type Error = RuntimeError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec(mut self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
+    fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
         match &self.command {
             Command::List => {
                 let dir = self.general.base_dir();
@@ -185,75 +192,6 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     println!("success");
                 }
             }
-            Command::Balance {
-                addr: false,
-                utxo: false,
-            } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("\nWallet total balance: {} ṩ", runtime.balance());
-            }
-            Command::Balance {
-                addr: true,
-                utxo: false,
-            } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("\nTerm.\t{:62}\t# used\tVol., ṩ\tBalance, ṩ", "Address");
-                for info in runtime.address_balance() {
-                    let WalletAddr {
-                        addr,
-                        terminal,
-                        used,
-                        volume,
-                        balance,
-                    } = info;
-                    println!("{terminal}\t{:62}\t{used}\t{volume}\t{balance}", addr.to_string());
-                }
-                self.command = Command::Balance {
-                    addr: false,
-                    utxo: false,
-                };
-                self.resolver.sync = false;
-                self.exec(config, name)?;
-            }
-            Command::Balance {
-                addr: false,
-                utxo: true,
-            } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("\nHeight\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
-                for row in runtime.coins() {
-                    println!(
-                        "{}\t{: >12}\t{:68}\t{}",
-                        row.height, row.amount, row.outpoint, row.address
-                    );
-                }
-                self.command = Command::Balance {
-                    addr: false,
-                    utxo: false,
-                };
-                self.resolver.sync = false;
-                self.exec(config, name)?;
-            }
-            Command::Balance {
-                addr: true,
-                utxo: true,
-            } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
-                println!("\nHeight\t{:>12}\t{:68}", "Amount, ṩ", "Outpoint");
-                for (derived_addr, utxos) in runtime.address_coins() {
-                    println!("{}\t{}", derived_addr.addr, derived_addr.terminal);
-                    for row in utxos {
-                        println!("{}\t{: >12}\t{:68}", row.height, row.amount, row.outpoint);
-                    }
-                    println!()
-                }
-                self.command = Command::Balance {
-                    addr: false,
-                    utxo: false,
-                };
-                self.resolver.sync = false;
-                self.exec(config, name)?;
-            }
             Command::Address {
                 change,
                 keychain,
@@ -283,14 +221,98 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
                 runtime.try_store()?;
             }
-            Command::History { txid, details } => {
+        }
+
+        Ok(())
+    }
+}
+
+impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
+    type Error = RuntimeError;
+    const CONF_FILE_NAME: &'static str = "bp.toml";
+
+    fn exec(mut self, config: Config, name: &'static str) -> Result<(), Self::Error> {
+        match &self.command {
+            BpCommand::General(cmd) => self.translate(cmd).exec(config, name)?,
+            BpCommand::Balance {
+                addr: false,
+                utxo: false,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nWallet total balance: {} ṩ", runtime.balance());
+            }
+            BpCommand::Balance {
+                addr: true,
+                utxo: false,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nTerm.\t{:62}\t# used\tVol., ṩ\tBalance, ṩ", "Address");
+                for info in runtime.address_balance() {
+                    let WalletAddr {
+                        addr,
+                        terminal,
+                        used,
+                        volume,
+                        balance,
+                    } = info;
+                    println!("{terminal}\t{:62}\t{used}\t{volume}\t{balance}", addr.to_string());
+                }
+                self.command = BpCommand::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.resolver.sync = false;
+                self.exec(config, name)?;
+            }
+            BpCommand::Balance {
+                addr: false,
+                utxo: true,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nHeight\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
+                for row in runtime.coins() {
+                    println!(
+                        "{}\t{: >12}\t{:68}\t{}",
+                        row.height, row.amount, row.outpoint, row.address
+                    );
+                }
+                self.command = BpCommand::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.resolver.sync = false;
+                self.exec(config, name)?;
+            }
+            BpCommand::Balance {
+                addr: true,
+                utxo: true,
+            } => {
+                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                println!("\nHeight\t{:>12}\t{:68}", "Amount, ṩ", "Outpoint");
+                for (derived_addr, utxos) in runtime.address_coins() {
+                    println!("{}\t{}", derived_addr.addr, derived_addr.terminal);
+                    for row in utxos {
+                        println!("{}\t{: >12}\t{:68}", row.height, row.amount, row.outpoint);
+                    }
+                    println!()
+                }
+                self.command = BpCommand::Balance {
+                    addr: false,
+                    utxo: false,
+                };
+                self.resolver.sync = false;
+                self.exec(config, name)?;
+            }
+            BpCommand::History { txid, details } => {
                 let runtime = self.bp_runtime::<O::Descr>(&config)?;
                 println!(
                     "\nHeight\t{:<1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
                     "Txid",
                     if *txid { 64 } else { 18 }
                 );
-                for row in runtime.history() {
+                let mut rows = runtime.history().collect::<Vec<_>>();
+                rows.sort_by_key(|row| row.height);
+                for row in rows {
                     println!(
                         "{}\t{}\t{}{: >12}\t{: >8.2}",
                         row.height,
@@ -329,7 +351,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     }
                 }
             }
-            Command::Construct {
+            BpCommand::Construct {
                 v2,
                 to: beneficiaries,
                 fee,
@@ -359,7 +381,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 // TODO: Support lock time and RBFs
                 let params = TxParams::with(*fee);
                 let (psbt, _) =
-                    runtime.wallet_mut().construct_psbt_autochange(coins, beneficiaries, params)?;
+                    runtime.wallet_mut().construct_psbt(coins, beneficiaries, params)?;
                 let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
 
                 eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
