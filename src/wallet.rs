@@ -247,7 +247,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Getters, Clone, Eq, PartialEq, Debug)]
 pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2> {
     pub(crate) descr: WalletDescr<K, D, L2::Descr>,
     pub(crate) data: WalletData<L2::Data>,
