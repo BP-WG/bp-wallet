@@ -326,6 +326,14 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
+    pub fn to_deriver(&self) -> D
+    where
+        D: Clone,
+        K: Clone,
+    {
+        self.descr.clone()
+    }
+
     fn last_published_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
         let keychain = keychain.into();
         self.address_coins()
