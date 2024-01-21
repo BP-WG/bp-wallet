@@ -212,7 +212,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     );
                     exit(1);
                 }
-                let index = index.unwrap_or_else(|| runtime.next_index(keychain, !*no_shift));
+                let index =
+                    index.unwrap_or_else(|| runtime.next_derivation_index(keychain, !*no_shift));
                 println!("\nTerm.\tAddress");
                 for derived_addr in
                     runtime.addresses(keychain).skip(index.index() as usize).take(*no as usize)

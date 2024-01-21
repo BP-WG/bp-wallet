@@ -258,7 +258,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         let (change_vout, change_terminal) = if remaining_value
             > self.descr.generator.class().dust_limit()
         {
-            let change_index = self.next_index(params.change_keychain, params.change_shift);
+            let change_index =
+                self.next_derivation_index(params.change_keychain, params.change_shift);
             let change_terminal = Terminal::new(params.change_keychain, change_index);
             let change_vout = psbt
                 .construct_change_expect(&self.descr.generator, change_terminal, remaining_value)
