@@ -57,7 +57,7 @@ toml = { workspace = true, optional = true }
 cfg_eval = { workspace = true, optional = true }
 
 [features]
-default = ["esplora"]
+default = []
 all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
