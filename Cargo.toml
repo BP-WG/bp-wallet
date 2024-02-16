@@ -14,8 +14,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "4.5.0"
-strict_encoding = "2.6.1"
+amplify = "4.6.0"
+strict_encoding = "2.7.0-beta.1"
 bp-std = "0.11.0-beta.3"
 psbt = "0.11.0-beta.3"
 descriptors = "0.11.0-beta.3"
@@ -62,3 +62,8 @@ all = ["esplora", "fs"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
 serde = ["cfg_eval", "serde_crate", "serde_with", "serde_yaml", "toml", "bp-std/serde"]
+
+[patch.crates-io]
+commit_verify = { git = "https://github.com/LNP-BP/client_side_validation", branch = "v0.11" }
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "v0.11" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
