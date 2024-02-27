@@ -326,17 +326,39 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
     }
 
-    pub fn next_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
+    pub fn to_deriver(&self) -> D
+    where
+        D: Clone,
+        K: Clone,
+    {
+        self.descr.clone()
+    }
+
+    fn last_published_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
         let keychain = keychain.into();
-        let mut idx = self
-            .address_coins()
+        self.address_coins()
             .keys()
             .filter(|ad| ad.terminal.keychain == keychain)
             .map(|ad| ad.terminal.index)
             .max()
             .as_ref()
             .map(NormalIndex::saturating_inc)
-            .unwrap_or_default();
+            .unwrap_or_default()
+    }
+
+    pub fn last_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
+        let keychain = keychain.into();
+        let last_index = self.data.last_used.get(&keychain).copied().unwrap_or_default();
+        cmp::max(last_index, self.last_published_derivation_index(keychain))
+    }
+
+    pub fn next_derivation_index(
+        &mut self,
+        keychain: impl Into<Keychain>,
+        shift: bool,
+    ) -> NormalIndex {
+        let keychain = keychain.into();
+        let mut idx = self.last_published_derivation_index(keychain);
         let last_index = self.data.last_used.entry(keychain).or_default();
         idx = cmp::max(*last_index, idx);
         if shift {
@@ -347,7 +369,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn next_address(&mut self, keychain: impl Into<Keychain>, shift: bool) -> Address {
         let keychain = keychain.into();
-        let index = self.next_index(keychain, shift);
+        let index = self.next_derivation_index(keychain, shift);
         self.addresses(keychain)
             .skip(index.index() as usize)
             .next()
