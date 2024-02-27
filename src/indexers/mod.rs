@@ -41,5 +41,5 @@ pub trait Indexer {
         &self,
         descr: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
-    ) -> (usize, Vec<Self::Error>);
+    ) -> MayError<usize, Vec<Self::Error>>;
 }

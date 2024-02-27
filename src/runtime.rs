@@ -135,7 +135,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Runtime<D, K, L2> {
     }
     pub fn set_name(&mut self, name: String) { self.wallet.set_name(name) }
 
-    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<(), Vec<I::Error>> {
+    pub fn sync<I: Indexer>(&mut self, indexer: &I) -> Result<usize, Vec<I::Error>> {
         self.wallet.update(indexer).into_result()
     }
 

@@ -217,7 +217,7 @@ impl Indexer for BlockingClient {
         &self,
         _descr: &WalletDescr<K, D, L2::Descr>,
         _cache: &mut WalletCache<L2::Cache>,
-    ) -> (usize, Vec<Self::Error>) {
+    ) -> MayError<usize, Vec<Self::Error>> {
         todo!()
     }
 }

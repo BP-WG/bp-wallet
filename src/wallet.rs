@@ -167,13 +167,13 @@ pub struct WalletData<L2: Layer2Data> {
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache<L2: Layer2Cache> {
-    pub(crate) last_block: MiningInfo,
-    pub(crate) last_change: NormalIndex,
-    pub(crate) headers: BTreeSet<BlockInfo>,
-    pub(crate) tx: BTreeMap<Txid, WalletTx>,
-    pub(crate) utxo: BTreeSet<Outpoint>,
-    pub(crate) addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
-    pub(crate) layer2: L2,
+    pub last_block: MiningInfo,
+    pub last_change: NormalIndex,
+    pub headers: BTreeSet<BlockInfo>,
+    pub tx: BTreeMap<Txid, WalletTx>,
+    pub utxo: BTreeSet<Outpoint>,
+    pub addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
+    pub layer2: L2,
 }
 
 impl<L2: Layer2Cache> Default for WalletCache<L2> {
@@ -204,7 +204,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         &mut self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
-    ) -> (usize, Vec<I::Error>) {
+    ) -> MayError<usize, Vec<I::Error>> {
         indexer.update::<K, D, L2>(descriptor, self)
     }
 
@@ -322,8 +322,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn set_name(&mut self, name: String) { self.data.name = name; }
 
-    pub fn update<B: Indexer>(&mut self, blockchain: &B) -> MayError<(), Vec<B::Error>> {
-        WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
+    pub fn update<B: Indexer>(&mut self, indexer: &B) -> MayError<usize, Vec<B::Error>> {
+        self.cache.update::<B, K, D, L2>(&self.descr, indexer)
     }
 
     pub fn to_deriver(&self) -> D
