@@ -204,7 +204,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         &mut self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
-    ) -> (usize, Vec<I::Error>) {
+    ) -> MayError<usize, Vec<I::Error>> {
         indexer.update::<K, D, L2>(descriptor, self)
     }
 
@@ -322,8 +322,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn set_name(&mut self, name: String) { self.data.name = name; }
 
-    pub fn update<B: Indexer>(&mut self, blockchain: &B) -> MayError<(), Vec<B::Error>> {
-        WalletCache::with::<_, K, _, L2>(&self.descr, blockchain).map(|cache| self.cache = cache)
+    pub fn update<B: Indexer>(&mut self, indexer: &B) -> MayError<usize, Vec<B::Error>> {
+        self.cache.update::<B, K, D, L2>(&self.descr, indexer)
     }
 
     pub fn to_deriver(&self) -> D
