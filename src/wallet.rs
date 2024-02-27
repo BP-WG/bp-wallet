@@ -167,13 +167,13 @@ pub struct WalletData<L2: Layer2Data> {
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct WalletCache<L2: Layer2Cache> {
-    pub(crate) last_block: MiningInfo,
-    pub(crate) last_change: NormalIndex,
-    pub(crate) headers: BTreeSet<BlockInfo>,
-    pub(crate) tx: BTreeMap<Txid, WalletTx>,
-    pub(crate) utxo: BTreeSet<Outpoint>,
-    pub(crate) addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
-    pub(crate) layer2: L2,
+    pub last_block: MiningInfo,
+    pub last_change: NormalIndex,
+    pub headers: BTreeSet<BlockInfo>,
+    pub tx: BTreeMap<Txid, WalletTx>,
+    pub utxo: BTreeSet<Outpoint>,
+    pub addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
+    pub layer2: L2,
 }
 
 impl<L2: Layer2Cache> Default for WalletCache<L2> {
