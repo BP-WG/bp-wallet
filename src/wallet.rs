@@ -323,7 +323,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn set_name(&mut self, name: String) { self.data.name = name; }
 
     pub fn update<B: Indexer>(&mut self, indexer: &B) -> MayError<usize, Vec<B::Error>> {
-        self.cache.update::<B, K, D, L2>(&self.descr, indexer)
+        WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| self.cache = cache);
+        // Not yet implemented:
+        // self.cache.update::<B, K, D, L2>(&self.descr, indexer)
+        MayError::ok(0)
     }
 
     pub fn to_deriver(&self) -> D
