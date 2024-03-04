@@ -23,12 +23,12 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bpwallet::Runtime;
+use bpwallet::{AnyIndexer, Runtime};
 use clap::Subcommand;
 use descriptors::Descriptor;
 use strict_encoding::Ident;
 
-use crate::opts::{DescrStdOpts, DescriptorOpts};
+use crate::opts::{DescrStdOpts, DescriptorOpts, DEFAULT_ELECTRUM};
 use crate::{Config, GeneralOpts, ResolverOpt, RuntimeError, WalletOpts};
 
 /// Command-line arguments
@@ -118,7 +118,13 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
 
         if sync || self.wallet.descriptor_opts.is_some() {
             eprint!("Syncing");
-            let indexer = esplora::Builder::new(&self.resolver.esplora).build_blocking()?;
+            let indexer = if self.resolver.electrum != DEFAULT_ELECTRUM {
+                AnyIndexer::Electrum(Box::new(electrum::Client::new(&self.resolver.electrum)?))
+            } else {
+                AnyIndexer::Esplora(Box::new(
+                    esplora::Builder::new(&self.resolver.esplora).build_blocking()?,
+                ))
+            };
             if let Err(errors) = runtime.sync(&indexer) {
                 eprintln!(" partial, some requests has failed:");
                 for err in errors {

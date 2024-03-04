@@ -190,11 +190,13 @@ impl Indexer for BlockingClient {
                             .ok();
                     }
                     if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
-                        prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize).map(|txout| {
+                        if let Some(txout) =
+                            prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
+                        {
                             let outpoint = txout.outpoint;
                             cache.utxo.remove(&outpoint);
                             txout.spent = Some(credit.outpoint.into())
-                        });
+                        };
                     }
                 }
                 cache.tx.insert(tx.txid, tx);

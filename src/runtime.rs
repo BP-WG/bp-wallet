@@ -45,6 +45,14 @@ pub enum RuntimeError<L2: error::Error = Infallible> {
     #[from]
     ConstructPsbt(ConstructionError),
 
+    #[cfg(feature = "electrum")]
+    /// error querying electrum server.
+    ///
+    /// {0}
+    #[from]
+    #[display(doc_comments)]
+    Electrum(electrum::Error),
+
     #[cfg(feature = "esplora")]
     /// error querying esplora server.
     ///

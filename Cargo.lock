@@ -273,9 +273,9 @@ dependencies = [
 
 [[package]]
 name = "bp-consensus"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4455276e0c26bc4a742b8cf2a2a8fe1a42b06f15873dd6145c32af9a7a387a94"
+checksum = "966395ea17fa99b33a9093355924b0f79312b410e2c8a85ca8ebb8333098fb9a"
 dependencies = [
  "amplify",
  "chrono",
@@ -287,9 +287,9 @@ dependencies = [
 
 [[package]]
 name = "bp-derive"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a36c599fc0d27818a2e673003bd313bf2571d5c8f1894b3c93f800fa8a59a833"
+checksum = "259436bf0c49fa1fd0648cdde09d2d9bdc183dd4d2dfb3934902ef27faa9f14d"
 dependencies = [
  "amplify",
  "bitcoin_hashes",
@@ -298,6 +298,25 @@ dependencies = [
  "commit_verify",
  "indexmap 2.2.3",
  "serde",
+]
+
+[[package]]
+name = "bp-electrum"
+version = "0.11.0-beta.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a9be4a57a8cd34770dcc51dd0531bd05cc796d4ae7706f72bb233eb7bb718fb"
+dependencies = [
+ "amplify",
+ "bp-std",
+ "byteorder",
+ "libc",
+ "log",
+ "rustls 0.21.10",
+ "serde",
+ "serde_json",
+ "sha2",
+ "webpki-roots 0.25.4",
+ "winapi",
 ]
 
 [[package]]
@@ -318,9 +337,9 @@ dependencies = [
 
 [[package]]
 name = "bp-invoice"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b21857819aa0565c4d2bf8349b81f2d03d0c67b5969ba91fcfc2e47d71aa02a"
+checksum = "48ee0387fa924bd002b51713c42daf3cb7c3b669509523607445a99c90491788"
 dependencies = [
  "amplify",
  "bech32",
@@ -331,9 +350,9 @@ dependencies = [
 
 [[package]]
 name = "bp-std"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02e2bda233d53243f7f3f5c53bf2bf9b3856cf6d5691f31f163e8d63b669b9d3"
+checksum = "84413a3ce10b304ce52c7a1604fccf78634f3a27df47b239be381b76ceb1bdea"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -350,6 +369,7 @@ version = "0.11.0-beta.4"
 dependencies = [
  "amplify",
  "base64",
+ "bp-electrum",
  "bp-esplora",
  "bp-std",
  "bp-wallet",
@@ -370,12 +390,14 @@ name = "bp-wallet"
 version = "0.11.0-beta.4"
 dependencies = [
  "amplify",
+ "bp-electrum",
  "bp-esplora",
  "bp-std",
  "cfg_eval",
  "descriptors",
  "psbt",
  "serde",
+ "serde_json",
  "serde_with",
  "serde_yaml",
  "toml",
@@ -485,9 +507,9 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "commit_encoding_derive"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d25b4b09de08ea8530138fb8a7ca45d90b53fef8d582a944a1b08eedf3f2583e"
+checksum = "5d660fdac917fb67edd1707bc9481e51ed9062ab4ba1c4e56ed7856977fff9f3"
 dependencies = [
  "amplify",
  "amplify_syn",
@@ -498,9 +520,9 @@ dependencies = [
 
 [[package]]
 name = "commit_verify"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00351b49be0ce72775b37cca336c3c10e958d810ca097f0712d95a63684b4f99"
+checksum = "77b78d8453b82136eb9743a8da9a94e265146e5c48668f0e0e71859aa726fa67"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
@@ -614,9 +636,9 @@ dependencies = [
 
 [[package]]
 name = "descriptors"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1a6582232f545897fce642bd22299b9bf22ac56838c060f9e7de2be57b1419b"
+checksum = "08e46bb50018748f38bad98647589f2bef433faa5d8ed233c1e472c51275bd0d"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1267,9 +1289,9 @@ dependencies = [
 
 [[package]]
 name = "psbt"
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fdca9ca248afcf25799146ca6a3f364b56223082ccec3f56f6a269ddc96afd0"
+checksum = "a572f23bb63e0826d4540a6b925f152c64a47e0871d63dc06553aa7fcd045e5a"
 dependencies = [
  "amplify",
  "base64",
@@ -1424,6 +1446,18 @@ dependencies = [
 
 [[package]]
 name = "rustls"
+version = "0.21.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d5a6813c0759e4609cd494e8e725babae6a2ca7b62a5536a13daaec6fcb7ba"
+dependencies = [
+ "log",
+ "ring",
+ "rustls-webpki 0.101.7",
+ "sct",
+]
+
+[[package]]
+name = "rustls"
 version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e87c9956bd9807afa1f77e0f7594af32566e830e088a5576d27c5b6f30f49d41"
@@ -1431,7 +1465,7 @@ dependencies = [
  "log",
  "ring",
  "rustls-pki-types",
- "rustls-webpki",
+ "rustls-webpki 0.102.2",
  "subtle",
  "zeroize",
 ]
@@ -1450,6 +1484,16 @@ name = "rustls-pki-types"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ede67b28608b4c60685c7d54122d4400d90f62b40caee7700e700380a390fa8"
+
+[[package]]
+name = "rustls-webpki"
+version = "0.101.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b6275d1ee7a1cd780b64aca7726599a1dbc893b1e64144529e55c3c2f745765"
+dependencies = [
+ "ring",
+ "untrusted",
+]
 
 [[package]]
 name = "rustls-webpki"
@@ -1475,6 +1519,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc91545643bcf3a0bbb6569265615222618bdf33ce4ffbbd13c4bbd4c093534"
 dependencies = [
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "sct"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
+dependencies = [
+ "ring",
+ "untrusted",
 ]
 
 [[package]]
@@ -1706,9 +1760,9 @@ dependencies = [
 
 [[package]]
 name = "strict_types"
-version = "2.7.0-beta.1"
+version = "2.7.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d66de5cdf197b68e13fcac9fad7ed288f44052a319a3df3abbaba9c6e52f735b"
+checksum = "78c32716de4b99b0e8fb0c114e99b6929613e8d7302999c6b8c77251783923ad"
 dependencies = [
  "amplify",
  "baid58",
@@ -2048,14 +2102,14 @@ dependencies = [
  "flate2",
  "log",
  "once_cell",
- "rustls",
+ "rustls 0.22.2",
  "rustls-pki-types",
- "rustls-webpki",
+ "rustls-webpki 0.102.2",
  "serde",
  "serde_json",
  "socks",
  "url",
- "webpki-roots",
+ "webpki-roots 0.26.1",
 ]
 
 [[package]]
@@ -2187,6 +2241,12 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "webpki-roots"
+version = "0.25.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
 
 [[package]]
 name = "webpki-roots"
