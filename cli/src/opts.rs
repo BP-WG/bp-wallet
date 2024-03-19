@@ -42,13 +42,26 @@ pub const DATA_DIR: &str = "~/Documents";
 #[cfg(target_os = "android")]
 pub const DATA_DIR: &str = ".";
 
+pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 pub struct ResolverOpt {
+    /// Electrum server to use.
+    #[arg(
+        conflicts_with = "esplora",
+        long,
+        global = true,
+        default_value = DEFAULT_ELECTRUM,
+        env = "ELECRTUM_SERVER",
+        value_hint = ValueHint::Url,
+        value_name = "URL"
+    )]
+    pub electrum: String,
+
     /// Esplora server to use.
     #[arg(
-        short,
+        conflicts_with = "electrum",
         long,
         global = true,
         default_value = DEFAULT_ESPLORA,

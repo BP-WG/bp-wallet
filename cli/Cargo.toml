@@ -21,11 +21,12 @@ path = "src/bin/bp.rs"
 [dependencies]
 amplify = { workspace = true, features = ["serde"] }
 strict_encoding = { workspace = true }
-bp-wallet = { version = "0.11.0-beta.2", path = "..", features = ["serde", "fs", "esplora"] }
+bp-wallet = { version = "0.11.0-beta.4", path = "..", features = ["all"] }
 bp-std = { workspace = true, features = ["serde"] }
 descriptors = { workspace = true, features = ["serde"] }
 psbt = { workspace = true, features = ["serde"] }
 bp-esplora = { workspace = true }
+bp-electrum = { workspace = true }
 base64 = "0.21.5"
 log = { workspace = true }
 env_logger = "0.10.0"

@@ -42,5 +42,5 @@ pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{
     DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV,
-    DEFAULT_ESPLORA,
+    DEFAULT_ELECTRUM, DEFAULT_ESPLORA,
 };
