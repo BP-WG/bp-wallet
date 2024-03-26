@@ -3,7 +3,7 @@ members = [".", "cli"]
 exclude = ["convert"]
 
 [workspace.package]
-version = "0.11.0-beta.4"
+version = "0.11.0-beta.5"
 keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
 categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
