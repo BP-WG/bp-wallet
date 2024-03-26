@@ -96,8 +96,6 @@ struct Vout {
 #[derive(Deserialize)]
 #[serde(crate = "serde_crate", rename_all = "camelCase")]
 struct TxDetails {
-    blockhash: String,
-    blocktime: u64,
     hex: String,
     locktime: u32,
     size: u32,
@@ -158,11 +156,21 @@ impl Indexer for Client {
                                 let status = if hr.height < 1 {
                                     TxStatus::Mempool
                                 } else {
+                                    let blockhash = tx_details
+                                        .get("blockhash")
+                                        .expect("blockhash should be present")
+                                        .as_str()
+                                        .expect("blockhash should be a str");
+                                    let blocktime = tx_details
+                                        .get("blocktime")
+                                        .expect("blocktime should be present")
+                                        .as_u64()
+                                        .expect("blocktime should be a u64");
                                     TxStatus::Mined(MiningInfo {
                                         height: NonZeroU32::try_from(hr.height as u32)
                                             .unwrap_or(NonZeroU32::MIN),
-                                        time: tx.blocktime,
-                                        block_hash: BlockHash::from_str(&tx.blockhash)
+                                        time: blocktime,
+                                        block_hash: BlockHash::from_str(blockhash)
                                             .expect("blockhash sould deserialize"),
                                     })
                                 };
