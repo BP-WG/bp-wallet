@@ -368,7 +368,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     });
                 let coins: Vec<_> = match total_amount {
                     Ok(sats) if sats > Sats::ZERO => {
-                        runtime.wallet().coinselect(sats, coinselect::all).collect()
+                        runtime.wallet().coinselect(sats + *fee, coinselect::all).collect()
                     }
                     _ => {
                         eprintln!(
