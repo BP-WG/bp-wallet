@@ -359,7 +359,6 @@ impl WalletUtxo {
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct WalletAddr<T = Sats> {
-    #[cfg_attr(feature = "serde", serde(flatten))]
     pub terminal: Terminal,
     pub addr: Address,
     pub used: u32,
