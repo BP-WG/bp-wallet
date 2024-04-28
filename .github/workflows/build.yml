@@ -32,7 +32,9 @@ jobs:
         feature:
           - serde
           - esplora
+          - electrum
           - fs
+          - cli
           - serde,esplora
     steps:
       - uses: actions/checkout@v2

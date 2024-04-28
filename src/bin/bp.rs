@@ -26,7 +26,8 @@ extern crate serde_crate as serde;
 
 use std::process::ExitCode;
 
-use bp_util::{Args, BpCommand, Config, DescrStdOpts, Exec, LogLevel, RuntimeError};
+use bpwallet::cli::{Args, BpCommand, Config, DescrStdOpts, Exec, LogLevel};
+use bpwallet::RuntimeError;
 use clap::Parser;
 
 fn main() -> ExitCode {

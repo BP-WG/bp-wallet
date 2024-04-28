@@ -23,13 +23,14 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bpwallet::{AnyIndexer, Runtime};
 use clap::Subcommand;
 use descriptors::Descriptor;
 use strict_encoding::Ident;
 
-use crate::opts::{DescrStdOpts, DescriptorOpts, DEFAULT_ELECTRUM};
-use crate::{Config, GeneralOpts, ResolverOpt, RuntimeError, WalletOpts};
+use crate::cli::{
+    Config, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DEFAULT_ELECTRUM,
+};
+use crate::{AnyIndexer, Runtime, RuntimeError};
 
 /// Command-line arguments
 #[derive(Parser)]

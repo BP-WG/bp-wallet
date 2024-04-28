@@ -24,6 +24,12 @@
 extern crate amplify;
 #[cfg(feature = "serde")]
 extern crate serde_crate as serde;
+#[macro_use]
+#[cfg(feature = "clap")]
+extern crate clap;
+#[macro_use]
+#[cfg(feature = "log")]
+extern crate log;
 
 mod indexers;
 #[cfg(feature = "fs")]
@@ -34,6 +40,8 @@ mod rows;
 mod wallet;
 mod layer2;
 pub mod coinselect;
+#[cfg(feature = "cli")]
+pub mod cli;
 
 pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,

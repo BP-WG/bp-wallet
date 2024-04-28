@@ -273,6 +273,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
         self.cache.utxo(outpoint).ok().map(WalletUtxo::into_utxo)
     }
 
+    fn network(&self) -> Network { self.descr.network }
+
     fn next_derivation_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
         let keychain = keychain.into();
         let mut idx = self.last_published_derivation_index(keychain);

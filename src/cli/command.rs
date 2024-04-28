@@ -27,12 +27,11 @@ use std::process::exit;
 
 use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
-use bpwallet::{coinselect, OpType, StoreError, WalletUtxo};
 use psbt::{Payment, PsbtConstructor, PsbtVer};
 use strict_encoding::Ident;
 
-use crate::opts::DescriptorOpts;
-use crate::{Args, Config, Exec, RuntimeError, WalletAddr};
+use crate::cli::{Args, Config, DescriptorOpts, Exec};
+use crate::{coinselect, OpType, RuntimeError, StoreError, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
