@@ -33,7 +33,6 @@ mod data;
 mod rows;
 mod wallet;
 mod layer2;
-mod payments;
 pub mod coinselect;
 
 pub use data::{
@@ -46,7 +45,6 @@ pub use indexers::Indexer;
 pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
 };
-pub use payments::{Amount, Beneficiary, ConstructionError, PsbtMeta, TxParams};
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 #[cfg(feature = "fs")]
 pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};

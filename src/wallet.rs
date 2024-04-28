@@ -26,10 +26,10 @@ use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref, DerefMut};
 
 use bpstd::{
-    Address, AddressNetwork, DerivedAddr, Idx, IdxBase, Keychain, Network, NormalIndex, Outpoint,
-    Sats, Txid, Vout,
+    Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
+    Outpoint, Sats, Txid, Vout,
 };
-use descriptors::Descriptor;
+use psbt::{PsbtConstructor, Utxo};
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
@@ -43,7 +43,7 @@ pub enum NonWalletItem {
     NonWalletTx(Txid),
     /// transaction {0} doesn't contains output number {1}.
     NoOutput(Txid, Vout),
-    /// transaction output {0} doesn't belongs to the wallet.
+    /// transaction output {0} doesn't belong to the wallet.
     NonWalletUtxo(Outpoint),
 }
 
@@ -263,7 +263,29 @@ impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for Wallet<K, D, L2> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.descr }
 }
 
-impl<K, D: Descriptor<K>> Wallet<K, D, NoLayer2> {
+impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
+    type Key = K;
+    type Descr = D;
+
+    fn descriptor(&self) -> &D { &self.descr.generator }
+
+    fn utxo(&self, outpoint: Outpoint) -> Option<Utxo> {
+        self.cache.utxo(outpoint).ok().map(WalletUtxo::into_utxo)
+    }
+
+    fn next_derivation_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
+        let keychain = keychain.into();
+        let mut idx = self.last_published_derivation_index(keychain);
+        let last_index = self.data.last_used.entry(keychain).or_default();
+        idx = cmp::max(*last_index, idx);
+        if shift {
+            *last_index = idx.saturating_add(1u32);
+        }
+        idx
+    }
+}
+
+impl<K, D: Descriptor<K>> Wallet<K, D> {
     pub fn new_standard(descr: D, network: Network) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
@@ -353,21 +375,6 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         cmp::max(last_index, self.last_published_derivation_index(keychain))
     }
 
-    pub fn next_derivation_index(
-        &mut self,
-        keychain: impl Into<Keychain>,
-        shift: bool,
-    ) -> NormalIndex {
-        let keychain = keychain.into();
-        let mut idx = self.last_published_derivation_index(keychain);
-        let last_index = self.data.last_used.entry(keychain).or_default();
-        idx = cmp::max(*last_index, idx);
-        if shift {
-            *last_index = idx.saturating_add(1u32);
-        }
-        idx
-    }
-
     pub fn next_address(&mut self, keychain: impl Into<Keychain>, shift: bool) -> Address {
         let keychain = keychain.into();
         let index = self.next_derivation_index(keychain, shift);
@@ -405,10 +412,6 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     #[inline]
     pub fn history(&self) -> impl Iterator<Item = TxRow<<L2::Cache as Layer2Cache>::Tx>> + '_ {
         self.cache.history()
-    }
-
-    pub fn utxo(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
-        self.cache.utxo(outpoint)
     }
 
     pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.all_utxos() }

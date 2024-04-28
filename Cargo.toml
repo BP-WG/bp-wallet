@@ -69,6 +69,8 @@ strict_encoding = { git = "https://github.com/strict-types/strict-encoding", bra
 strict_types = { git = "https://github.com/strict-types/strict-types", branch = "develop" }
 commit_verify = { git = "https://github.com/LNP-BP/client_side_validation", branch = "develop" }
 bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
-bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
-psbt = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
-descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "v0.11" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }

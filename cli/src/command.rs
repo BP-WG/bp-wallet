@@ -25,9 +25,10 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
+use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
-use bpwallet::{coinselect, Amount, Beneficiary, OpType, StoreError, TxParams, WalletUtxo};
-use psbt::PsbtVer;
+use bpwallet::{coinselect, OpType, StoreError, WalletUtxo};
+use psbt::{Payment, PsbtConstructor, PsbtVer};
 use strict_encoding::Ident;
 
 use crate::opts::DescriptorOpts;
@@ -363,8 +364,8 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 // Do coin selection
                 let total_amount =
                     beneficiaries.iter().try_fold(Sats::ZERO, |sats, b| match b.amount {
-                        Amount::Max => Err(()),
-                        Amount::Fixed(s) => sats.checked_add(s).ok_or(()),
+                        Payment::Max => Err(()),
+                        Payment::Fixed(s) => sats.checked_add(s).ok_or(()),
                     });
                 let coins: Vec<_> = match total_amount {
                     Ok(sats) if sats > Sats::ZERO => {

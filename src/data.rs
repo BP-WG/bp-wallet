@@ -31,7 +31,7 @@ use bpstd::{
     Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Sats,
     ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
 };
-use psbt::Prevout;
+use psbt::{Prevout, Utxo};
 
 pub type BlockHeight = NonZeroU32;
 
@@ -348,8 +348,14 @@ pub struct WalletUtxo {
 impl WalletUtxo {
     #[inline]
     pub fn to_prevout(&self) -> Prevout { Prevout::new(self.outpoint, self.value) }
-    #[inline]
     pub fn into_outpoint(self) -> Outpoint { self.outpoint }
+    pub fn into_utxo(self) -> Utxo {
+        Utxo {
+            outpoint: self.outpoint,
+            value: self.value,
+            terminal: self.terminal,
+        }
+    }
 }
 
 #[cfg_attr(
