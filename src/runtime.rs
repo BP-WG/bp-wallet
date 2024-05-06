@@ -28,9 +28,10 @@ use std::{error, io};
 use amplify::IoError;
 use bpstd::{Network, XpubDerivable};
 use descriptors::{Descriptor, StdDescr};
+use psbt::ConstructionError;
 
 use crate::wallet::fs::Warning;
-use crate::{ConstructionError, Indexer, Layer2, NoLayer2, Wallet};
+use crate::{Indexer, Layer2, NoLayer2, Wallet};
 
 #[derive(Debug, Display, Error, From)]
 #[non_exhaustive]

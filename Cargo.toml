@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "cli"]
+members = ["."]
 exclude = ["convert"]
 
 [workspace.package]
@@ -15,7 +15,6 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.6.0"
-strict_encoding = "2.7.0-beta.1"
 bp-std = "0.11.0-beta.5"
 psbt = "0.11.0-beta.5"
 descriptors = "0.11.0-beta.5"
@@ -23,11 +22,8 @@ bp-esplora = "0.11.0-beta.5"
 bp-electrum = "0.11.0-beta.5"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_json = "1.0.114"
-serde_with = "3.4.0"
 serde_yaml = "0.9.19"
 toml = "0.8.2"
-cfg_eval = "0.1.2"
-log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
 
 [package]
 name = "bp-wallet"
@@ -43,11 +39,16 @@ rust-version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "bp"
+path = "src/bin/bp.rs"
+
 [lib]
 name = "bpwallet"
 
 [dependencies]
 amplify = { workspace = true }
+strict_encoding = "2.7.0-beta.3"
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 bp-electrum = { workspace = true, optional = true }
@@ -55,15 +56,33 @@ psbt = { workspace = true }
 descriptors = { workspace = true }
 serde_crate = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
-serde_with = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
-cfg_eval = { workspace = true, optional = true }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+
+# Cli-only:
+base64 = { version = "0.21.5", optional = true }
+env_logger = { version = "0.10.0", optional = true }
+clap = { version = "4.4.8", features = ["derive", "env"], optional = true }
+shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "esplora", "fs"]
+all = ["electrum", "esplora", "fs", "cli", "clap", "log"]
+cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "log"]
+log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
-serde = ["cfg_eval", "serde_crate", "serde_with", "serde_yaml", "toml", "bp-std/serde"]
+serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
+
+[patch.crates-io]
+strict_encoding = { git = "https://github.com/strict-types/strict-encoding", branch = "develop" }
+strict_types = { git = "https://github.com/strict-types/strict-types", branch = "develop" }
+commit_verify = { git = "https://github.com/LNP-BP/client_side_validation", branch = "develop" }
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }

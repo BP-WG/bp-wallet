@@ -23,13 +23,12 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use bpwallet::{AnyIndexer, Runtime};
 use clap::Subcommand;
 use descriptors::Descriptor;
 use strict_encoding::Ident;
 
-use crate::opts::{DescrStdOpts, DescriptorOpts, DEFAULT_ELECTRUM};
-use crate::{Config, GeneralOpts, ResolverOpt, RuntimeError, WalletOpts};
+use crate::cli::{Config, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts};
+use crate::{AnyIndexer, Runtime, RuntimeError};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -118,12 +117,12 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
 
         if sync || self.wallet.descriptor_opts.is_some() {
             eprint!("Syncing");
-            let indexer = if self.resolver.electrum != DEFAULT_ELECTRUM {
-                AnyIndexer::Electrum(Box::new(electrum::Client::new(&self.resolver.electrum)?))
-            } else {
-                AnyIndexer::Esplora(Box::new(
-                    esplora::Builder::new(&self.resolver.esplora).build_blocking()?,
-                ))
+            let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
+                (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+                (Some(url), None) => {
+                    AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
+                }
+                _ => unreachable!("clap is broken"),
             };
             if let Err(errors) = runtime.sync(&indexer) {
                 eprintln!(" partial, some requests has failed:");

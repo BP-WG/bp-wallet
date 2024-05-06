@@ -20,15 +20,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
-extern crate amplify;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate serde_crate as serde;
-
 mod loglevel;
 mod opts;
 mod args;
@@ -36,7 +27,6 @@ mod config;
 mod command;
 
 pub use args::{Args, Exec};
-pub use bpwallet::*;
 pub use command::{BpCommand, Command};
 pub use config::Config;
 pub use loglevel::LogLevel;

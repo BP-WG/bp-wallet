@@ -24,7 +24,7 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(crate = "serde_crate", rename_all = "camelCase")]
 pub struct Config {
     pub default_wallet: String,

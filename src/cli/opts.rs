@@ -46,30 +46,35 @@ pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
+#[group(args = ["electrum", "esplora"], required = true)]
 pub struct ResolverOpt {
     /// Electrum server to use.
     #[arg(
         conflicts_with = "esplora",
         long,
         global = true,
-        default_value = DEFAULT_ELECTRUM,
+        default_missing_value = DEFAULT_ELECTRUM,
+        num_args = 0..=1,
+        require_equals = true,
         env = "ELECRTUM_SERVER",
         value_hint = ValueHint::Url,
         value_name = "URL"
     )]
-    pub electrum: String,
+    pub electrum: Option<String>,
 
     /// Esplora server to use.
     #[arg(
         conflicts_with = "electrum",
         long,
         global = true,
-        default_value = DEFAULT_ESPLORA,
+        default_missing_value = DEFAULT_ESPLORA,
+        num_args = 0..=1,
+        require_equals = true,
         env = "ESPLORA_SERVER",
         value_hint = ValueHint::Url,
         value_name = "URL"
     )]
-    pub esplora: String,
+    pub esplora: Option<String>,
 
     #[clap(long, global = true)]
     pub sync: bool,
