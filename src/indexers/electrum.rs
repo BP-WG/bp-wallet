@@ -44,7 +44,7 @@ impl From<VinExtended> for TxCredit {
         let vin = vine.vin;
         let txid = Txid::from_str(&vin.txid).expect("input txid should deserialize");
         TxCredit {
-            outpoint: Outpoint::new(txid, vin.vout as u32),
+            outpoint: Outpoint::new(txid, vin.vout),
             sequence: SeqNo::from_consensus_u32(vin.sequence),
             coinbase: txid.is_coinbase(),
             script_sig: vine.sig_script,
@@ -53,12 +53,6 @@ impl From<VinExtended> for TxCredit {
             payer: Party::Unknown(vine.payer),
         }
     }
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct ScriptSig {
-    hex: String,
 }
 
 #[derive(Deserialize)]
@@ -70,10 +64,9 @@ struct Pubkey {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(crate = "serde_crate", rename_all = "camelCase")]
 struct Vin {
-    script_sig: ScriptSig,
     sequence: u32,
     txid: String,
-    vout: u64,
+    vout: u32,
 }
 
 #[derive(Debug)]
@@ -188,7 +181,10 @@ impl Indexer for Client {
                                         let input = bp_tx
                                             .inputs
                                             .iter()
-                                            .find(|i| i.sig_script.to_hex() == v.script_sig.hex)
+                                            .find(|i| {
+                                                i.prev_output.txid.to_string() == v.txid
+                                                    && i.prev_output.vout.to_u32() == v.vout
+                                            })
                                             .expect("input should be present");
                                         let witness = input.witness.clone();
                                         // get value from previous output tx
