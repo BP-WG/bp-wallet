@@ -339,7 +339,7 @@ name = "bp-wallet"
 version = "0.11.0-beta.5"
 dependencies = [
  "amplify",
- "base64 0.21.7",
+ "base64 0.22.0",
  "bp-electrum",
  "bp-esplora",
  "bp-std",
