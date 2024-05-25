@@ -23,7 +23,7 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bpstd::{Address, LockTime, Outpoint, SeqNo, Witness};
+use bpstd::{Address, LockTime, Outpoint, ScriptPubkey, SeqNo, Witness};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
@@ -97,6 +97,29 @@ impl From<esplora::Tx> for WalletTx {
     }
 }
 
+fn get_scripthash_txs_all(
+    client: &BlockingClient,
+    script: &ScriptPubkey,
+) -> Result<Vec<esplora::Tx>, Error> {
+    const PAGE_SIZE: usize = 25;
+    let mut res = Vec::new();
+    let mut last_seen = None;
+    loop {
+        let r = client.scripthash_txs(script, last_seen)?;
+        match &r[..] {
+            [a @ .., esplora::Tx { txid, .. }] if a.len() >= PAGE_SIZE - 1 => {
+                last_seen = Some(*txid);
+                res.extend(r);
+            }
+            _ => {
+                res.extend(r);
+                break;
+            }
+        }
+    }
+    Ok(res)
+}
+
 impl Indexer for BlockingClient {
     type Error = Error;
 
@@ -116,7 +139,7 @@ impl Indexer for BlockingClient {
 
                 eprint!(".");
                 let mut txids = Vec::new();
-                match self.scripthash_txs(&script, None) {
+                match get_scripthash_txs_all(self, &script) {
                     Err(err) => {
                         errors.push(err);
                         break;
