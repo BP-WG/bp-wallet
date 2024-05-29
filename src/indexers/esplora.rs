@@ -111,31 +111,35 @@ impl Indexer for BlockingClient {
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
             eprint!(" keychain {keychain} ");
-            for derive in descriptor.addresses(keychain) {
-                let script = derive.addr.script_pubkey();
-
+            'loop_derive: for derive in descriptor.addresses(keychain) {
                 eprint!(".");
                 let mut txids = Vec::new();
-                match self.scripthash_txs(&script, None) {
-                    Err(err) => {
-                        errors.push(err);
-                        break;
-                    }
-                    Ok(txes) if txes.is_empty() => {
-                        empty_count += 1;
-                        if empty_count >= BATCH_SIZE as usize {
-                            break;
+                let script = derive.addr.script_pubkey();
+                'loop_txs: loop {
+                    match self.scripthash_txs(&script, None) {
+                        Err(err) => {
+                            errors.push(err);
+                            break 'loop_derive;
+                        }
+                        Ok(txes) if txes.is_empty() => {
+                            empty_count += 1;
+                            if empty_count >= BATCH_SIZE as usize {
+                                break 'loop_derive;
+                            }
+                        }
+                        Ok(txes) => {
+                            empty_count = 0;
+                            let txes_len = txes.len();
+                            txids.extend(txes.iter().map(|tx| tx.txid));
+                            cache
+                                .tx
+                                .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
+                            if txes_len < 25 {
+                                break 'loop_txs;
+                            }
                         }
                     }
-                    Ok(txes) => {
-                        empty_count = 0;
-                        txids = txes.iter().map(|tx| tx.txid).collect();
-                        cache
-                            .tx
-                            .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
-                    }
                 }
-
                 let wallet_addr = WalletAddr::<i64>::from(derive);
                 address_index.insert(script, (wallet_addr, txids));
             }
