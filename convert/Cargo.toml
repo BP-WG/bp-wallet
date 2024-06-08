@@ -1,6 +1,8 @@
+[workspace]
+
 [package]
 name = "bp-convert"
-version = "0.11.0"
+version = "0.11.0-beta.6"
 description = "Convertor between bp-wallet and rust-bitcoin data types"
 keywords = ["bitcoin", "wallet"]
 categories = ["cryptography::cryptocurrencies"]
@@ -17,9 +19,6 @@ name = "bconv"
 
 [dependencies]
 amplify = "4.0.0"
-secp256k1 = "0.28.0"
-bitcoin = "0.31.0"
-bp-wallet = { path = ".." }
-
-[patch.crates-io]
-bp-primitives = { git = "https://github.com/BP-WG/bp-core", branch = "primitives" }
+secp256k1 = "0.29.0"
+bitcoin = "0.32.2"
+bp-std = "0.11.0-beta.6"

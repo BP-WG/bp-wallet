@@ -28,12 +28,12 @@ pub trait Convertible {
     fn convert(&self) -> Self::Target;
 }
 
-impl Convertible for bp::Txid {
+impl Convertible for bpstd::Txid {
     type Target = bitcoin::Txid;
     fn convert(&self) -> Self::Target { Self::Target::from_byte_array(self.to_raw_array()) }
 }
 
 impl Convertible for bitcoin::Txid {
-    type Target = bp::Txid;
+    type Target = bpstd::Txid;
     fn convert(&self) -> Self::Target { Self::Target::from_raw_array(self.to_byte_array()) }
 }
