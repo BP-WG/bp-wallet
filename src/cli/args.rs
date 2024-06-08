@@ -22,6 +22,7 @@
 
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::process::exit;
 
 use clap::Subcommand;
 use descriptors::Descriptor;
@@ -47,6 +48,9 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStd
     #[command(flatten)]
     pub resolver: ResolverOpt,
 
+    #[clap(long, global = true)]
+    pub sync: bool,
+
     #[command(flatten)]
     pub general: GeneralOpts,
 
@@ -61,6 +65,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             verbose: self.verbose.clone(),
             wallet: self.wallet.clone(),
             resolver: self.resolver.clone(),
+            sync: self.sync,
             general: self.general.clone(),
             command: cmd.clone(),
         }
@@ -103,7 +108,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             eprint!(" from wallet {wallet_name} ... ");
             Runtime::load_standard(self.general.wallet_dir(wallet_name))?
         };
-        let mut sync = self.resolver.sync;
+        let mut sync = self.sync;
         if runtime.warnings().is_empty() {
             eprintln!("success");
         } else {
@@ -122,7 +127,13 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                 (Some(url), None) => {
                     AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
                 }
-                _ => unreachable!("clap is broken"),
+                _ => {
+                    eprintln!(
+                        " - error: no blockchain indexer specified; use either --esplora or \
+                         --electrum argument"
+                    );
+                    exit(1);
+                }
             };
             if let Err(errors) = runtime.sync(&indexer) {
                 eprintln!(" partial, some requests has failed:");

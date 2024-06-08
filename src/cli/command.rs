@@ -262,7 +262,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     addr: false,
                     utxo: false,
                 };
-                self.resolver.sync = false;
+                self.sync = false;
                 self.exec(config, name)?;
             }
             BpCommand::Balance {
@@ -281,7 +281,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     addr: false,
                     utxo: false,
                 };
-                self.resolver.sync = false;
+                self.sync = false;
                 self.exec(config, name)?;
             }
             BpCommand::Balance {
@@ -301,7 +301,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     addr: false,
                     utxo: false,
                 };
-                self.resolver.sync = false;
+                self.sync = false;
                 self.exec(config, name)?;
             }
             BpCommand::History { txid, details } => {

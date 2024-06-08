@@ -46,7 +46,7 @@ pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
-#[group(args = ["electrum", "esplora"], required = true)]
+#[group(args = ["electrum", "esplora"])]
 pub struct ResolverOpt {
     /// Electrum server to use.
     #[arg(
@@ -75,9 +75,6 @@ pub struct ResolverOpt {
         value_name = "URL"
     )]
     pub esplora: Option<String>,
-
-    #[clap(long, global = true)]
-    pub sync: bool,
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
