@@ -342,12 +342,9 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         }
     }
 
-    pub fn detach(self) -> (
-        WalletDescr<K, D, L2::Descr>,
-        WalletData<L2::Data>,
-        WalletCache<L2::Cache>,
-        L2,
-    ) {
+    pub fn detach(
+        self,
+    ) -> (WalletDescr<K, D, L2::Descr>, WalletData<L2::Data>, WalletCache<L2::Cache>, L2) {
         (self.descr, self.data, self.cache, self.layer2)
     }
 
