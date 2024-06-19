@@ -39,7 +39,7 @@ use crate::{
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
 #[display(doc_comments)]
 pub enum NonWalletItem {
-    /// transaction {0} is now known to the wallet.
+    /// transaction {0} is not known to the wallet.
     NonWalletTx(Txid),
     /// transaction {0} doesn't contains output number {1}.
     NoOutput(Txid, Vout),
