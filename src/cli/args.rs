@@ -29,7 +29,7 @@ use descriptors::Descriptor;
 use strict_encoding::Ident;
 
 use crate::cli::{Config, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts};
-use crate::{AnyIndexer, Runtime, RuntimeError};
+use crate::{AnyIndexer, StoredWallet, WalletError};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -89,15 +89,16 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
-    pub fn bp_runtime<D: Descriptor>(&self, conf: &Config) -> Result<Runtime<D>, RuntimeError>
+    pub fn bp_wallet<D: Descriptor>(&self, conf: &Config) -> Result<StoredWallet<D>, WalletError>
     where for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de> {
         eprint!("Loading descriptor");
-        let mut runtime: Runtime<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor() {
+        let mut runtime: StoredWallet<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor()
+        {
             eprint!(" from command-line argument ... ");
-            Runtime::new_standard(d.into(), self.general.network)
+            StoredWallet::new_standard(d.into(), self.general.network)
         } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
             eprint!(" from specified wallet directory ... ");
-            Runtime::load_standard(wallet_path)?
+            StoredWallet::load_standard(wallet_path)?
         } else {
             let wallet_name = self
                 .wallet
@@ -106,7 +107,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                 .map(Ident::to_string)
                 .unwrap_or(conf.default_wallet.clone());
             eprint!(" from wallet {wallet_name} ... ");
-            Runtime::load_standard(self.general.wallet_dir(wallet_name))?
+            StoredWallet::load_standard(self.general.wallet_dir(wallet_name))?
         };
         let mut sync = self.sync;
         if runtime.warnings().is_empty() {
