@@ -31,7 +31,7 @@ use psbt::{Payment, PsbtConstructor, PsbtVer};
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
-use crate::{coinselect, OpType, RuntimeError, StoreError, WalletAddr, WalletUtxo};
+use crate::{coinselect, OpType, StoreError, WalletAddr, WalletError, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
@@ -132,7 +132,7 @@ pub enum BpCommand {
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
-    type Error = RuntimeError;
+    type Error = WalletError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
     fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
@@ -181,7 +181,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     eprintln!("Error: you must provide an argument specifying wallet descriptor");
                     exit(1);
                 }
-                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let mut runtime = self.bp_wallet::<O::Descr>(&config)?;
                 let name = name.to_string();
                 print!("Saving the wallet as '{name}' ... ");
                 let dir = self.general.wallet_dir(&name);
@@ -199,7 +199,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 dry_run: no_shift,
                 count: no,
             } => {
-                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let mut runtime = self.bp_wallet::<O::Descr>(&config)?;
                 let keychain = match (change, keychain) {
                     (false, None) => runtime.default_keychain(),
                     (true, None) => (*change as u8).into(),
@@ -229,7 +229,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
 }
 
 impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
-    type Error = RuntimeError;
+    type Error = WalletError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
     fn exec(mut self, config: Config, name: &'static str) -> Result<(), Self::Error> {
@@ -239,14 +239,14 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 addr: false,
                 utxo: false,
             } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let runtime = self.bp_wallet::<O::Descr>(&config)?;
                 println!("\nWallet total balance: {} ṩ", runtime.balance());
             }
             BpCommand::Balance {
                 addr: true,
                 utxo: false,
             } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let runtime = self.bp_wallet::<O::Descr>(&config)?;
                 println!("\nTerm.\t{:62}\t# used\tVol., ṩ\tBalance, ṩ", "Address");
                 for info in runtime.address_balance() {
                     let WalletAddr {
@@ -269,7 +269,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 addr: false,
                 utxo: true,
             } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let runtime = self.bp_wallet::<O::Descr>(&config)?;
                 println!("\nHeight\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
                 for row in runtime.coins() {
                     println!(
@@ -288,7 +288,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 addr: true,
                 utxo: true,
             } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let runtime = self.bp_wallet::<O::Descr>(&config)?;
                 println!("\nHeight\t{:>12}\t{:68}", "Amount, ṩ", "Outpoint");
                 for (derived_addr, utxos) in runtime.address_coins() {
                     println!("{}\t{}", derived_addr.addr, derived_addr.terminal);
@@ -305,7 +305,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 self.exec(config, name)?;
             }
             BpCommand::History { txid, details } => {
-                let runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let runtime = self.bp_wallet::<O::Descr>(&config)?;
                 println!(
                     "\nHeight\t{:<1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
                     "Txid",
@@ -358,7 +358,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 fee,
                 psbt: psbt_file,
             } => {
-                let mut runtime = self.bp_runtime::<O::Descr>(&config)?;
+                let mut runtime = self.bp_wallet::<O::Descr>(&config)?;
 
                 // Do coin selection
                 let total_amount =

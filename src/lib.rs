@@ -33,7 +33,7 @@ extern crate log;
 
 mod indexers;
 #[cfg(feature = "fs")]
-mod runtime;
+mod store;
 mod util;
 mod data;
 mod rows;
@@ -55,6 +55,6 @@ pub use layer2::{
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 #[cfg(feature = "fs")]
-pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
+pub use store::{LoadError, StoreError, StoredWallet, WalletError};
 pub use util::MayError;
 pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
