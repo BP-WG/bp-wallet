@@ -20,13 +20,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use amplify::{Display, IoError};
 use bip39::Mnemonic;
+use bpstd::signers::TestSigner;
 use bpstd::{HardenedIndex, XprivAccount};
 use clap::Subcommand;
 use colored::Colorize;
+use psbt::Psbt;
 
 use crate::hot::{calculate_entropy, DataError, SecureIo, Seed, SeedType};
 use crate::Bip43;
@@ -143,9 +146,11 @@ impl HotArgs {
                 file,
                 print_private,
             } => info(&file, print_private)?,
-            HotCommand::Sign { .. } => {
-                todo!()
-            }
+            HotCommand::Sign {
+                no_password,
+                psbt_file,
+                signing_account,
+            } => sign(&psbt_file, &signing_account, no_password)?,
         };
         Ok(())
     }
@@ -263,5 +268,30 @@ fn derive(
 
     info_account(account, false);
 
+    Ok(())
+}
+
+fn sign(psbt_file: &Path, account_file: &Path, no_password: bool) -> Result<(), DataError> {
+    let password = if no_password { s!("") } else { rpassword::prompt_password("Password: ")? };
+    let account = XprivAccount::read(account_file, &password)?;
+
+    let data = fs::read(psbt_file)?;
+    let mut psbt = Psbt::deserialize(&data)?;
+
+    eprintln!("PSBT version: {:#}", psbt.version);
+    eprintln!("Transaction id: {}", psbt.txid());
+    eprintln!("Signing key: {}", account.to_xpub_account());
+    eprintln!("Signing using testnet signer");
+
+    let signer = TestSigner::new(&account);
+    let sig_count = psbt.sign(&signer)?;
+
+    fs::write(psbt_file, psbt.serialize(psbt.version))?;
+    eprintln!(
+        "Done {} signatures, saved to {}\n",
+        sig_count.to_string().bright_green(),
+        psbt_file.display()
+    );
+    println!("\n{}\n", psbt);
     Ok(())
 }
