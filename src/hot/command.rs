@@ -28,7 +28,7 @@ use bpstd::{HardenedIndex, XprivAccount};
 use clap::Subcommand;
 use colored::Colorize;
 
-use crate::hot::{DataError, SecureIo, Seed, SeedType};
+use crate::hot::{calculate_entropy, DataError, SecureIo, Seed, SeedType};
 use crate::Bip43;
 
 /// Command-line arguments
@@ -60,6 +60,11 @@ pub enum HotCommand {
     /// signing account
     #[display("derive")]
     Derive {
+        /// Do not ask for a password and default to an empty-line password. For testing purposes
+        /// only.
+        #[clap(short = 'N', long, conflicts_with = "mainnet")]
+        no_password: bool,
+
         /// Seed file containing extended master key, created previously with `seed` command.
         seed_file: PathBuf,
 
@@ -109,6 +114,11 @@ pub enum HotCommand {
     /// Sign PSBT with the provided account keys
     #[display("sign")]
     Sign {
+        /// Do not ask for a password and default to an empty-line password. For testing purposes
+        /// only.
+        #[clap(short = 'N', long)]
+        no_password: bool,
+
         /// File containing PSBT
         psbt_file: PathBuf,
 
@@ -122,12 +132,13 @@ impl HotArgs {
         match self.command {
             HotCommand::Seed { output_file } => seed(&output_file)?,
             HotCommand::Derive {
+                no_password,
                 seed_file,
                 scheme,
                 account,
                 mainnet,
                 output_file,
-            } => derive(&seed_file, scheme, account, mainnet, &output_file)?,
+            } => derive(&seed_file, scheme, account, mainnet, &output_file, no_password)?,
             HotCommand::Info {
                 file,
                 print_private,
@@ -142,7 +153,16 @@ impl HotArgs {
 
 fn seed(output_file: &Path) -> Result<(), IoError> {
     let seed = Seed::random(SeedType::Bit128);
-    let seed_password = rpassword::prompt_password("Seed password")?;
+    let seed_password = loop {
+        let seed_password = rpassword::prompt_password("Seed password: ")?;
+        let entropy = calculate_entropy(&seed_password);
+        eprintln!("Password entropy: ~{entropy:.0} bits");
+        if !seed_password.is_empty() && entropy >= 64.0 {
+            break seed_password;
+        }
+        eprintln!("Entropy is too low, please try with a different password")
+    };
+
     seed.write(output_file, &seed_password)?;
 
     info_seed(seed, false);
@@ -151,7 +171,7 @@ fn seed(output_file: &Path) -> Result<(), IoError> {
 }
 
 fn info(file: &Path, print_private: bool) -> Result<(), IoError> {
-    let password = rpassword::prompt_password("File password")?;
+    let password = rpassword::prompt_password("File password: ")?;
     if let Ok(seed) = Seed::read(file, &password) {
         info_seed(seed, print_private)
     } else if let Ok(account) = XprivAccount::read(file, &password) {
@@ -214,9 +234,27 @@ fn derive(
     account: HardenedIndex,
     mainnet: bool,
     output_file: &Path,
+    no_password: bool,
 ) -> Result<(), DataError> {
-    let seed_password = rpassword::prompt_password("Seed password")?;
-    let account_password = rpassword::prompt_password("Account password")?;
+    let seed_password = rpassword::prompt_password("Seed password: ")?;
+
+    let account_password = if !mainnet && no_password {
+        s!("")
+    } else {
+        loop {
+            let account_password = rpassword::prompt_password("Account password: ")?;
+            let entropy = calculate_entropy(&seed_password);
+            eprintln!("Password entropy: ~{entropy:.0} bits");
+            if !account_password.is_empty() && entropy >= 64.0 {
+                break account_password;
+            }
+            if !mainnet {
+                eprintln!("Entropy is too low, but since we are on testnet we accept that");
+                break account_password;
+            }
+            eprintln!("Entropy is too low, please try with a different password")
+        }
+    };
 
     let seed = Seed::read(seed_file, &seed_password)?;
     let account = seed.derive(scheme, !mainnet, account);

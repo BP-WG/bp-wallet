@@ -23,9 +23,11 @@
 mod seed;
 mod command;
 mod signer;
+mod password;
 
 pub use command::{HotArgs, HotCommand};
 pub use io::{decrypt, encrypt, DataError, SecureIo};
+pub use password::calculate_entropy;
 pub use seed::{Seed, SeedType};
 
 mod io {
@@ -35,6 +37,7 @@ mod io {
     use aes_gcm::aead::{Aead, Nonce, OsRng};
     use aes_gcm::{AeadCore, Aes256Gcm, KeyInit};
     use amplify::IoError;
+    use psbt::{PsbtError, SignError};
     use sha2::{Digest, Sha256};
 
     pub fn encrypt(source: Vec<u8>, key: impl AsRef<[u8]>) -> Vec<u8> {
@@ -59,16 +62,21 @@ mod io {
     }
 
     #[derive(Clone, Eq, PartialEq, Debug, Display, Error, From)]
-    #[display(doc_comments)]
+    #[display(inner)]
     pub enum DataError {
         #[from]
         #[from(io::Error)]
-        #[display(inner)]
         Io(IoError),
 
+        #[display("invalid password.")]
         #[from(aes_gcm::Error)]
-        /// invalid password.
         Password,
+
+        #[from]
+        Psbt(PsbtError),
+
+        #[from]
+        Sign(SignError),
     }
 
     pub trait SecureIo {
