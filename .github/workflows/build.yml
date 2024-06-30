@@ -31,6 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         feature:
+          - hot
           - serde
           - esplora
           - electrum

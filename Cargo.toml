@@ -44,6 +44,11 @@ name = "bp"
 path = "src/bin/bp.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "bp-hot"
+path = "src/bin/bp-hot.rs"
+required-features = ["hot"]
+
 [lib]
 name = "bpwallet"
 
@@ -55,11 +60,19 @@ bp-esplora = { workspace = true, optional = true }
 bp-electrum = { workspace = true, optional = true }
 psbt = { workspace = true }
 descriptors = { workspace = true }
+
+sha2 = "0.10.8"
+rand = { version = "0.8.5", optional = true }
+rpassword = { version = "7.3.1", optional = true }
+aes-gcm = { version = "0.10.3", optional = true }
+bip39 = { version = "2.0.0", optional = true }
+
 serde_crate = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+colored = { version = "2", optional = true }
 
 # Cli-only:
 base64 = { version = "0.22.1", optional = true }
@@ -69,10 +82,19 @@ shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "esplora", "fs", "cli", "clap", "log"]
-cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "log"]
+all = ["hot", "electrum", "esplora", "fs", "cli", "clap", "log"]
+hot = ["bp-std/signers", "bip39", "rand", "aes-gcm", "rpassword"]
+cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "log", "colored"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
 esplora = ["bp-esplora"]
 fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
+
+[patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "signer" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
