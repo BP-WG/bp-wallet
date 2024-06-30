@@ -36,7 +36,7 @@ use crate::{Indexer, Layer2, NoLayer2, Wallet};
 #[derive(Debug, Display, Error, From)]
 #[non_exhaustive]
 #[display(inner)]
-pub enum RuntimeError<L2: error::Error = Infallible> {
+pub enum WalletError<L2: error::Error = Infallible> {
     #[from]
     Load(LoadError<L2>),
 
@@ -108,25 +108,25 @@ pub enum StoreError<L2: error::Error = Infallible> {
 }
 
 #[derive(Getters, Debug)]
-pub struct Runtime<D: Descriptor<K> = StdDescr, K = XpubDerivable, L2: Layer2 = NoLayer2> {
+pub struct StoredWallet<D: Descriptor<K> = StdDescr, K = XpubDerivable, L2: Layer2 = NoLayer2> {
     path: Option<PathBuf>,
     #[getter(as_mut)]
     wallet: Wallet<K, D, L2>,
     warnings: Vec<Warning>,
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Deref for Runtime<D, K, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> Deref for StoredWallet<D, K, L2> {
     type Target = Wallet<K, D, L2>;
     fn deref(&self) -> &Self::Target { &self.wallet }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for Runtime<D, K, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> DerefMut for StoredWallet<D, K, L2> {
     fn deref_mut(&mut self) -> &mut Self::Target { &mut self.wallet }
 }
 
-impl<K, D: Descriptor<K>> Runtime<D, K> {
+impl<K, D: Descriptor<K>> StoredWallet<D, K> {
     pub fn new_standard(descr: D, network: Network) -> Self {
-        Runtime {
+        StoredWallet {
             path: None,
             wallet: Wallet::new_standard(descr, network),
             warnings: none!(),
@@ -134,9 +134,9 @@ impl<K, D: Descriptor<K>> Runtime<D, K> {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Runtime<D, K, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> StoredWallet<D, K, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
-        Runtime {
+        StoredWallet {
             path: None,
             wallet: Wallet::new_layer2(descr, l2_descr, layer2, network),
             warnings: none!(),
@@ -163,12 +163,12 @@ impl<K, D: Descriptor<K>, L2: Layer2> Runtime<D, K, L2> {
     pub fn reset_warnings(&mut self) { self.warnings.clear() }
 }
 
-impl<K, D: Descriptor<K>> Runtime<D, K>
+impl<K, D: Descriptor<K>> StoredWallet<D, K>
 where for<'de> D: serde::Serialize + serde::Deserialize<'de>
 {
     pub fn load_standard(path: PathBuf) -> Result<Self, LoadError> {
         let (wallet, warnings) = Wallet::load(&path)?;
-        Ok(Runtime {
+        Ok(StoredWallet {
             path: Some(path.clone()),
             wallet,
             warnings,
@@ -190,7 +190,7 @@ where for<'de> D: serde::Serialize + serde::Deserialize<'de>
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Runtime<D, K, L2>
+impl<K, D: Descriptor<K>, L2: Layer2> StoredWallet<D, K, L2>
 where
     for<'de> D: serde::Serialize + serde::Deserialize<'de>,
     for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
@@ -200,7 +200,7 @@ where
 {
     pub fn load_layer2(path: PathBuf) -> Result<Self, LoadError<L2::LoadError>> {
         let (wallet, warnings) = Wallet::load(&path)?;
-        Ok(Runtime {
+        Ok(StoredWallet {
             path: Some(path.clone()),
             wallet,
             warnings,
