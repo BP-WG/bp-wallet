@@ -42,11 +42,17 @@ mod layer2;
 pub mod coinselect;
 #[cfg(feature = "cli")]
 pub mod cli;
+#[cfg(feature = "hot")]
+pub mod hot;
+mod bip43;
 
+pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
+#[cfg(feature = "hot")]
+pub use hot::{HotArgs, HotCommand, Seed, SeedType};
 #[cfg(any(feature = "electrum", feature = "esplora"))]
 pub use indexers::AnyIndexer;
 pub use indexers::Indexer;
