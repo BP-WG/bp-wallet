@@ -39,13 +39,13 @@ use crate::Bip43;
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[command(author, version, about)]
 pub struct HotArgs {
-    /// Set verbosity level.
+    /// Set verbosity level
     ///
-    /// Can be used multiple times to increase verbosity.
+    /// Can be used multiple times to increase verbosity
     #[clap(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
 
-    /// Command to execute.
+    /// Command to execute
     #[clap(subcommand)]
     pub command: HotCommand,
 }
@@ -64,11 +64,11 @@ pub enum HotCommand {
     #[display("derive")]
     Derive {
         /// Do not ask for a password and default to an empty-line password. For testing purposes
-        /// only.
+        /// only
         #[clap(short = 'N', long, conflicts_with = "mainnet")]
         no_password: bool,
 
-        /// Seed file containing extended master key, created previously with `seed` command.
+        /// Seed file containing extended master key, created previously with `seed` command
         seed_file: PathBuf,
 
         /// Derivation scheme.
@@ -83,14 +83,13 @@ pub enum HotCommand {
 - bip45: used for legacy multisigs (P2SH, not recommended)
 - bip48//1h: used for P2WSH-in-P2SH multisigs (deterministic order)
 - bip48//2h: used for P2WSH multisigs (deterministic order)
-- bip87: used for modern multisigs with descriptors (pre-MuSig)
-- bip43/<purpose>h: any other non-standard purpose field",
+- bip87: used for modern multisigs with descriptors (pre-MuSig)",
             default_value = "bip86"
         )]
         scheme: Bip43,
 
-        /// Account derivation number (should be hardened, i.e. with `h` or `'` suffix).
-        #[clap(short, long, default_value = "0'")]
+        /// Account derivation number (should be hardened, i.e. with `h` suffix)
+        #[clap(short, long, default_value = "0h")]
         account: HardenedIndex,
 
         /// Use the seed for bitcoin mainnet
@@ -101,11 +100,11 @@ pub enum HotCommand {
         output_file: PathBuf,
     },
 
-    /// Print information about seed or the signing account.
+    /// Print information about seed or the signing account
     #[display("info")]
     Info {
         /// File containing either seed information or extended private key for the account,
-        /// previously created with `seed` and `derive` commands.
+        /// previously created with `seed` and `derive` commands
         file: PathBuf,
 
         /// Print private information, including mnemonic, extended private keys and
