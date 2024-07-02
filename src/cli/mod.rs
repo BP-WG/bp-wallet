@@ -27,7 +27,7 @@ mod config;
 mod command;
 
 pub use args::{Args, Exec};
-pub use command::{BpCommand, Command};
+pub use command::{BpCommand, Command, ExecError};
 pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{

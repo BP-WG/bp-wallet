@@ -24,12 +24,16 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::exit;
 
+use bpstd::XpubDerivable;
 use clap::Subcommand;
 use descriptors::Descriptor;
 use strict_encoding::Ident;
 
-use crate::cli::{Config, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts};
-use crate::{AnyIndexer, StoredWallet, WalletError};
+use crate::cli::{
+    Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
+};
+use crate::indexers::AnyIndexerError;
+use crate::{AnyIndexer, MayError, Wallet};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -89,54 +93,15 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
-    pub fn bp_wallet<D: Descriptor>(&self, conf: &Config) -> Result<StoredWallet<D>, WalletError>
-    where for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de> {
-        eprint!("Loading descriptor");
-        let mut runtime: StoredWallet<D> = if let Some(d) = self.wallet.descriptor_opts.descriptor()
-        {
-            eprint!(" from command-line argument ... ");
-            StoredWallet::new_standard(d.into(), self.general.network)
-        } else if let Some(wallet_path) = self.wallet.wallet_path.clone() {
-            eprint!(" from specified wallet directory ... ");
-            StoredWallet::load_standard(wallet_path)?
-        } else {
-            let wallet_name = self
-                .wallet
-                .name
-                .as_ref()
-                .map(Ident::to_string)
-                .unwrap_or(conf.default_wallet.clone());
-            eprint!(" from wallet {wallet_name} ... ");
-            StoredWallet::load_standard(self.general.wallet_dir(wallet_name))?
-        };
-        let mut sync = self.sync;
-        if runtime.warnings().is_empty() {
-            eprintln!("success");
-        } else {
-            eprintln!("complete with warnings:");
-            for warning in runtime.warnings() {
-                eprintln!("- {warning}");
-            }
-            sync = true;
-            runtime.reset_warnings();
-        }
-
-        if sync || self.wallet.descriptor_opts.is_some() {
-            eprint!("Syncing");
-            let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
-                (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
-                (Some(url), None) => {
-                    AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
-                }
-                _ => {
-                    eprintln!(
-                        " - error: no blockchain indexer specified; use either --esplora or \
-                         --electrum argument"
-                    );
-                    exit(1);
-                }
-            };
-            if let Err(errors) = runtime.sync(&indexer) {
+    pub fn bp_wallet<D: Descriptor>(
+        &self,
+        conf: &Config,
+    ) -> Result<Wallet<XpubDerivable, D, AnyIndexer>, ExecError>
+    where
+        for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
+    {
+        fn print_errors(errors: Option<Vec<AnyIndexerError>>) {
+            if let Some(errors) = errors {
                 eprintln!(" partial, some requests has failed:");
                 for err in errors {
                     eprintln!("- {err}");
@@ -144,9 +109,69 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             } else {
                 eprintln!(" success");
             }
-            runtime.try_store()?;
         }
 
-        Ok(runtime)
+        eprint!("Loading descriptor");
+        let mut sync = self.sync || self.wallet.descriptor_opts.is_some();
+
+        let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
+            (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+            (Some(url), None) => {
+                AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
+            }
+            _ if sync => {
+                eprintln!(
+                    " - error: no blockchain indexer specified; use either --esplora or \
+                     --electrum argument"
+                );
+                exit(1);
+            }
+            _ => AnyIndexer::None,
+        };
+
+        let mut wallet: Wallet<XpubDerivable, D, AnyIndexer> =
+            if let Some(d) = self.wallet.descriptor_opts.descriptor() {
+                eprintln!(" from command-line argument");
+                eprint!("Syncing");
+                let MayError {
+                    ok: wallet,
+                    err: errors,
+                } = Wallet::new_layer1(d.into(), self.general.network, indexer);
+                print_errors(errors);
+                wallet
+            } else {
+                let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
+                    eprint!(" from specified wallet directory ... ");
+                    wallet_path
+                } else {
+                    let wallet_name = self
+                        .wallet
+                        .name
+                        .as_ref()
+                        .map(Ident::to_string)
+                        .unwrap_or(conf.default_wallet.clone());
+                    eprint!(" from wallet {wallet_name} ... ");
+                    self.general.wallet_dir(wallet_name)
+                };
+                let (wallet, warnings) = Wallet::load(&path, true, indexer, false)?;
+                if warnings.is_empty() {
+                    eprintln!("success");
+                } else {
+                    eprintln!("complete with warnings:");
+                    for warning in warnings {
+                        eprintln!("- {warning}");
+                    }
+                    sync = true;
+                }
+                wallet
+            };
+
+        if sync {
+            eprint!("Syncing");
+            let MayError { err, .. } = wallet.update();
+            print_errors(err);
+        }
+
+        Ok(wallet)
     }
 }

@@ -32,8 +32,6 @@ extern crate clap;
 extern crate log;
 
 mod indexers;
-#[cfg(feature = "fs")]
-mod store;
 mod util;
 mod data;
 mod rows;
@@ -54,7 +52,7 @@ pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
-#[cfg(feature = "fs")]
-pub use store::{LoadError, StoreError, StoredWallet, WalletError};
 pub use util::MayError;
+#[cfg(feature = "fs")]
+pub use wallet::FsConfig;
 pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
