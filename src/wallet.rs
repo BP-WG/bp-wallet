@@ -260,20 +260,19 @@ pub trait Save {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<K, D: Descriptor<K>, I: Indexer, L2: Layer2 = NoLayer2>
+pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2>
 where Self: Save
 {
     descr: WalletDescr<K, D, L2::Descr>,
     data: WalletData<L2::Data>,
     cache: WalletCache<L2::Cache>,
     layer2: L2,
-    indexer: I,
     #[cfg(feature = "fs")]
     fs: Option<FsConfig>,
     dirty: bool,
 }
 
-impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Deref for Wallet<K, D, I, L2>
+impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2>
 where Self: Save
 {
     type Target = WalletDescr<K, D, L2::Descr>;
@@ -281,7 +280,7 @@ where Self: Save
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> PsbtConstructor for Wallet<K, D, I, L2>
+impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2>
 where Self: Save
 {
     type Key = K;
@@ -308,43 +307,33 @@ where Self: Save
     }
 }
 
-impl<K, D: Descriptor<K>, I: Indexer> Wallet<K, D, I>
+impl<K, D: Descriptor<K>> Wallet<K, D>
 where Self: Save
 {
-    pub fn new_layer1(descr: D, network: Network, indexer: I) -> MayError<Self, Vec<I::Error>> {
-        let mut wallet = Wallet {
+    pub fn new_layer1(descr: D, network: Network) -> Self {
+        Wallet {
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
             cache: WalletCache::new(),
             layer2: None,
-            indexer,
             dirty: false,
             fs: None,
-        };
-        wallet.update().map(|_| wallet)
+        }
     }
 }
 
-impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Wallet<K, D, I, L2>
+impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2>
 where Self: Save
 {
-    pub fn new_layer2(
-        descr: D,
-        l2_descr: L2::Descr,
-        layer2: L2,
-        network: Network,
-        indexer: I,
-    ) -> MayError<Self, Vec<I::Error>> {
-        let mut wallet = Wallet {
+    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
+        Wallet {
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
             data: empty!(),
             cache: WalletCache::new(),
             layer2,
-            indexer,
             dirty: false,
             fs: None,
-        };
-        wallet.update().map(|_| wallet)
+        }
     }
 
     #[cfg(feature = "fs")]
@@ -365,11 +354,11 @@ where Self: Save
         self.set_dirty();
     }
 
-    pub fn update(&mut self) -> MayError<(), Vec<I::Error>> {
+    pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
         // Not yet implemented:
         // self.cache.update::<B, K, D, L2>(&self.descr, &self.indexer)
 
-        WalletCache::with::<_, K, _, L2>(&self.descr, &self.indexer).map(|cache| {
+        WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
             self.cache = cache;
             self.set_dirty();
         })
@@ -547,7 +536,7 @@ pub(crate) mod fs {
         }
     }
 
-    impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Wallet<K, D, I, L2>
+    impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2>
     where
         for<'de> WalletDescr<K, D>: serde::Serialize + serde::Deserialize<'de>,
         for<'de> D: serde::Serialize + serde::Deserialize<'de>,
@@ -559,8 +548,6 @@ pub(crate) mod fs {
         pub fn load(
             path: &Path,
             autosave: bool,
-            indexer: I,
-            update: bool,
         ) -> Result<(Self, Vec<Warning>), LoadError<L2::LoadError>> {
             let mut warnings = Vec::new();
 
@@ -589,23 +576,19 @@ pub(crate) mod fs {
                 autosave,
             });
 
-            let mut wallet = Wallet::<K, D, I, L2> {
+            let wallet = Wallet::<K, D, L2> {
                 descr,
                 data,
                 cache,
                 layer2,
-                indexer,
                 dirty: false,
                 fs,
             };
-            if update {
-                wallet.update();
-            }
             Ok((wallet, warnings))
         }
     }
 
-    impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Save for Wallet<K, D, I, L2>
+    impl<K, D: Descriptor<K>, L2: Layer2> Save for Wallet<K, D, L2>
     where
         for<'de> WalletDescr<K, D>: serde::Serialize + serde::Deserialize<'de>,
         for<'de> D: serde::Serialize + serde::Deserialize<'de>,
@@ -633,8 +616,8 @@ pub(crate) mod fs {
         }
     }
 
-    impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Drop for Wallet<K, D, I, L2>
-    where Wallet<K, D, I, L2>: Save
+    impl<K, D: Descriptor<K>, L2: Layer2> Drop for Wallet<K, D, L2>
+    where Wallet<K, D, L2>: Save
     {
         fn drop(&mut self) {
             if self.dirty && self.fs.as_ref().map(|fs| fs.autosave).unwrap_or_default() {
@@ -645,7 +628,7 @@ pub(crate) mod fs {
 }
 
 #[cfg(not(feature = "fs"))]
-impl<K, D: Descriptor<K>, I: Indexer, L2: Layer2> Save for Wallet<K, D, I, L2> {
+impl<K, D: Descriptor<K>, L2: Layer2> Save for Wallet<K, D, L2> {
     type SaveErr = ();
 
     fn save(&self) -> Result<bool, Self::SaveErr> {

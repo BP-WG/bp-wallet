@@ -32,7 +32,6 @@ use strict_encoding::Ident;
 use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
-use crate::indexers::AnyIndexerError;
 use crate::{AnyIndexer, MayError, Wallet};
 
 /// Command-line arguments
@@ -96,49 +95,18 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn bp_wallet<D: Descriptor>(
         &self,
         conf: &Config,
-    ) -> Result<Wallet<XpubDerivable, D, AnyIndexer>, ExecError>
+    ) -> Result<Wallet<XpubDerivable, D>, ExecError>
     where
         for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
     {
-        fn print_errors(errors: Option<Vec<AnyIndexerError>>) {
-            if let Some(errors) = errors {
-                eprintln!(" partial, some requests has failed:");
-                for err in errors {
-                    eprintln!("- {err}");
-                }
-            } else {
-                eprintln!(" success");
-            }
-        }
-
         eprint!("Loading descriptor");
         let mut sync = self.sync || self.wallet.descriptor_opts.is_some();
 
-        let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
-            (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
-            (Some(url), None) => {
-                AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
-            }
-            _ if sync => {
-                eprintln!(
-                    " - error: no blockchain indexer specified; use either --esplora or \
-                     --electrum argument"
-                );
-                exit(1);
-            }
-            _ => AnyIndexer::None,
-        };
-
-        let mut wallet: Wallet<XpubDerivable, D, AnyIndexer> =
+        let mut wallet: Wallet<XpubDerivable, D> =
             if let Some(d) = self.wallet.descriptor_opts.descriptor() {
                 eprintln!(" from command-line argument");
                 eprint!("Syncing");
-                let MayError {
-                    ok: wallet,
-                    err: errors,
-                } = Wallet::new_layer1(d.into(), self.general.network, indexer);
-                print_errors(errors);
-                wallet
+                Wallet::new_layer1(d.into(), self.general.network)
             } else {
                 let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
                     eprint!(" from specified wallet directory ... ");
@@ -153,7 +121,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                     eprint!(" from wallet {wallet_name} ... ");
                     self.general.wallet_dir(wallet_name)
                 };
-                let (wallet, warnings) = Wallet::load(&path, true, indexer, false)?;
+                let (wallet, warnings) = Wallet::load(&path, true)?;
                 if warnings.is_empty() {
                     eprintln!("success");
                 } else {
@@ -167,9 +135,31 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             };
 
         if sync {
+            let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
+                (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+                (Some(url), None) => {
+                    AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
+                }
+                _ => {
+                    eprintln!(
+                        " - error: no blockchain indexer specified; use either --esplora or \
+                         --electrum argument"
+                    );
+                    exit(1);
+                }
+            };
             eprint!("Syncing");
-            let MayError { err, .. } = wallet.update();
-            print_errors(err);
+            if let MayError {
+                err: Some(errors), ..
+            } = wallet.update(&indexer)
+            {
+                eprintln!(" partial, some requests has failed:");
+                for err in errors {
+                    eprintln!("- {err}");
+                }
+            } else {
+                eprintln!(" success");
+            }
         }
 
         Ok(wallet)

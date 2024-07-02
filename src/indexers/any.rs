@@ -35,7 +35,6 @@ pub enum AnyIndexer {
     #[from]
     /// Esplora indexer
     Esplora(Box<esplora::blocking::BlockingClient>),
-    None,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -74,7 +73,6 @@ impl Indexer for AnyIndexer {
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
                 }
             }
-            _ => unreachable!(),
         }
     }
 
@@ -100,7 +98,6 @@ impl Indexer for AnyIndexer {
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
                 }
             }
-            _ => unreachable!(),
         }
     }
 }
