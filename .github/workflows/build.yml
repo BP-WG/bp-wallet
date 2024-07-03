@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # NOTE: Dont use nix here everything should be based on the ubuntu-latest
+      # NOTE: Don't use nix here: everything should be based on the ubuntu-latest
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
@@ -39,7 +39,7 @@ jobs:
           - serde,esplora
     steps:
       - uses: actions/checkout@v4
-        uses: cachix/install-nix-action@v26
+      - uses: cachix/install-nix-action@v26
       - name: Check feature ${{ matrix.feature }} only
         run: nix develop .#stable -c cargo check --no-default-features --features=${{ matrix.feature }}
       - name: Check feature ${{ matrix.feature }} with defaults
@@ -49,10 +49,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, windows-2019, windows-2022 ]
+        os: [ ubuntu-22.04, ubuntu-24.04, macos-13, macos-latest, windows-2019, windows-latest ]
     steps:
       - uses: actions/checkout@v4
-      # NOTE: Dont use nix in platform checks everything should based on the host system
+      # NOTE: Don't use nix in platform checks: everything should be based on the host system
       - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
