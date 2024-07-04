@@ -117,7 +117,7 @@ pub enum Bip43 {
     ///
     /// `m / purpose'`
     #[display("bip43/{purpose}", alt = "m/{purpose}")]
-    #[clap(skip)]
+    #[cfg_attr(feature = "clap", clap(skip))]
     Bip43 {
         /// Purpose value
         purpose: HardenedIndex,
