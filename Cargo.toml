@@ -9,7 +9,7 @@ categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://lnp-bp.org"
 repository = "https://github.com/BP-WG/bp-wallet"
-rust-version = "1.70.0" # Due to clap
+rust-version = "1.75.0" # Due to bp-std
 edition = "2021"
 license = "Apache-2.0"
 
@@ -47,7 +47,7 @@ required-features = ["cli"]
 [[bin]]
 name = "bp-hot"
 path = "src/bin/bp-hot.rs"
-required-features = ["hot"]
+required-features = ["hot", "cli"]
 
 [lib]
 name = "bpwallet"

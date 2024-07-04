@@ -49,8 +49,10 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
+#[cfg(all(feature = "cli", feature = "hot"))]
+pub use hot::{HotArgs, HotCommand};
 #[cfg(feature = "hot")]
-pub use hot::{HotArgs, HotCommand, Seed, SeedType};
+pub use hot::{Seed, SeedType};
 pub use indexers::Indexer;
 #[cfg(any(feature = "electrum", feature = "esplora"))]
 pub use indexers::{AnyIndexer, AnyIndexerError};

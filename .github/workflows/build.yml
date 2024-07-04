@@ -37,6 +37,7 @@ jobs:
           - electrum
           - fs
           - cli
+          - cli,hot
           - serde,esplora
     steps:
       - uses: actions/checkout@v4
