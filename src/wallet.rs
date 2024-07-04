@@ -20,12 +20,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref, DerefMut};
+#[cfg(feature = "fs")]
 use std::path::PathBuf;
-use std::{cmp, mem};
 
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
@@ -317,6 +318,7 @@ where Self: Save
             cache: WalletCache::new(),
             layer2: None,
             dirty: false,
+            #[cfg(feature = "fs")]
             fs: None,
         }
     }
@@ -332,6 +334,7 @@ where Self: Save
             cache: WalletCache::new(),
             layer2,
             dirty: false,
+            #[cfg(feature = "fs")]
             fs: None,
         }
     }
@@ -342,7 +345,7 @@ where Self: Save
     #[cfg(feature = "fs")]
     pub fn set_fs_config(&mut self, config: FsConfig) -> Result<Option<FsConfig>, fs::StoreError> {
         let mut last = Some(config);
-        mem::swap(&mut self.fs, &mut last);
+        std::mem::swap(&mut self.fs, &mut last);
         self.set_dirty();
         Ok(last)
     }
@@ -629,9 +632,9 @@ pub(crate) mod fs {
 
 #[cfg(not(feature = "fs"))]
 impl<K, D: Descriptor<K>, L2: Layer2> Save for Wallet<K, D, L2> {
-    type SaveErr = ();
+    type SaveErr = std::convert::Infallible;
 
     fn save(&self) -> Result<bool, Self::SaveErr> {
-        // Do nothing
+        panic!("Attempt to save wallet with no file system support during compilation");
     }
 }

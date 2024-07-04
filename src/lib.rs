@@ -45,9 +45,9 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
-#[cfg(any(feature = "electrum", feature = "esplora"))]
-pub use indexers::AnyIndexer;
 pub use indexers::Indexer;
+#[cfg(any(feature = "electrum", feature = "esplora"))]
+pub use indexers::{AnyIndexer, AnyIndexerError};
 pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
 };
