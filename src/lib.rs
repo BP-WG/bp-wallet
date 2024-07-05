@@ -55,4 +55,4 @@ pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 pub use util::MayError;
 #[cfg(feature = "fs")]
 pub use wallet::FsConfig;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+pub use wallet::{Save, Wallet, WalletCache, WalletData, WalletDescr};
