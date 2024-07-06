@@ -350,11 +350,26 @@ where Self: Save
         Ok(last)
     }
 
-    pub fn set_dirty(&mut self) { self.dirty = true; }
+    pub fn set_dirty(&mut self) {
+        self.dirty = true;
+        #[cfg(feature = "fs")]
+        if self.fs.as_ref().map(|fs| fs.autosave).unwrap_or_default() {
+            let _ = self.save();
+        }
+    }
 
     pub fn set_name(&mut self, name: String) {
         self.data.name = name;
         self.set_dirty();
+    }
+
+    pub fn descriptor_mut<R>(
+        &mut self,
+        f: impl FnOnce(&mut WalletDescr<K, D, L2::Descr>) -> R,
+    ) -> R {
+        let res = f(&mut self.descr);
+        self.set_dirty();
+        res
     }
 
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
