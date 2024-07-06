@@ -470,7 +470,7 @@ where Self: Save
 }
 
 #[cfg(feature = "fs")]
-pub(crate) mod fs {
+pub mod fs {
     use std::convert::Infallible;
     use std::error::Error;
     use std::path::{Path, PathBuf};
