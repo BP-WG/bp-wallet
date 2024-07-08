@@ -34,7 +34,7 @@ use strict_encoding::Ident;
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::wallet::fs::{LoadError, StoreError};
 use crate::wallet::Save;
-use crate::{coinselect, OpType, WalletAddr, WalletUtxo};
+use crate::{coinselect, FsConfig, OpType, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
@@ -217,6 +217,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 print!("Saving the wallet as '{name}' ... ");
                 let mut wallet = self.bp_wallet::<O::Descr>(&config)?;
                 let name = name.to_string();
+                wallet.set_fs_config(FsConfig {
+                    path: self.general.wallet_dir(&name),
+                    autosave: false,
+                })?;
                 wallet.set_name(name);
                 if let Err(err) = wallet.save() {
                     println!("error: {err}");
