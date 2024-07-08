@@ -44,9 +44,10 @@ pub const DATA_DIR: &str = ".";
 
 pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
+pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/testnet/api";
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
-#[group(args = ["electrum", "esplora"])]
+#[group(args = ["electrum", "esplora", "mempool"])]
 pub struct ResolverOpt {
     /// Electrum server to use.
     #[arg(
@@ -75,6 +76,20 @@ pub struct ResolverOpt {
         value_name = "URL"
     )]
     pub esplora: Option<String>,
+
+    /// mempool server to use.
+    #[arg(
+        conflicts_with = "electrum",
+        long,
+        global = true,
+        default_missing_value = DEFAULT_MEMPOOL,
+        num_args = 0..=1,
+        require_equals = true,
+        env = "MEMPOOL_SERVER",
+        value_hint = ValueHint::Url,
+        value_name = "URL"
+    )]
+    pub mempool: Option<String>,
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {

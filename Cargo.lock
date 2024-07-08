@@ -290,7 +290,21 @@ dependencies = [
  "amplify",
  "bitcoin_hashes",
  "bp-consensus",
- "bp-invoice",
+ "bp-invoice 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "commit_verify",
+ "indexmap 2.2.6",
+ "serde",
+]
+
+[[package]]
+name = "bp-derive"
+version = "0.11.0-beta.6"
+source = "git+https://github.com/will-bitlight/bp-std.git?branch=testnet4#cbadb4ded90ffa26ed68c8b97d5c6018f3828520"
+dependencies = [
+ "amplify",
+ "bitcoin_hashes",
+ "bp-consensus",
+ "bp-invoice 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "commit_verify",
  "indexmap 2.2.6",
  "serde",
@@ -303,7 +317,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21146e28b615c9b6f55b4af2240818ff218d823c6525b0572c673d1f3f0273fe"
 dependencies = [
  "amplify",
- "bp-std",
+ "bp-std 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder",
  "libc",
  "log",
@@ -322,7 +336,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56ffba40457f99cf5e7715858cdc743e05925686d23798b6b21221a4bb50b118"
 dependencies = [
  "amplify",
- "bp-std",
+ "bp-std 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "serde",
  "serde_with",
@@ -344,6 +358,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp-invoice"
+version = "0.11.0-beta.6"
+source = "git+https://github.com/will-bitlight/bp-std.git?branch=testnet4#cbadb4ded90ffa26ed68c8b97d5c6018f3828520"
+dependencies = [
+ "amplify",
+ "bech32",
+ "bitcoin_hashes",
+ "bp-consensus",
+ "serde",
+]
+
+[[package]]
 name = "bp-std"
 version = "0.11.0-beta.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,10 +377,24 @@ checksum = "573dcef793e4058c1a8c3632eb10d0486eff4979a2d753b51e8a06017922d8d7"
 dependencies = [
  "amplify",
  "bp-consensus",
- "bp-derive",
- "bp-invoice",
- "descriptors",
- "psbt",
+ "bp-derive 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bp-invoice 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "descriptors 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "psbt 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+]
+
+[[package]]
+name = "bp-std"
+version = "0.11.0-beta.6"
+source = "git+https://github.com/will-bitlight/bp-std.git?branch=testnet4#cbadb4ded90ffa26ed68c8b97d5c6018f3828520"
+dependencies = [
+ "amplify",
+ "bp-consensus",
+ "bp-derive 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
+ "bp-invoice 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
+ "descriptors 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
+ "psbt 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "serde",
 ]
 
@@ -366,12 +406,12 @@ dependencies = [
  "base64",
  "bp-electrum",
  "bp-esplora",
- "bp-std",
+ "bp-std 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "clap",
- "descriptors",
+ "descriptors 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "env_logger",
  "log",
- "psbt",
+ "psbt 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -619,7 +659,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca5af8b4d31550689f92ccb34142b13b635d8e4316cc4a73a0c7254cf8170d16"
 dependencies = [
  "amplify",
- "bp-derive",
+ "bp-derive 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 2.2.6",
+ "serde",
+]
+
+[[package]]
+name = "descriptors"
+version = "0.11.0-beta.6"
+source = "git+https://github.com/will-bitlight/bp-std.git?branch=testnet4#cbadb4ded90ffa26ed68c8b97d5c6018f3828520"
+dependencies = [
+ "amplify",
+ "bp-derive 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "indexmap 2.2.6",
  "serde",
 ]
@@ -1093,9 +1144,23 @@ checksum = "500d928c69d44b90fa22f3209fb8d349b436ef8973754ccfa085a8db8392e422"
 dependencies = [
  "amplify",
  "base64",
- "bp-derive",
+ "bp-derive 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono",
- "descriptors",
+ "descriptors 0.11.0-beta.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 2.2.6",
+ "serde",
+]
+
+[[package]]
+name = "psbt"
+version = "0.11.0-beta.6"
+source = "git+https://github.com/will-bitlight/bp-std.git?branch=testnet4#cbadb4ded90ffa26ed68c8b97d5c6018f3828520"
+dependencies = [
+ "amplify",
+ "base64",
+ "bp-derive 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
+ "chrono",
+ "descriptors 0.11.0-beta.6 (git+https://github.com/will-bitlight/bp-std.git?branch=testnet4)",
  "indexmap 2.2.6",
  "serde",
 ]

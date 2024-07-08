@@ -15,9 +15,11 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.6.0"
-bp-std = "0.11.0-beta.6"
-psbt = "0.11.0-beta.6"
-descriptors = "0.11.0-beta.6"
+# TODO: To test testnet4 upstream and downstream, 
+# git dependencies were used temporarily during development
+bp-std = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
+psbt = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
+descriptors = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
 bp-esplora = { version = "0.11.0-beta.6", default-features = false, features = ["blocking"] }
 bp-electrum = "0.11.0-beta.6"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
