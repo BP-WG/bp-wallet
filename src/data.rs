@@ -114,6 +114,8 @@ impl<T> TxStatus<T> {
             TxStatus::Unknown => TxStatus::Unknown,
         }
     }
+
+    pub fn is_mined(&self) -> bool { matches!(self, Self::Mined(_)) }
 }
 
 impl<T> Display for TxStatus<T>
