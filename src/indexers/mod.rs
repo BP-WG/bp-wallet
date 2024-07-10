@@ -28,7 +28,7 @@ mod esplora;
 mod any;
 
 #[cfg(any(feature = "electrum", feature = "esplora"))]
-pub use any::AnyIndexer;
+pub use any::{AnyIndexer, AnyIndexerError};
 use descriptors::Descriptor;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};

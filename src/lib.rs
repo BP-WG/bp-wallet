@@ -32,8 +32,6 @@ extern crate clap;
 extern crate log;
 
 mod indexers;
-#[cfg(feature = "fs")]
-mod runtime;
 mod util;
 mod data;
 mod rows;
@@ -47,14 +45,14 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
-#[cfg(any(feature = "electrum", feature = "esplora"))]
-pub use indexers::AnyIndexer;
 pub use indexers::Indexer;
+#[cfg(any(feature = "electrum", feature = "esplora"))]
+pub use indexers::{AnyIndexer, AnyIndexerError};
 pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
-#[cfg(feature = "fs")]
-pub use runtime::{LoadError, Runtime, RuntimeError, StoreError};
 pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+#[cfg(feature = "fs")]
+pub use wallet::{fs, FsConfig};
+pub use wallet::{Save, Wallet, WalletCache, WalletData, WalletDescr};
