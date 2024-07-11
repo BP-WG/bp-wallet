@@ -217,7 +217,9 @@ impl Indexer for BlockingClient {
                             prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
                         {
                             let outpoint = txout.outpoint;
-                            cache.utxo.remove(&outpoint);
+                            if tx.status.is_mined() {
+                                cache.utxo.remove(&outpoint);
+                            }
                             txout.spent = Some(credit.outpoint.into())
                         };
                     }
