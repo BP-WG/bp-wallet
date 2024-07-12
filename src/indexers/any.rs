@@ -35,6 +35,10 @@ pub enum AnyIndexer {
     #[from]
     /// Esplora indexer
     Esplora(Box<esplora::blocking::BlockingClient>),
+    #[cfg(feature = "mempool")]
+    #[from]
+    /// Mempool indexer
+    Mempool(Box<super::mempool::MempoolClient>),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -47,6 +51,9 @@ pub enum AnyIndexerError {
     #[cfg(feature = "esplora")]
     #[display(inner)]
     Esplora(esplora::Error),
+    #[cfg(feature = "mempool")]
+    #[display(inner)]
+    Mempool(reqwest::Error),
 }
 
 impl Indexer for AnyIndexer {
@@ -67,6 +74,14 @@ impl Indexer for AnyIndexer {
             }
             #[cfg(feature = "esplora")]
             AnyIndexer::Esplora(inner) => {
+                let result = inner.create::<K, D, L2>(descr);
+                MayError {
+                    ok: result.ok,
+                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
+                }
+            }
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => {
                 let result = inner.create::<K, D, L2>(descr);
                 MayError {
                     ok: result.ok,
@@ -98,6 +113,14 @@ impl Indexer for AnyIndexer {
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
                 }
             }
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => {
+                let result = inner.update::<K, D, L2>(descr, cache);
+                MayError {
+                    ok: result.ok,
+                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
+                }
+            }
         }
     }
 }
@@ -110,4 +133,9 @@ impl From<electrum::Error> for AnyIndexerError {
 #[cfg(feature = "esplora")]
 impl From<esplora::Error> for AnyIndexerError {
     fn from(e: esplora::Error) -> Self { AnyIndexerError::Esplora(e) }
+}
+
+#[cfg(feature = "mempool")]
+impl From<reqwest::Error> for AnyIndexerError {
+    fn from(e: reqwest::Error) -> Self { AnyIndexerError::Mempool(e) }
 }

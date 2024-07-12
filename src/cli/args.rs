@@ -29,6 +29,7 @@ use descriptors::Descriptor;
 use strict_encoding::Ident;
 
 use crate::cli::{Config, DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts};
+use crate::indexers::MempoolClient;
 use crate::{AnyIndexer, Runtime, RuntimeError};
 
 /// Command-line arguments
@@ -122,11 +123,12 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
 
         if sync || self.wallet.descriptor_opts.is_some() {
             eprint!("Syncing");
-            let indexer = match (&self.resolver.esplora, &self.resolver.electrum) {
-                (None, Some(url)) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
-                (Some(url), None) => {
+            let indexer = match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
+                (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+                (Some(url), None, None) => {
                     AnyIndexer::Esplora(Box::new(esplora::Builder::new(url).build_blocking()?))
                 }
+                (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(MempoolClient::new(url))),
                 _ => {
                     eprintln!(
                         " - error: no blockchain indexer specified; use either --esplora or \

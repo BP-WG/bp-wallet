@@ -24,10 +24,15 @@
 mod electrum;
 #[cfg(feature = "esplora")]
 mod esplora;
-#[cfg(any(feature = "electrum", feature = "esplora"))]
+#[cfg(feature = "mempool")]
+mod mempool;
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 mod any;
 
-#[cfg(any(feature = "electrum", feature = "esplora"))]
+#[cfg(any(feature = "esplora", feature = "mempool"))]
+pub use mempool::MempoolClient;
+
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use any::AnyIndexer;
 use descriptors::Descriptor;
 
