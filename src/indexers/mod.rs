@@ -29,11 +29,10 @@ mod mempool;
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 mod any;
 
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
+pub use any::{AnyIndexer, AnyIndexerError};
 #[cfg(any(feature = "esplora", feature = "mempool"))]
 pub use mempool::MempoolClient;
-
-#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
-pub use any::AnyIndexer;
 use descriptors::Descriptor;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
