@@ -22,10 +22,11 @@
 
 use std::collections::HashSet;
 
-use bpstd::secp256k1::ecdsa::Signature;
+use amplify::Wrapper;
+use bpstd::secp256k1::{ecdsa, schnorr as bip340};
 use bpstd::{
     Address, KeyOrigin, LegacyPk, Sats, Sighash, Sign, TapLeafHash, TapMerklePath, TapSighash,
-    XOnlyPk, XkeyOrigin, Xpriv,
+    XOnlyPk, Xpriv, XprivAccount,
 };
 use descriptors::Descriptor;
 use psbt::{Psbt, Rejected, Signer};
@@ -40,13 +41,12 @@ pub struct ConsoleSigner<'descr, 'me, D: Descriptor>
 where Self: 'me
 {
     descriptor: &'descr D,
-    origin: XkeyOrigin,
-    xpriv: Xpriv,
+    account: XprivAccount,
     signer: XprivSigner<'me>,
 }
 
 pub struct XprivSigner<'xpriv> {
-    xpriv: &'xpriv Xpriv,
+    account: &'xpriv XprivAccount,
     // TODO: Support key- and script-path selection
 }
 
@@ -58,14 +58,32 @@ where Self: 'me
     fn approve(&self, _psbt: &Psbt) -> Result<Self::Sign<'_>, Rejected> { Ok(&self.signer) }
 }
 
+impl<'xpriv> XprivSigner<'xpriv> {
+    fn derive(&self, origin: Option<&KeyOrigin>) -> Option<Xpriv> {
+        let origin = origin?;
+        if !self.account.origin().is_subset_of(origin) {
+            return None;
+        }
+        Some(
+            self.account
+                .xpriv()
+                .derive_priv(&origin.derivation()[self.account.origin().derivation().len()..]),
+        )
+    }
+}
+
 impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
     fn sign_ecdsa(
         &self,
         message: Sighash,
         pk: LegacyPk,
         origin: Option<&KeyOrigin>,
-    ) -> Option<Signature> {
-        todo!()
+    ) -> Option<ecdsa::Signature> {
+        let sk = self.derive(origin)?;
+        if sk.to_compr_pk().to_inner() != pk.pubkey {
+            return None;
+        }
+        Some(sk.to_private_ecdsa().sign_ecdsa(message.into()))
     }
 
     fn sign_bip340(
@@ -73,18 +91,22 @@ impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
         message: TapSighash,
         pk: XOnlyPk,
         origin: Option<&KeyOrigin>,
-    ) -> Option<bpstd::secp256k1::schnorr::Signature> {
-        todo!()
+    ) -> Option<bip340::Signature> {
+        let sk = self.derive(origin)?;
+        if sk.to_xonly_pk() != pk {
+            return None;
+        }
+        Some(sk.to_keypair_bip340().sign_schnorr(message.into()))
     }
 
     fn should_sign_script_path(
         &self,
-        index: usize,
-        merkle_path: &TapMerklePath,
-        leaf: TapLeafHash,
+        _index: usize,
+        _merkle_path: &TapMerklePath,
+        _leaf: TapLeafHash,
     ) -> bool {
-        todo!()
+        true
     }
 
-    fn should_sign_key_path(&self, index: usize) -> bool { todo!() }
+    fn should_sign_key_path(&self, _index: usize) -> bool { true }
 }
