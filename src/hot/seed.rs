@@ -90,7 +90,7 @@ impl Seed {
         let master_xpriv = self.master_xpriv(testnet);
         let master_xpub = master_xpriv.to_xpub();
         let derivation = scheme.to_account_derivation(account, testnet);
-        let account_xpriv = master_xpriv.derive_priv(derivation.as_ref());
+        let account_xpriv = master_xpriv.derive_priv(&derivation);
 
         let origin = XkeyOrigin::new(master_xpub.fingerprint(), derivation);
         XprivAccount::new(account_xpriv, origin)

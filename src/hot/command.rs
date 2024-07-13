@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 use amplify::{Display, IoError};
 use bip39::Mnemonic;
-use bpstd::signers::TestSigner;
+use bpstd::signers::TestnetRefSigner;
 use bpstd::{HardenedIndex, XprivAccount};
 use clap::Subcommand;
 use colored::Colorize;
@@ -282,7 +282,7 @@ fn sign(psbt_file: &Path, account_file: &Path, no_password: bool) -> Result<(), 
     eprintln!("Signing key: {}", account.to_xpub_account());
     eprintln!("Signing using testnet signer");
 
-    let signer = TestSigner::new(&account);
+    let signer = TestnetRefSigner::new(&account);
     let sig_count = psbt.sign(&signer)?;
 
     fs::write(psbt_file, psbt.serialize(psbt.version))?;

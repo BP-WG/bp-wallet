@@ -24,11 +24,11 @@ use std::collections::HashSet;
 
 use bpstd::secp256k1::ecdsa::Signature;
 use bpstd::{
-    Address, KeyOrigin, LegacyPk, Satisfy, Sats, Sighash, TapLeafHash, TapMerklePath, TapSighash,
+    Address, KeyOrigin, LegacyPk, Sats, Sighash, Sign, TapLeafHash, TapMerklePath, TapSighash,
     XOnlyPk, XkeyOrigin, Xpriv,
 };
 use descriptors::Descriptor;
-use psbt::{Psbt, Rejected, Sign};
+use psbt::{Psbt, Rejected, Signer};
 
 pub struct SignTxInfo {
     pub fee: Sats,
@@ -42,24 +42,24 @@ where Self: 'me
     descriptor: &'descr D,
     origin: XkeyOrigin,
     xpriv: Xpriv,
-    satisfier: XprivSatisfier<'me>,
+    signer: XprivSigner<'me>,
 }
 
-pub struct XprivSatisfier<'xpriv> {
+pub struct XprivSigner<'xpriv> {
     xpriv: &'xpriv Xpriv,
     // TODO: Support key- and script-path selection
 }
 
-impl<'descr, 'me, D: Descriptor> Sign for ConsoleSigner<'descr, 'me, D>
+impl<'descr, 'me, D: Descriptor> Signer for ConsoleSigner<'descr, 'me, D>
 where Self: 'me
 {
-    type Satisfier<'s> = &'s XprivSatisfier<'s> where Self: 's + 'me;
+    type Sign<'s> = &'s XprivSigner<'s> where Self: 's + 'me;
 
-    fn approve(&self, _psbt: &Psbt) -> Result<Self::Satisfier<'_>, Rejected> { Ok(&self.satisfier) }
+    fn approve(&self, _psbt: &Psbt) -> Result<Self::Sign<'_>, Rejected> { Ok(&self.signer) }
 }
 
-impl<'a, 'xpriv> Satisfy for &'a XprivSatisfier<'xpriv> {
-    fn signature_ecdsa(
+impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
+    fn sign_ecdsa(
         &self,
         message: Sighash,
         pk: LegacyPk,
@@ -68,7 +68,7 @@ impl<'a, 'xpriv> Satisfy for &'a XprivSatisfier<'xpriv> {
         todo!()
     }
 
-    fn signature_bip340(
+    fn sign_bip340(
         &self,
         message: TapSighash,
         pk: XOnlyPk,
@@ -77,7 +77,7 @@ impl<'a, 'xpriv> Satisfy for &'a XprivSatisfier<'xpriv> {
         todo!()
     }
 
-    fn should_satisfy_script_path(
+    fn should_sign_script_path(
         &self,
         index: usize,
         merkle_path: &TapMerklePath,
@@ -86,5 +86,5 @@ impl<'a, 'xpriv> Satisfy for &'a XprivSatisfier<'xpriv> {
         todo!()
     }
 
-    fn should_satisfy_key_path(&self, index: usize) -> bool { todo!() }
+    fn should_sign_key_path(&self, index: usize) -> bool { todo!() }
 }

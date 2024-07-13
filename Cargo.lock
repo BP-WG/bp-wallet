@@ -335,7 +335,7 @@ dependencies = [
 [[package]]
 name = "bp-derive"
 version = "0.11.0-beta.6"
-source = "git+https://github.com/BP-WG/bp-std?branch=signer#e92197460ac85d81d812e86b0e347fcc7be3c371"
+source = "git+https://github.com/BP-WG/bp-std?branch=signer#a40a4ea21fb1db8372c4c0b902d18c68b1a055f0"
 dependencies = [
  "amplify",
  "bitcoin_hashes 0.14.0",
@@ -383,7 +383,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.0-beta.6"
-source = "git+https://github.com/BP-WG/bp-std?branch=signer#e92197460ac85d81d812e86b0e347fcc7be3c371"
+source = "git+https://github.com/BP-WG/bp-std?branch=signer#a40a4ea21fb1db8372c4c0b902d18c68b1a055f0"
 dependencies = [
  "amplify",
  "bech32",
@@ -395,7 +395,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.0-beta.6"
-source = "git+https://github.com/BP-WG/bp-std?branch=signer#e92197460ac85d81d812e86b0e347fcc7be3c371"
+source = "git+https://github.com/BP-WG/bp-std?branch=signer#a40a4ea21fb1db8372c4c0b902d18c68b1a055f0"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -403,6 +403,7 @@ dependencies = [
  "bp-invoice",
  "descriptors",
  "psbt",
+ "secp256k1",
  "serde",
 ]
 
@@ -699,7 +700,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.0-beta.6"
-source = "git+https://github.com/BP-WG/bp-std?branch=signer#e92197460ac85d81d812e86b0e347fcc7be3c371"
+source = "git+https://github.com/BP-WG/bp-std?branch=signer#a40a4ea21fb1db8372c4c0b902d18c68b1a055f0"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1214,7 +1215,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.0-beta.6"
-source = "git+https://github.com/BP-WG/bp-std?branch=signer#e92197460ac85d81d812e86b0e347fcc7be3c371"
+source = "git+https://github.com/BP-WG/bp-std?branch=signer#a40a4ea21fb1db8372c4c0b902d18c68b1a055f0"
 dependencies = [
  "amplify",
  "base64",
