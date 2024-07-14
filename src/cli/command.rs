@@ -24,11 +24,12 @@ use std::convert::Infallible;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
-use std::{error, fs};
+use std::{error, fs, io};
 
+use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
-use bpstd::{Derive, IdxBase, Keychain, NormalIndex, Sats};
-use psbt::{ConstructionError, Payment, PsbtConstructor, PsbtVer};
+use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats};
+use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer};
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
@@ -132,12 +133,30 @@ pub enum BpCommand {
         /// Name of PSBT file to save. If not given, prints PSBT to STDOUT
         psbt: Option<PathBuf>,
     },
+
+    /// Finalizes PSBT, optionally extracting and publishing the signed transaction.
+    #[display("finalize")]
+    Finalize {
+        /// Extract and send the signed transaction to the network.
+        #[clap(short, long)]
+        publish: bool,
+
+        /// Name of PSBT file to finalize.
+        psbt: PathBuf,
+
+        /// File to save the extracted signed transaction.
+        tx: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Display, Error, From)]
 #[non_exhaustive]
 #[display(inner)]
 pub enum ExecError<L2: error::Error = Infallible> {
+    #[from]
+    #[from(io::Error)]
+    Io(IoError),
+
     #[from]
     Load(LoadError<L2>),
 
@@ -146,6 +165,9 @@ pub enum ExecError<L2: error::Error = Infallible> {
 
     #[from]
     ConstructPsbt(ConstructionError),
+
+    #[from]
+    DecodePsbt(psbt::DecodeError),
 
     #[cfg(feature = "electrum")]
     /// error querying electrum server.
@@ -429,6 +451,45 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                         PsbtVer::V0 => println!("{psbt}"),
                         PsbtVer::V2 => println!("{psbt:#}"),
                     },
+                }
+            }
+            BpCommand::Finalize { publish, psbt, tx } => {
+                eprint!("Reading PSBT from file {} ... ", psbt.display());
+                let mut psbt_file = File::open(psbt)?;
+                let mut psbt = Psbt::decode(&mut psbt_file)?;
+                eprintln!("success");
+                if psbt.is_finalized() {
+                    eprintln!("The PSBT is already finalized");
+                } else {
+                    let wallet = self.bp_wallet::<O::Descr>(&config)?;
+                    eprint!("Finalizing PSBT ... ");
+                    let inputs = psbt.finalize(wallet.descriptor());
+                    eprint!("{inputs} of {} inputs were finalized", psbt.inputs().count());
+                    if psbt.is_finalized() {
+                        eprintln!(", transaction is ready for the extraction");
+                    } else {
+                        eprintln!(", but some non-finalized inputs remains");
+                    }
+                }
+                if *publish || tx.is_some() {
+                    eprint!("Extracting signed transaction ... ");
+                    match psbt.extract() {
+                        Ok(extracted) => {
+                            eprintln!("success");
+                            if let Some(file) = tx {
+                                eprint!("Saving transaction to file {} ...", file.display());
+                                let mut file = File::create(file)?;
+                                extracted.consensus_encode(&mut file)?;
+                                eprintln!("success");
+                            }
+                            if *publish {
+                                todo!("sending transaction to network")
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("PSBT still contains {} non-finalized inputs, failing", e.0);
+                        }
+                    }
                 }
             }
         };
