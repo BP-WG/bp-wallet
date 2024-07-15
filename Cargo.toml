@@ -70,7 +70,7 @@ shellexpand = { version = "3.1.0", optional = true }
 [features]
 default = []
 all = ["electrum", "mempool", "fs", "cli", "clap", "log"]
-cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "log"]
+cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "mempool", "log"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
 esplora = ["bp-esplora"]

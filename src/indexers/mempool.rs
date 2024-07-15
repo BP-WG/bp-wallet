@@ -32,7 +32,8 @@ impl super::Client {
     ///
     /// # Returns
     ///
-    /// A `Result` containing the new mempool client if successful, or an `esplora::Error` if an error occurred.
+    /// A `Result` containing the new mempool client if successful, or an `esplora::Error` if an
+    /// error occurred.
     pub fn new_mempool(url: &str) -> Result<Self, esplora::Error> {
         let inner = esplora::Builder::new(url).build_blocking()?;
         let client = Self {
@@ -58,12 +59,13 @@ impl Mempool for BlockingClient {
     ///
     /// * `address` - The address for which to retrieve transactions.
     /// * `last_seen` - An optional parameter indicating the last seen transaction ID. If provided,
-    ///                only transactions after the specified ID will be returned.
+    ///   only transactions after the specified ID will be returned.
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing a vector of `esplora::Tx` objects representing the transactions
-    /// associated with the address, or an `esplora::Error` if an error occurs during the retrieval process.
+    /// Returns a `Result` containing a vector of `esplora::Tx` objects representing the
+    /// transactions associated with the address, or an `esplora::Error` if an error occurs
+    /// during the retrieval process.
     fn address_txs(
         &self,
         address: &String,

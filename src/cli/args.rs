@@ -32,8 +32,8 @@ use strict_encoding::Ident;
 use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
-use crate::{AnyIndexer, MayError, Wallet};
 use crate::indexers::Client as IndexerClient;
+use crate::{AnyIndexer, MayError, Wallet};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -136,20 +136,25 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             };
 
         if sync {
-            let indexer = match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
-                (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
-                (Some(url), None, None) => {
-                    AnyIndexer::Esplora(Box::new(IndexerClient::new_esplora(url)?))
-                }
-                (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(IndexerClient::new_mempool(url)?)),
-                _ => {
-                    eprintln!(
-                        " - error: no blockchain indexer specified; use either --esplora or \
-                         --electrum argument"
-                    );
-                    exit(1);
-                }
-            };
+            let indexer =
+                match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
+                    (None, Some(url), None) => {
+                        AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?))
+                    }
+                    (Some(url), None, None) => {
+                        AnyIndexer::Esplora(Box::new(IndexerClient::new_esplora(url)?))
+                    }
+                    (None, None, Some(url)) => {
+                        AnyIndexer::Mempool(Box::new(IndexerClient::new_mempool(url)?))
+                    }
+                    _ => {
+                        eprintln!(
+                            " - error: no blockchain indexer specified; use either --esplora \
+                             --mempool or --electrum argument"
+                        );
+                        exit(1);
+                    }
+                };
             eprint!("Syncing");
             if let MayError {
                 err: Some(errors), ..

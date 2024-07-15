@@ -91,9 +91,7 @@ impl From<esplora::TxStatus> for TxStatus {
 }
 
 impl From<esplora::PrevOut> for Party {
-    fn from(prevout: esplora::PrevOut) -> Self {
-        Party::Unknown(prevout.scriptpubkey)
-    }
+    fn from(prevout: esplora::PrevOut) -> Self { Party::Unknown(prevout.scriptpubkey) }
 }
 
 impl From<esplora::Vin> for TxCredit {
