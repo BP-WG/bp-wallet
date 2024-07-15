@@ -15,18 +15,15 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.6.0"
-# TODO: To test testnet4 upstream and downstream, 
-# git dependencies were used temporarily during development
-bp-std = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
-psbt = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
-descriptors = { git = "https://github.com/will-bitlight/bp-std.git", branch = "testnet4"}
+bp-std = "0.11.0-beta.6"
+psbt = "0.11.0-beta.6"
+descriptors = "0.11.0-beta.6"
 bp-esplora = { version = "0.11.0-beta.6", default-features = false, features = ["blocking"] }
 bp-electrum = "0.11.0-beta.6"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.19"
 toml = "0.8.2"
-reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "default-tls"] }
 
 [package]
 name = "bp-wallet"
@@ -56,7 +53,6 @@ strict_encoding = "2.7.0-beta.4"
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 bp-electrum = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
 psbt = { workspace = true }
 descriptors = { workspace = true }
 serde_crate = { workspace = true, optional = true }
@@ -73,14 +69,16 @@ shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "esplora", "fs", "cli", "clap", "log"]
+all = ["electrum", "mempool", "fs", "cli", "clap", "log"]
 cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "log"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
-# The transaction data structure required by mempool,
-# Can be directly reused from the definitions in esplora.
-# feature-mempool can be used as a supplement to feature-esplora
-esplora = ["bp-esplora", "mempool"]
+esplora = ["bp-esplora"]
 fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
-mempool = ["reqwest"]
+mempool = ["esplora"]
+
+[patch.crates-io]
+bp-std = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}
+psbt = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}
+descriptors = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}

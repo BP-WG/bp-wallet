@@ -23,15 +23,52 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bpstd::{Address, LockTime, Outpoint, ScriptPubkey, SeqNo, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Witness};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
+#[cfg(feature = "mempool")]
+use super::mempool::Mempool;
 use super::BATCH_SIZE;
 use crate::{
     Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
     WalletCache, WalletDescr, WalletTx,
 };
+
+/// Represents a client for interacting with the Esplora indexer.
+#[derive(Debug, Clone)]
+pub struct Client {
+    pub(crate) inner: BlockingClient,
+    pub(crate) kind: ClientKind,
+}
+
+/// Represents the kind of client used for interacting with the Esplora indexer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ClientKind {
+    Esplora,
+    #[cfg(feature = "mempool")]
+    Mempool,
+}
+
+impl Client {
+    /// Creates a new Esplora client with the specified URL.
+    ///
+    /// # Arguments
+    ///
+    /// * `url` - The URL of the Esplora server.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the client fails to connect to the Esplora server.
+    pub fn new_esplora(url: &str) -> Result<Self, Error> {
+        let inner = esplora::Builder::new(url).build_blocking()?;
+        let client = Self {
+            inner,
+            kind: ClientKind::Esplora,
+        };
+        Ok(client)
+    }
+}
 
 impl From<esplora::TxStatus> for TxStatus {
     fn from(status: esplora::TxStatus) -> Self {
@@ -54,7 +91,9 @@ impl From<esplora::TxStatus> for TxStatus {
 }
 
 impl From<esplora::PrevOut> for Party {
-    fn from(prevout: esplora::PrevOut) -> Self { Party::Unknown(prevout.scriptpubkey) }
+    fn from(prevout: esplora::PrevOut) -> Self {
+        Party::Unknown(prevout.scriptpubkey)
+    }
 }
 
 impl From<esplora::Vin> for TxCredit {
@@ -97,15 +136,32 @@ impl From<esplora::Tx> for WalletTx {
     }
 }
 
+/// Retrieves all transactions associated with a given script hash.
+///
+/// # Arguments
+///
+/// * `client` - The Esplora client.
+/// * `derive` - The derived address.
+///
+/// # Errors
+///
+/// Returns an error if there was a problem retrieving the transactions.
 fn get_scripthash_txs_all(
-    client: &BlockingClient,
-    script: &ScriptPubkey,
+    client: &Client,
+    derive: &DerivedAddr,
 ) -> Result<Vec<esplora::Tx>, Error> {
     const PAGE_SIZE: usize = 25;
     let mut res = Vec::new();
     let mut last_seen = None;
+    let script = derive.addr.script_pubkey();
+    let address = derive.addr.to_string();
+
     loop {
-        let r = client.scripthash_txs(script, last_seen)?;
+        let r = match client.kind {
+            ClientKind::Esplora => client.inner.scripthash_txs(&script, last_seen)?,
+            #[cfg(feature = "mempool")]
+            ClientKind::Mempool => client.inner.address_txs(&address, last_seen)?,
+        };
         match &r[..] {
             [a @ .., esplora::Tx { txid, .. }] if a.len() >= PAGE_SIZE - 1 => {
                 last_seen = Some(*txid);
@@ -120,7 +176,7 @@ fn get_scripthash_txs_all(
     Ok(res)
 }
 
-impl Indexer for BlockingClient {
+impl Indexer for Client {
     type Error = Error;
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
@@ -139,7 +195,7 @@ impl Indexer for BlockingClient {
 
                 eprint!(".");
                 let mut txids = Vec::new();
-                match get_scripthash_txs_all(self, &script) {
+                match get_scripthash_txs_all(self, &derive) {
                     Err(err) => {
                         errors.push(err);
                         break;

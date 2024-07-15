@@ -34,11 +34,10 @@ pub enum AnyIndexer {
     #[cfg(feature = "esplora")]
     #[from]
     /// Esplora indexer
-    Esplora(Box<esplora::blocking::BlockingClient>),
+    Esplora(Box<super::esplora::Client>),
     #[cfg(feature = "mempool")]
-    #[from]
     /// Mempool indexer
-    Mempool(Box<super::mempool::MempoolClient>),
+    Mempool(Box<super::esplora::Client>),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -51,9 +50,6 @@ pub enum AnyIndexerError {
     #[cfg(feature = "esplora")]
     #[display(inner)]
     Esplora(esplora::Error),
-    #[cfg(feature = "mempool")]
-    #[display(inner)]
-    Mempool(reqwest::Error),
 }
 
 impl Indexer for AnyIndexer {
@@ -133,9 +129,4 @@ impl From<electrum::Error> for AnyIndexerError {
 #[cfg(feature = "esplora")]
 impl From<esplora::Error> for AnyIndexerError {
     fn from(e: esplora::Error) -> Self { AnyIndexerError::Esplora(e) }
-}
-
-#[cfg(feature = "mempool")]
-impl From<reqwest::Error> for AnyIndexerError {
-    fn from(e: reqwest::Error) -> Self { AnyIndexerError::Mempool(e) }
 }
