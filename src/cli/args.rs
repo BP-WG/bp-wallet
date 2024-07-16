@@ -136,17 +136,18 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             };
 
         if sync {
+            let network = self.general.network.to_string();
             let indexer =
                 match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
-                    (None, Some(url), None) => {
-                        AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?))
-                    }
-                    (Some(url), None, None) => {
-                        AnyIndexer::Esplora(Box::new(IndexerClient::new_esplora(url)?))
-                    }
-                    (None, None, Some(url)) => {
-                        AnyIndexer::Mempool(Box::new(IndexerClient::new_mempool(url)?))
-                    }
+                    (None, Some(url), None) => AnyIndexer::Electrum(Box::new(
+                        electrum::Client::new(&url.replace("{network}", &network))?,
+                    )),
+                    (Some(url), None, None) => AnyIndexer::Esplora(Box::new(
+                        IndexerClient::new_esplora(&url.replace("{network}", &network))?,
+                    )),
+                    (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(
+                        IndexerClient::new_mempool(&url.replace("{network}", &network))?,
+                    )),
                     _ => {
                         eprintln!(
                             " - error: no blockchain indexer specified; use either --esplora \

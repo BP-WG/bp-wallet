@@ -43,8 +43,8 @@ pub const DATA_DIR: &str = "~/Documents";
 pub const DATA_DIR: &str = ".";
 
 pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
-pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/testnet/api";
-pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/testnet/api";
+pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/{network}/api";
+pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/{network}/api";
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(args = ["electrum", "esplora", "mempool"])]
