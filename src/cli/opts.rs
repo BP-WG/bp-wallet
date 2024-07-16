@@ -49,9 +49,8 @@ pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/{network}/api";
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(args = ["electrum", "esplora", "mempool"])]
 pub struct ResolverOpt {
-    /// Electrum server to use.
+    /// Electrum server to use
     #[arg(
-        conflicts_with = "esplora",
         long,
         global = true,
         default_missing_value = DEFAULT_ELECTRUM,
@@ -63,9 +62,8 @@ pub struct ResolverOpt {
     )]
     pub electrum: Option<String>,
 
-    /// Esplora server to use.
+    /// Esplora server to use
     #[arg(
-        conflicts_with = "electrum",
         long,
         global = true,
         default_missing_value = DEFAULT_ESPLORA,
@@ -77,9 +75,8 @@ pub struct ResolverOpt {
     )]
     pub esplora: Option<String>,
 
-    /// mempool server to use.
+    /// Mempool server to use
     #[arg(
-        conflicts_with = "electrum",
         long,
         global = true,
         default_missing_value = DEFAULT_MEMPOOL,
