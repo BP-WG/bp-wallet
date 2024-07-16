@@ -22,14 +22,15 @@
 
 use std::convert::Infallible;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::{error, fs, io};
 
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
-use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats};
-use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer};
+use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx};
+use descriptors::Descriptor;
+use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, UnfinalizedInputs};
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
@@ -140,7 +141,7 @@ pub enum BpCommand {
         psbt: Option<PathBuf>,
     },
 
-    /// Finalize a PSBT, optionally extracting and publishing the signed transaction.
+    /// Finalize a PSBT, optionally extracting and publishing the signed transaction
     #[display("finalize")]
     Finalize {
         /// Extract and send the signed transaction to the network.
@@ -151,6 +152,21 @@ pub enum BpCommand {
         psbt: PathBuf,
 
         /// File to save the extracted signed transaction.
+        tx: Option<PathBuf>,
+    },
+
+    /// Extract a signed transaction from PSBT. The PSBT file itself is not modified.
+    #[display("finalize")]
+    Extract {
+        /// Send the extracted transaction to the network.
+        #[clap(short, long)]
+        publish: bool,
+
+        /// Name of PSBT file to take the transaction from
+        psbt: PathBuf,
+
+        /// File to save the extracted signed transaction. If not provided, the transaction is
+        /// print to STDOUT.
         tx: Option<PathBuf>,
     },
 }
@@ -175,9 +191,10 @@ pub enum ExecError<L2: error::Error = Infallible> {
     #[from]
     DecodePsbt(psbt::DecodeError),
 
-    /// error querying indexer.
-    ///
-    /// {0}
+    #[from]
+    Unfinalized(UnfinalizedInputs),
+
+    /// indexer failed with {0}
     #[from]
     #[cfg_attr(feature = "electrum", from(electrum::Error))]
     #[cfg_attr(feature = "esplora", from(esplora::Error))]
@@ -415,10 +432,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 }
             }
             BpCommand::Inspect { psbt } => {
-                eprint!("Reading PSBT from file {} ... ", psbt.display());
-                let mut psbt_file = File::open(psbt)?;
-                let psbt = Psbt::decode(&mut psbt_file)?;
-                eprintln!("success");
+                let psbt = psbt_read(&psbt)?;
                 println!(
                     "{}",
                     serde_yaml::to_string(&psbt).expect("unable to generate YAML representation")
@@ -453,75 +467,50 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
 
                 // TODO: Support lock time and RBFs
                 let params = TxParams::with(*fee);
-                let (psbt, _) = wallet.construct_psbt(coins, beneficiaries, params)?;
-                let ver = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
-
-                eprintln!("{}", serde_yaml::to_string(&psbt).unwrap());
-                match psbt_file {
-                    Some(file_name) => {
-                        let mut psbt_file = File::create(file_name).map_err(StoreError::from)?;
-                        psbt.encode(ver, &mut psbt_file).map_err(StoreError::from)?;
-                    }
-                    None => match ver {
-                        PsbtVer::V0 => println!("{psbt}"),
-                        PsbtVer::V2 => println!("{psbt:#}"),
-                    },
-                }
+                let (mut psbt, _) = wallet.construct_psbt(coins, beneficiaries, params)?;
+                psbt.version = if *v2 { PsbtVer::V2 } else { PsbtVer::V0 };
+                psbt_write_or_print(&psbt, psbt_file.as_deref())?;
             }
             BpCommand::Finalize {
                 publish,
                 psbt: psbt_path,
                 tx,
             } => {
-                eprint!("Reading PSBT from file {} ... ", psbt_path.display());
-                let mut psbt_file = File::open(psbt_path)?;
-                let mut psbt = Psbt::decode(&mut psbt_file)?;
-                eprintln!("success");
+                let mut psbt = psbt_read(&psbt_path)?;
                 if psbt.is_finalized() {
                     eprintln!("The PSBT is already finalized");
                 } else {
                     let wallet = self.bp_wallet::<O::Descr>(&config)?;
-                    eprint!("Finalizing PSBT ... ");
-                    let inputs = psbt.finalize(wallet.descriptor());
-                    eprint!("{inputs} of {} inputs were finalized", psbt.inputs().count());
-                    if psbt.is_finalized() {
-                        eprintln!(", transaction is ready for the extraction");
-                    } else {
-                        eprintln!(" and some non-finalized inputs remains");
-                    }
+                    psbt_finalize(&mut psbt, wallet.descriptor())?;
                 }
 
-                eprint!("Saving PSBT file ... ");
-                let mut psbt_file = File::create(psbt_path)?;
-                psbt.encode(psbt.version, &mut psbt_file)?;
-                eprintln!("success");
-
-                match psbt.extract() {
-                    Ok(extracted) => {
+                psbt_write(&psbt, &psbt_path)?;
+                if let Ok(tx) = psbt_extract(&psbt, *publish, tx.as_deref()) {
+                    if *publish {
+                        let indexer = self.indexer()?;
+                        eprint!("Publishing transaction via {} ... ", indexer.name());
+                        indexer.publish(&tx)?;
                         eprintln!("success");
-                        eprint!("Extracting signed transaction ... ");
-                        if !*publish && tx.is_none() {
-                            println!("{extracted}");
-                        }
-                        if let Some(file) = tx {
-                            eprint!("Saving transaction to file {} ...", file.display());
-                            let mut file = File::create(file)?;
-                            extracted.consensus_encode(&mut file)?;
-                            eprintln!("success");
-                        }
-                        if *publish {
-                            self.indexer()?.publish(&extracted)?;
-                        }
                     }
-                    Err(e) if *publish || tx.is_some() => {
-                        eprintln!(
-                            "PSBT still contains {} non-finalized inputs, failing to extract \
-                             transaction",
-                            e.0
-                        );
-                    }
-                    Err(e) => {
-                        eprintln!("{} more inputs still have to be finalized", e.0)
+                }
+            }
+            BpCommand::Extract {
+                publish,
+                psbt: psbt_path,
+                tx,
+            } => {
+                let mut psbt = psbt_read(&psbt_path)?;
+                if !psbt.is_finalized() {
+                    let wallet = self.bp_wallet::<O::Descr>(&config)?;
+                    psbt_finalize(&mut psbt, wallet.descriptor())?;
+                }
+
+                if let Ok(tx) = psbt_extract(&psbt, *publish, tx.as_deref()) {
+                    if *publish {
+                        let indexer = self.indexer()?;
+                        eprint!("Publishing transaction via {} ... ", indexer.name());
+                        indexer.publish(&tx)?;
+                        eprintln!("success");
                     }
                 }
             }
@@ -530,5 +519,79 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
         println!();
 
         Ok(())
+    }
+}
+
+fn psbt_read(psbt_path: &Path) -> Result<Psbt, ExecError> {
+    eprint!("Reading PSBT from file {} ... ", psbt_path.display());
+    let mut psbt_file = File::open(psbt_path)?;
+    let psbt = Psbt::decode(&mut psbt_file)?;
+    eprintln!("success");
+    Ok(psbt)
+}
+
+fn psbt_write(psbt: &Psbt, psbt_path: &Path) -> Result<(), ExecError> {
+    eprint!("Saving PSBT to file {} ... ", psbt_path.display());
+    let mut psbt_file = File::create(&psbt_path)?;
+    psbt.encode(psbt.version, &mut psbt_file)?;
+    eprintln!("success");
+    Ok(())
+}
+
+fn psbt_write_or_print(psbt: &Psbt, psbt_path: Option<&Path>) -> Result<(), ExecError> {
+    match psbt_path {
+        Some(file_name) => {
+            psbt_write(&psbt, file_name)?;
+        }
+        None => match psbt.version {
+            PsbtVer::V0 => println!("{psbt}"),
+            PsbtVer::V2 => println!("{psbt:#}"),
+        },
+    }
+    Ok(())
+}
+
+fn psbt_finalize<D: Descriptor<K, V>, K, V>(
+    psbt: &mut Psbt,
+    descriptor: &D,
+) -> Result<(), ExecError> {
+    eprint!("Finalizing PSBT ... ");
+    let inputs = psbt.finalize(descriptor);
+    eprint!("{inputs} of {} inputs were finalized", psbt.inputs().count());
+    if psbt.is_finalized() {
+        eprintln!(", transaction is ready for the extraction");
+    } else {
+        eprintln!(" and some non-finalized inputs remains");
+    }
+    Ok(())
+}
+
+fn psbt_extract(psbt: &Psbt, publish: bool, tx: Option<&Path>) -> Result<Tx, ExecError> {
+    eprint!("Extracting signed transaction ... ");
+    match psbt.extract() {
+        Ok(extracted) => {
+            eprintln!("success");
+            if !publish && tx.is_none() {
+                println!("{extracted}");
+            }
+            if let Some(file) = tx {
+                eprint!("Saving transaction to file {} ...", file.display());
+                let mut file = File::create(file)?;
+                extracted.consensus_encode(&mut file)?;
+                eprintln!("success");
+            }
+            Ok(extracted)
+        }
+        Err(e) if publish || tx.is_some() => {
+            eprintln!(
+                "PSBT still contains {} non-finalized inputs, failing to extract transaction",
+                e.0
+            );
+            Err(e.into())
+        }
+        Err(e) => {
+            eprintln!("{} more inputs still have to be finalized", e.0);
+            Err(e.into())
+        }
     }
 }
