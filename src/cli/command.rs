@@ -35,7 +35,7 @@ use strict_encoding::Ident;
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::wallet::fs::{LoadError, StoreError};
 use crate::wallet::Save;
-use crate::{coinselect, FsConfig, OpType, WalletAddr, WalletUtxo};
+use crate::{coinselect, AnyIndexerError, FsConfig, OpType, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
