@@ -34,7 +34,10 @@ pub enum AnyIndexer {
     #[cfg(feature = "esplora")]
     #[from]
     /// Esplora indexer
-    Esplora(Box<esplora::blocking::BlockingClient>),
+    Esplora(Box<super::esplora::Client>),
+    #[cfg(feature = "mempool")]
+    /// Mempool indexer
+    Mempool(Box<super::esplora::Client>),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -73,6 +76,14 @@ impl Indexer for AnyIndexer {
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
                 }
             }
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => {
+                let result = inner.create::<K, D, L2>(descr);
+                MayError {
+                    ok: result.ok,
+                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
+                }
+            }
         }
     }
 
@@ -92,6 +103,14 @@ impl Indexer for AnyIndexer {
             }
             #[cfg(feature = "esplora")]
             AnyIndexer::Esplora(inner) => {
+                let result = inner.update::<K, D, L2>(descr, cache);
+                MayError {
+                    ok: result.ok,
+                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
+                }
+            }
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => {
                 let result = inner.update::<K, D, L2>(descr, cache);
                 MayError {
                     ok: result.ok,
