@@ -39,7 +39,7 @@ use crate::{coinselect, FsConfig, OpType, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
-    /// List known wallets
+    /// List known named wallets
     #[display("list")]
     List,
 
@@ -50,7 +50,7 @@ pub enum Command {
         default: Option<Ident>,
     },
 
-    /// Create a wallet
+    /// Create a named wallet
     #[display("create")]
     Create {
         /// The name for the new wallet
@@ -88,7 +88,7 @@ pub enum BpCommand {
     #[display(inner)]
     General(Command),
 
-    /// List wallet balance with additional optional details
+    /// List wallet balance and UTXOs
     #[display("balance")]
     Balance {
         /// Print balance for each individual address
@@ -130,11 +130,11 @@ pub enum BpCommand {
         /// Fee
         fee: Sats,
 
-        /// Name of PSBT file to save. If not given, prints PSBT to STDOUT
+        /// Name of a PSBT file to save. If not given, prints PSBT to STDOUT
         psbt: Option<PathBuf>,
     },
 
-    /// Finalizes PSBT, optionally extracting and publishing the signed transaction.
+    /// Finalize a PSBT, optionally extracting and publishing the signed transaction.
     #[display("finalize")]
     Finalize {
         /// Extract and send the signed transaction to the network.

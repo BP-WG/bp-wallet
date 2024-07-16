@@ -51,6 +51,7 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStd
     #[command(flatten)]
     pub resolver: ResolverOpt,
 
+    /// Force-sync wallet data with the indexer before performing the operation.
     #[clap(long, global = true)]
     pub sync: bool,
 
