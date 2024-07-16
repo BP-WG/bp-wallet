@@ -187,9 +187,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
         match &self.command {
             Command::List => {
                 let dir = self.general.base_dir();
-                let Ok(dir) = fs::read_dir(dir).map_err(|err| {
+                let Ok(dir) = fs::read_dir(dir).inspect_err(|err| {
                     error!("Error reading wallet directory: {err:?}");
                     eprintln!("System directory is not initialized");
+                    println!("no wallets found");
                 }) else {
                     return Ok(());
                 };
@@ -206,10 +207,15 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         continue;
                     }
                     let name = wallet.file_name().into_string().expect("invalid directory name");
-                    println!(
+                    print!(
                         "{name}{}",
-                        if config.default_wallet == name { "\t[default]" } else { "" }
+                        if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
+                    let Ok(wallet) = self.bp_wallet::<O::Descr>(&config) else {
+                        println!("# broken wallet descriptor");
+                        continue;
+                    };
+                    println!("\t{}", wallet.descriptor());
                     count += 1;
                 }
                 if count == 0 {
@@ -234,7 +240,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 let name = name.to_string();
                 wallet.set_fs_config(FsConfig {
                     path: self.general.wallet_dir(&name),
-                    autosave: false,
+                    autosave: true,
                 })?;
                 wallet.set_name(name);
                 if let Err(err) = wallet.save() {
