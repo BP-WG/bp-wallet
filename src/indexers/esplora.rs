@@ -23,7 +23,7 @@
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, Witness};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
@@ -301,4 +301,6 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         todo!()
     }
+
+    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
 }

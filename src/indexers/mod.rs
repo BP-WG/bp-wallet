@@ -31,6 +31,7 @@ mod any;
 
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use any::{AnyIndexer, AnyIndexerError};
+use bpstd::Tx;
 use descriptors::Descriptor;
 #[cfg(any(feature = "esplora", feature = "mempool"))]
 pub use esplora::Client;
@@ -53,4 +54,6 @@ pub trait Indexer {
         descr: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
     ) -> MayError<usize, Vec<Self::Error>>;
+
+    fn publish(&self, tx: &Tx) -> Result<(), Self::Error>;
 }
