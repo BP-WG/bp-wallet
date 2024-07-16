@@ -28,7 +28,7 @@ toml = "0.8.2"
 [package]
 name = "bp-wallet"
 version.workspace = true
-description = "Modern, minimalistic & standard-compliant bitcoin wallet runtime"
+description = "Modern, minimalistic & standard-compliant bitcoin wallet"
 keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
@@ -93,8 +93,8 @@ serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
 
 [patch.crates-io]
 bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "signer" }
-bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
 bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
 descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
 psbt = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
 bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "signer" }
