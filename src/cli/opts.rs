@@ -160,7 +160,7 @@ pub struct GeneralOpts {
     pub data_dir: PathBuf,
 
     /// Network to use.
-    #[arg(short, long, global = true, default_value = "testnet", env = "LNPBP_NETWORK")]
+    #[arg(short, long, global = true, default_value = "testnet3", env = "LNPBP_NETWORK")]
     pub network: Network,
 }
 
