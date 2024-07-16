@@ -106,7 +106,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             )?)),
             _ => {
                 eprintln!(
-                    " - error: no blockchain indexer specified; use either --esplora --mempool or \
+                    "Error: no blockchain indexer specified; use either --esplora --mempool or \
                      --electrum argument"
                 );
                 exit(1);

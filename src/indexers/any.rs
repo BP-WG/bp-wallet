@@ -41,6 +41,16 @@ pub enum AnyIndexer {
     Mempool(Box<super::esplora::Client>),
 }
 
+impl AnyIndexer {
+    pub fn name(&self) -> &'static str {
+        match self {
+            AnyIndexer::Electrum(_) => "electrum",
+            AnyIndexer::Esplora(_) => "esplora",
+            AnyIndexer::Mempool(_) => "mempool",
+        }
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Display, Error)]
 #[display(doc_comments)]

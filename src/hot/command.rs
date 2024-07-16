@@ -23,10 +23,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use amplify::hex::ToHex;
 use amplify::{Display, IoError};
 use bip39::Mnemonic;
 use bpstd::signers::TestnetRefSigner;
-use bpstd::{HardenedIndex, XprivAccount};
+use bpstd::{HardenedIndex, SighashCache, Tx, XprivAccount};
 use clap::Subcommand;
 use colored::Colorize;
 use psbt::Psbt;
@@ -114,6 +115,13 @@ pub enum HotCommand {
         /// Signing account file used to (partially co-)sign PSBT
         signing_account: PathBuf,
     },
+
+    /// Analyze PSBT and print debug signing information
+    #[display("sighash")]
+    Sighash {
+        /// File containing PSBT
+        psbt_file: PathBuf,
+    },
 }
 
 impl HotArgs {
@@ -137,6 +145,7 @@ impl HotArgs {
                 psbt_file,
                 signing_account,
             } => sign(&psbt_file, &signing_account, no_password)?,
+            HotCommand::Sighash { psbt_file } => sighash(&psbt_file)?,
         };
         Ok(())
     }
@@ -298,5 +307,68 @@ fn sign(psbt_file: &Path, account_file: &Path, no_password: bool) -> Result<(), 
         psbt_file.display()
     );
     println!("\n{}\n", psbt);
+    Ok(())
+}
+
+fn sighash(psbt_file: &Path) -> Result<(), DataError> {
+    let data = fs::read(psbt_file)?;
+    let psbt = Psbt::deserialize(&data)?;
+
+    let tx = psbt.to_unsigned_tx();
+    let txid = tx.txid();
+    let prevouts = psbt.inputs().map(psbt::Input::prev_txout).cloned().collect::<Vec<_>>();
+    let mut sig_hasher = SighashCache::new(Tx::from(tx), prevouts)
+        .expect("inputs and prevouts match algorithmically");
+    println!(
+        "PSBT contains transaction with id {} and {} inputs",
+        txid.to_string().bright_green(),
+        psbt.inputs().count()
+    );
+    println!("Input #\tSig type\tSighash algo\tSighash type\tSighash\t\t\t\t\t\t\t\t\tScript code");
+    for input in psbt.inputs() {
+        let (ty, algo) = match (input.is_bip340(), input.is_segwit_v0()) {
+            (true, _) => ("BIP340", "Taproot"),
+            (false, true) => ("ECDSA", "SegWitV0"),
+            (false, false) => ("ECDSA", "Legacy"),
+        };
+        let sighash_type = match input.sighash_type {
+            None if input.is_bip340() => s!("DEFAULT"),
+            None => s!("unspecified (assumed ALL)"),
+            Some(sighash_type) => sighash_type.to_string(),
+        };
+        print!("{}\t{}\t\t{}\t\t{}\t\t", input.index() + 1, ty, algo, sighash_type);
+
+        if input.is_bip340() {
+            match sig_hasher.tap_sighash_key(input.index(), input.sighash_type) {
+                Ok(sighash) => println!("{sighash}\tn/a"),
+                Err(e) => println!("{e}"),
+            }
+        } else if input.is_segwit_v0() {
+            let Some(script_code) = input.script_code() else {
+                println!("no witness script is given, which is required to compute script code");
+                continue;
+            };
+            match sig_hasher.segwit_sighash(
+                input.index(),
+                &script_code,
+                input.value(),
+                input.sighash_type.unwrap_or_default(),
+            ) {
+                Ok(sighash) => println!("{sighash}\t"),
+                Err(e) => println!("{e}"),
+            }
+            println!("{}", script_code.to_hex());
+        } else {
+            match sig_hasher.legacy_sighash(
+                input.index(),
+                &input.prev_txout().script_pubkey,
+                input.sighash_type.unwrap_or_default().to_consensus_u32(),
+            ) {
+                Ok(sighash) => println!("{sighash}\tn/a"),
+                Err(e) => println!("{e}"),
+            }
+        }
+    }
+
     Ok(())
 }
