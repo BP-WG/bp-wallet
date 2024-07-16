@@ -69,16 +69,16 @@ shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "mempool", "fs", "cli", "clap", "log"]
-cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "mempool", "log"]
+all = ["electrum", "esplora", "mempool", "fs", "cli", "clap", "log"]
+cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "mempool", "log"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
 esplora = ["bp-esplora"]
+mempool = ["esplora"]
 fs = ["serde"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde"]
-mempool = ["esplora"]
 
 [patch.crates-io]
-bp-std = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}
-psbt = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}
-descriptors = { git = "https://github.com/BP-WG/bp-std.git", branch = "master"}
+bp-std = { git = "https://github.com/BP-WG/bp-std.git", branch = "master" }
+psbt = { git = "https://github.com/BP-WG/bp-std.git", branch = "master" }
+descriptors = { git = "https://github.com/BP-WG/bp-std.git", branch = "master" }
