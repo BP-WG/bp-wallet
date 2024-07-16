@@ -169,21 +169,14 @@ pub enum ExecError<L2: error::Error = Infallible> {
     #[from]
     DecodePsbt(psbt::DecodeError),
 
-    #[cfg(feature = "electrum")]
-    /// error querying electrum server.
+    /// error querying indexer.
     ///
     /// {0}
     #[from]
+    #[cfg_attr(feature = "electrum", from(electrum::Error))]
+    #[cfg_attr(feature = "esplora", from(esplora::Error))]
     #[display(doc_comments)]
-    Electrum(electrum::Error),
-
-    #[cfg(feature = "esplora")]
-    /// error querying esplora server.
-    ///
-    /// {0}
-    #[from]
-    #[display(doc_comments)]
-    Esplora(esplora::Error),
+    Indexer(AnyIndexerError),
 }
 
 impl<O: DescriptorOpts> Exec for Args<Command, O> {
