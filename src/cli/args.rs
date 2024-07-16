@@ -94,6 +94,26 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
+    pub fn indexer(&self) -> Result<AnyIndexer, ExecError> {
+        let network = self.general.network.to_string();
+        Ok(match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
+            (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+            (Some(url), None, None) => AnyIndexer::Esplora(Box::new(IndexerClient::new_esplora(
+                &url.replace("{network}", &network),
+            )?)),
+            (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(IndexerClient::new_mempool(
+                &url.replace("{network}", &network),
+            )?)),
+            _ => {
+                eprintln!(
+                    " - error: no blockchain indexer specified; use either --esplora --mempool or \
+                     --electrum argument"
+                );
+                exit(1);
+            }
+        })
+    }
+
     pub fn bp_wallet<D: Descriptor>(
         &self,
         conf: &Config,
@@ -137,26 +157,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             };
 
         if sync {
-            let network = self.general.network.to_string();
-            let indexer =
-                match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
-                    (None, Some(url), None) => AnyIndexer::Electrum(Box::new(
-                        electrum::Client::new(&url.replace("{network}", &network))?,
-                    )),
-                    (Some(url), None, None) => AnyIndexer::Esplora(Box::new(
-                        IndexerClient::new_esplora(&url.replace("{network}", &network))?,
-                    )),
-                    (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(
-                        IndexerClient::new_mempool(&url.replace("{network}", &network))?,
-                    )),
-                    _ => {
-                        eprintln!(
-                            " - error: no blockchain indexer specified; use either --esplora \
-                             --mempool or --electrum argument"
-                        );
-                        exit(1);
-                    }
-                };
+            let indexer = self.indexer()?;
             eprint!("Syncing");
             if let MayError {
                 err: Some(errors), ..
