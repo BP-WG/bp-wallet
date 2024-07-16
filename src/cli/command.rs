@@ -35,7 +35,7 @@ use strict_encoding::Ident;
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::wallet::fs::{LoadError, StoreError};
 use crate::wallet::Save;
-use crate::{coinselect, AnyIndexerError, FsConfig, OpType, WalletAddr, WalletUtxo};
+use crate::{coinselect, AnyIndexerError, FsConfig, Indexer, OpType, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
@@ -468,9 +468,13 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     },
                 }
             }
-            BpCommand::Finalize { publish, psbt, tx } => {
-                eprint!("Reading PSBT from file {} ... ", psbt.display());
-                let mut psbt_file = File::open(psbt)?;
+            BpCommand::Finalize {
+                publish,
+                psbt: psbt_path,
+                tx,
+            } => {
+                eprint!("Reading PSBT from file {} ... ", psbt_path.display());
+                let mut psbt_file = File::open(psbt_path)?;
                 let mut psbt = Psbt::decode(&mut psbt_file)?;
                 eprintln!("success");
                 if psbt.is_finalized() {
@@ -483,27 +487,41 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     if psbt.is_finalized() {
                         eprintln!(", transaction is ready for the extraction");
                     } else {
-                        eprintln!(", but some non-finalized inputs remains");
+                        eprintln!(" and some non-finalized inputs remains");
                     }
                 }
-                if *publish || tx.is_some() {
-                    eprint!("Extracting signed transaction ... ");
-                    match psbt.extract() {
-                        Ok(extracted) => {
+
+                eprint!("Saving PSBT file ... ");
+                let mut psbt_file = File::create(psbt_path)?;
+                psbt.encode(psbt.version, &mut psbt_file)?;
+                eprintln!("success");
+
+                match psbt.extract() {
+                    Ok(extracted) => {
+                        eprintln!("success");
+                        eprint!("Extracting signed transaction ... ");
+                        if !*publish && tx.is_none() {
+                            println!("{extracted}");
+                        }
+                        if let Some(file) = tx {
+                            eprint!("Saving transaction to file {} ...", file.display());
+                            let mut file = File::create(file)?;
+                            extracted.consensus_encode(&mut file)?;
                             eprintln!("success");
-                            if let Some(file) = tx {
-                                eprint!("Saving transaction to file {} ...", file.display());
-                                let mut file = File::create(file)?;
-                                extracted.consensus_encode(&mut file)?;
-                                eprintln!("success");
-                            }
-                            if *publish {
-                                todo!("sending transaction to network")
-                            }
                         }
-                        Err(e) => {
-                            eprintln!("PSBT still contains {} non-finalized inputs, failing", e.0);
+                        if *publish {
+                            self.indexer()?.publish(&extracted)?;
                         }
+                    }
+                    Err(e) if *publish || tx.is_some() => {
+                        eprintln!(
+                            "PSBT still contains {} non-finalized inputs, failing to extract \
+                             transaction",
+                            e.0
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("{} more inputs still have to be finalized", e.0)
                     }
                 }
             }
