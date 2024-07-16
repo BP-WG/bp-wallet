@@ -112,6 +112,12 @@ pub enum BpCommand {
         details: bool,
     },
 
+    /// Inspect PSBT file
+    Inspect {
+        /// Name of a PSBT file to inspect
+        psbt: PathBuf,
+    },
+
     /// Compose a new PSBT for bitcoin payment
     #[display("construct")]
     Construct {
@@ -407,6 +413,16 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                         println!();
                     }
                 }
+            }
+            BpCommand::Inspect { psbt } => {
+                eprint!("Reading PSBT from file {} ... ", psbt.display());
+                let mut psbt_file = File::open(psbt)?;
+                let psbt = Psbt::decode(&mut psbt_file)?;
+                eprintln!("success");
+                println!(
+                    "{}",
+                    serde_yaml::to_string(&psbt).expect("unable to generate YAML representation")
+                );
             }
             BpCommand::Construct {
                 v2,
