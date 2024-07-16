@@ -109,7 +109,8 @@ impl SecureIo for Seed {
 
     fn write<P>(&self, file: P, password: &str) -> io::Result<()>
     where P: AsRef<Path> {
-        fs::write(file, encrypt(self.0.to_vec(), password))
+        let mnemonic = Mnemonic::from_entropy(&self.0).expect("mnemonic generator is broken");
+        fs::write(file, encrypt(mnemonic.to_string().into_bytes(), password))
     }
 }
 
