@@ -101,9 +101,9 @@ impl SecureIo for Seed {
     fn read<P>(file: P, password: &str) -> Result<Self, DataError>
     where P: AsRef<Path> {
         let data = fs::read(file)?;
-        let data = decrypt(&data, password)?;
-        let s = String::from_utf8(data).map_err(|_| DataError::Password)?;
-        let mnemonic = Mnemonic::from_str(&s).map_err(|_| DataError::Password)?;
+        let data = decrypt(&data, password).map_err(|_| DataError::SeedPassword)?;
+        let s = String::from_utf8(data).map_err(|_| DataError::SeedPassword)?;
+        let mnemonic = Mnemonic::from_str(&s).map_err(|_| DataError::SeedPassword)?;
         Ok(Seed(Box::from(mnemonic.to_entropy())))
     }
 
@@ -118,9 +118,9 @@ impl SecureIo for XprivAccount {
     fn read<P>(file: P, password: &str) -> Result<Self, DataError>
     where P: AsRef<Path> {
         let data = fs::read(file)?;
-        let data = decrypt(&data, password)?;
-        let s = String::from_utf8(data).map_err(|_| DataError::Password)?;
-        XprivAccount::from_str(&s).map_err(|_| DataError::Password)
+        let data = decrypt(&data, password).map_err(|_| DataError::AccountPassword)?;
+        let s = String::from_utf8(data).map_err(|_| DataError::AccountPassword)?;
+        XprivAccount::from_str(&s).map_err(|_| DataError::AccountPassword)
     }
 
     fn write<P>(&self, file: P, password: &str) -> io::Result<()>

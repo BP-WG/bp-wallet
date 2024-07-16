@@ -71,9 +71,11 @@ mod io {
         #[from(io::Error)]
         Io(IoError),
 
-        #[display("invalid password.")]
-        #[from(aes_gcm::Error)]
-        Password,
+        #[display("invalid seed password.")]
+        SeedPassword,
+
+        #[display("invalid account key password.")]
+        AccountPassword,
 
         #[from]
         Psbt(PsbtError),
