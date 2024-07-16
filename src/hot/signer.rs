@@ -25,8 +25,8 @@ use std::collections::HashSet;
 use amplify::Wrapper;
 use bpstd::secp256k1::{ecdsa, schnorr as bip340};
 use bpstd::{
-    Address, KeyOrigin, LegacyPk, Sats, Sighash, Sign, TapLeafHash, TapMerklePath, TapSighash,
-    XOnlyPk, Xpriv, XprivAccount,
+    Address, InternalKeypair, InternalPk, KeyOrigin, LegacyPk, Sats, Sighash, Sign, TapLeafHash,
+    TapMerklePath, TapNodeHash, TapSighash, XOnlyPk, Xpriv, XprivAccount,
 };
 use descriptors::Descriptor;
 use psbt::{Psbt, Rejected, Signer};
@@ -59,7 +59,7 @@ where Self: 'me
 }
 
 impl<'xpriv> XprivSigner<'xpriv> {
-    fn derive(&self, origin: Option<&KeyOrigin>) -> Option<Xpriv> {
+    fn derive_subkey(&self, origin: Option<&KeyOrigin>) -> Option<Xpriv> {
         let origin = origin?;
         if !self.account.origin().is_subset_of(origin) {
             return None;
@@ -79,20 +79,41 @@ impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
         pk: LegacyPk,
         origin: Option<&KeyOrigin>,
     ) -> Option<ecdsa::Signature> {
-        let sk = self.derive(origin)?;
+        let sk = self.derive_subkey(origin)?;
         if sk.to_compr_pk().to_inner() != pk.pubkey {
             return None;
         }
         Some(sk.to_private_ecdsa().sign_ecdsa(message.into()))
     }
 
-    fn sign_bip340(
+    fn sign_bip340_key_only(
+        &self,
+        message: TapSighash,
+        pk: InternalPk,
+        origin: Option<&KeyOrigin>,
+        merkle_root: Option<TapNodeHash>,
+    ) -> Option<bip340::Signature> {
+        let xpriv = self.derive_subkey(origin)?;
+        if xpriv.to_xonly_pk() != pk.to_xonly_pk() {
+            return None;
+        }
+        let output_pair =
+            InternalKeypair::from(xpriv.to_keypair_bip340()).to_output_keypair(merkle_root).0;
+        if output_pair.x_only_public_key().0.serialize()
+            != pk.to_output_pk(merkle_root).0.to_byte_array()
+        {
+            return None;
+        }
+        Some(output_pair.sign_schnorr(message.into()))
+    }
+
+    fn sign_bip340_script_path(
         &self,
         message: TapSighash,
         pk: XOnlyPk,
         origin: Option<&KeyOrigin>,
     ) -> Option<bip340::Signature> {
-        let sk = self.derive(origin)?;
+        let sk = self.derive_subkey(origin)?;
         if sk.to_xonly_pk() != pk {
             return None;
         }

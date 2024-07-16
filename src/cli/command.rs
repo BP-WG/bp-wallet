@@ -29,6 +29,7 @@ use std::{error, fs, io};
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx};
+use colored::Colorize;
 use descriptors::Descriptor;
 use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, UnfinalizedInputs};
 use strict_encoding::Ident;
@@ -112,6 +113,9 @@ pub enum BpCommand {
         #[clap(long)]
         details: bool,
     },
+
+    /// Inspect transaction
+    Tx { tx: Tx },
 
     /// Inspect PSBT file
     Inspect {
@@ -431,6 +435,12 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     }
                 }
             }
+            BpCommand::Tx { tx } => {
+                println!(
+                    "{}",
+                    serde_yaml::to_string(&tx).expect("unable to generate YAML representation")
+                );
+            }
             BpCommand::Inspect { psbt } => {
                 let psbt = psbt_read(&psbt)?;
                 println!(
@@ -557,7 +567,11 @@ fn psbt_finalize<D: Descriptor<K, V>, K, V>(
 ) -> Result<(), ExecError> {
     eprint!("Finalizing PSBT ... ");
     let inputs = psbt.finalize(descriptor);
-    eprint!("{inputs} of {} inputs were finalized", psbt.inputs().count());
+    eprint!(
+        "{} of {} inputs were finalized",
+        inputs.to_string().bright_green(),
+        psbt.inputs().count()
+    );
     if psbt.is_finalized() {
         eprintln!(", transaction is ready for the extraction");
     } else {
@@ -585,7 +599,7 @@ fn psbt_extract(psbt: &Psbt, publish: bool, tx: Option<&Path>) -> Result<Tx, Exe
         Err(e) if publish || tx.is_some() => {
             eprintln!(
                 "PSBT still contains {} non-finalized inputs, failing to extract transaction",
-                e.0
+                e.0.to_string().bright_red()
             );
             Err(e.into())
         }
