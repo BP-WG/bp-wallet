@@ -51,6 +51,7 @@ mod io {
         let cipher = Aes256Gcm::new(key);
 
         let ciphered_data = cipher.encrypt(&nonce, source.as_ref()).expect("failed to encrypt");
+        debug_assert_eq!(Aes256Gcm::new(key).decrypt(&nonce, &ciphered_data[..]), Ok(source));
 
         let mut data = nonce.to_vec();
         data.extend(ciphered_data);
