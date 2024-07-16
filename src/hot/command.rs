@@ -72,20 +72,7 @@ pub enum HotCommand {
         seed_file: PathBuf,
 
         /// Derivation scheme.
-        #[clap(
-            short,
-            long,
-            long_help = "Possible values are:
-- bip44: used for P2PKH (not recommended)
-- bip84: used for P2WPKH
-- bip49: used for P2WPKH-in-P2SH
-- bip86: used for P2TR with single key (no MuSig, no multisig)
-- bip45: used for legacy multisigs (P2SH, not recommended)
-- bip48//1h: used for P2WSH-in-P2SH multisigs (deterministic order)
-- bip48//2h: used for P2WSH multisigs (deterministic order)
-- bip87: used for modern multisigs with descriptors (pre-MuSig)",
-            default_value = "bip86"
-        )]
+        #[clap(short, long, default_value = "bip86")]
         scheme: Bip43,
 
         /// Account derivation number (should be hardened, i.e. with `h` suffix)
