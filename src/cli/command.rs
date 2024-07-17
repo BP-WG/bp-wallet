@@ -357,6 +357,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 utxo: true,
             } => {
                 let wallet = self.bp_wallet::<O::Descr>(&config)?;
+                println!("Balance of {}", wallet.descriptor());
                 println!("\nHeight\t{:>12}\t{:68}\tAddress", "Amount, ṩ", "Outpoint");
                 for row in wallet.coins() {
                     println!(
@@ -376,6 +377,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 utxo: true,
             } => {
                 let wallet = self.bp_wallet::<O::Descr>(&config)?;
+                println!("Balance of {}", wallet.descriptor());
                 println!("\nHeight\t{:>12}\t{:68}", "Amount, ṩ", "Outpoint");
                 for (derived_addr, utxos) in wallet.address_coins() {
                     println!("{}\t{}", derived_addr.addr, derived_addr.terminal);
@@ -393,6 +395,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
             }
             BpCommand::History { txid, details } => {
                 let wallet = self.bp_wallet::<O::Descr>(&config)?;
+                println!("History of {}", wallet.descriptor());
                 println!(
                     "\nHeight\t{:<1$}\t    Amount, ṩ\tFee rate, ṩ/vbyte",
                     "Txid",
