@@ -28,16 +28,18 @@ use std::{error, fs, io};
 
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
-use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx};
+use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx, XpubDerivable};
 use colored::Colorize;
-use descriptors::Descriptor;
+use descriptors::{Descriptor, StdDescr};
 use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, UnfinalizedInputs};
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::wallet::fs::{LoadError, StoreError};
 use crate::wallet::Save;
-use crate::{coinselect, AnyIndexerError, FsConfig, Indexer, OpType, WalletAddr, WalletUtxo};
+use crate::{
+    coinselect, AnyIndexerError, FsConfig, Indexer, OpType, Wallet, WalletAddr, WalletUtxo,
+};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
@@ -224,21 +226,23 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 println!("Known wallets:");
                 let mut count = 0usize;
                 for wallet in dir {
-                    let Ok(wallet) = wallet else {
+                    let Ok(entry) = wallet else {
                         continue;
                     };
-                    let Ok(meta) = wallet.metadata() else {
+                    let Ok(meta) = entry.metadata() else {
                         continue;
                     };
                     if !meta.is_dir() {
                         continue;
                     }
-                    let name = wallet.file_name().into_string().expect("invalid directory name");
+                    let name = entry.file_name().into_string().expect("invalid directory name");
                     print!(
                         "{name}{}",
                         if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
-                    let Ok(wallet) = self.bp_wallet::<O::Descr>(&config) else {
+                    let Ok((wallet, _warnings)) =
+                        Wallet::<XpubDerivable, StdDescr>::load(&entry.path(), true)
+                    else {
                         println!("# broken wallet descriptor");
                         continue;
                     };
