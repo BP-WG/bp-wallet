@@ -22,6 +22,7 @@
 
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
+use std::ops::{Deref, DerefMut};
 
 use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, Witness};
 use descriptors::Descriptor;
@@ -42,9 +43,20 @@ pub struct Client {
     pub(crate) kind: ClientKind,
 }
 
+impl Deref for Client {
+    type Target = BlockingClient;
+
+    fn deref(&self) -> &Self::Target { &self.inner }
+}
+
+impl DerefMut for Client {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
+}
+
 /// Represents the kind of client used for interacting with the Esplora indexer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum ClientKind {
+    #[default]
     Esplora,
     #[cfg(feature = "mempool")]
     Mempool,
