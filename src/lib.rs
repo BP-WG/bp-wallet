@@ -31,7 +31,7 @@ extern crate clap;
 #[cfg(feature = "log")]
 extern crate log;
 
-mod indexers;
+pub mod indexers;
 mod util;
 mod data;
 mod rows;
@@ -40,13 +40,21 @@ mod layer2;
 pub mod coinselect;
 #[cfg(feature = "cli")]
 pub mod cli;
+#[cfg(feature = "hot")]
+pub mod hot;
+mod bip43;
 
+pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
+#[cfg(all(feature = "cli", feature = "hot"))]
+pub use hot::{HotArgs, HotCommand};
+#[cfg(feature = "hot")]
+pub use hot::{Seed, SeedType};
 pub use indexers::Indexer;
-#[cfg(any(feature = "electrum", feature = "esplora"))]
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use indexers::{AnyIndexer, AnyIndexerError};
 pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,

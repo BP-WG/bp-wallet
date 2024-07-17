@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::path::{Path, PathBuf};
 
 use bpstd::{Network, XpubDerivable};
@@ -90,7 +90,7 @@ pub struct ResolverOpt {
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
-    type Descr: Descriptor + serde::Serialize + for<'de> serde::Deserialize<'de>;
+    type Descr: Descriptor + Display + serde::Serialize + for<'de> serde::Deserialize<'de>;
     fn is_some(&self) -> bool;
     fn descriptor(&self) -> Option<Self::Descr>;
 }
@@ -98,11 +98,11 @@ pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(multiple = false)]
 pub struct DescrStdOpts {
-    /// Use wpkh(KEY) descriptor as wallet
+    /// Use wpkh(WPKH) descriptor as wallet
     #[arg(long, global = true)]
     pub wpkh: Option<XpubDerivable>,
 
-    /// Use tr(KEY) descriptor as wallet
+    /// Use tr(TR_KEY_ONLY) descriptor as wallet
     #[arg(long, global = true)]
     pub tr_key_only: Option<XpubDerivable>,
 }
@@ -125,10 +125,11 @@ impl DescriptorOpts for DescrStdOpts {
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 #[group(multiple = false)]
 pub struct WalletOpts<O: DescriptorOpts = DescrStdOpts> {
+    /// Use specific named wallet
     #[arg(short = 'w', long = "wallet", global = true)]
     pub name: Option<Ident>,
 
-    /// Path to wallet directory.
+    /// Use wallet from a given path
     #[arg(
         short = 'W',
         long,

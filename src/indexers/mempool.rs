@@ -23,7 +23,7 @@
 use bpstd::Txid;
 use esplora::BlockingClient;
 
-impl super::Client {
+impl super::esplora::Client {
     /// Creates a new mempool client with the specified URL.
     ///
     /// # Arguments

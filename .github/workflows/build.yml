@@ -31,11 +31,14 @@ jobs:
       fail-fast: false
       matrix:
         feature:
+          - hot
           - serde
           - esplora
           - electrum
+          - mempool
           - fs
           - cli
+          - cli,hot
           - serde,esplora
     steps:
       - uses: actions/checkout@v4

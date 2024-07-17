@@ -22,8 +22,9 @@
 
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
+use std::ops::{Deref, DerefMut};
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, Witness};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
@@ -42,9 +43,20 @@ pub struct Client {
     pub(crate) kind: ClientKind,
 }
 
+impl Deref for Client {
+    type Target = BlockingClient;
+
+    fn deref(&self) -> &Self::Target { &self.inner }
+}
+
+impl DerefMut for Client {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
+}
+
 /// Represents the kind of client used for interacting with the Esplora indexer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum ClientKind {
+    #[default]
     Esplora,
     #[cfg(feature = "mempool")]
     Mempool,
@@ -152,6 +164,7 @@ fn get_scripthash_txs_all(
     let mut res = Vec::new();
     let mut last_seen = None;
     let script = derive.addr.script_pubkey();
+    #[cfg(feature = "mempool")]
     let address = derive.addr.to_string();
 
     loop {
@@ -301,4 +314,6 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         todo!()
     }
+
+    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
 }

@@ -19,6 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use bpstd::Tx;
 use descriptors::Descriptor;
 
 use crate::{Indexer, Layer2, MayError, WalletCache, WalletDescr};
@@ -38,6 +39,19 @@ pub enum AnyIndexer {
     #[cfg(feature = "mempool")]
     /// Mempool indexer
     Mempool(Box<super::esplora::Client>),
+}
+
+impl AnyIndexer {
+    pub fn name(&self) -> &'static str {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(_) => "electrum",
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(_) => "esplora",
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(_) => "mempool",
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -117,6 +131,17 @@ impl Indexer for AnyIndexer {
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
                 }
             }
+        }
+    }
+
+    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.publish(tx).map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.publish(tx).map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.publish(tx).map_err(|e| e.into()),
         }
     }
 }

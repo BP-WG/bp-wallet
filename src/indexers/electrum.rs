@@ -350,4 +350,9 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         todo!()
     }
+
+    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
+        self.transaction_broadcast(tx)?;
+        Ok(())
+    }
 }
