@@ -35,6 +35,7 @@ jobs:
           - serde
           - esplora
           - electrum
+          - mempool
           - fs
           - cli
           - cli,hot

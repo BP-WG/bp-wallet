@@ -152,6 +152,7 @@ fn get_scripthash_txs_all(
     let mut res = Vec::new();
     let mut last_seen = None;
     let script = derive.addr.script_pubkey();
+    #[cfg(feature = "mempool")]
     let address = derive.addr.to_string();
 
     loop {

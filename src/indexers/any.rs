@@ -44,8 +44,11 @@ pub enum AnyIndexer {
 impl AnyIndexer {
     pub fn name(&self) -> &'static str {
         match self {
+            #[cfg(feature = "electrum")]
             AnyIndexer::Electrum(_) => "electrum",
+            #[cfg(feature = "esplora")]
             AnyIndexer::Esplora(_) => "esplora",
+            #[cfg(feature = "mempool")]
             AnyIndexer::Mempool(_) => "mempool",
         }
     }

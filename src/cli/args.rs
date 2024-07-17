@@ -32,7 +32,7 @@ use strict_encoding::Ident;
 use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
-use crate::indexers::Client as IndexerClient;
+use crate::indexers::esplora;
 use crate::{AnyIndexer, MayError, Wallet};
 
 /// Command-line arguments
@@ -98,10 +98,10 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         let network = self.general.network.to_string();
         Ok(match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
             (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
-            (Some(url), None, None) => AnyIndexer::Esplora(Box::new(IndexerClient::new_esplora(
+            (Some(url), None, None) => AnyIndexer::Esplora(Box::new(esplora::Client::new_esplora(
                 &url.replace("{network}", &network),
             )?)),
-            (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(IndexerClient::new_mempool(
+            (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(esplora::Client::new_mempool(
                 &url.replace("{network}", &network),
             )?)),
             _ => {

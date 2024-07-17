@@ -21,11 +21,11 @@
 // limitations under the License.
 
 #[cfg(feature = "electrum")]
-mod electrum;
+pub mod electrum;
 #[cfg(feature = "esplora")]
-mod esplora;
+pub mod esplora;
 #[cfg(feature = "mempool")]
-mod mempool;
+pub mod mempool;
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 mod any;
 
@@ -33,8 +33,6 @@ mod any;
 pub use any::{AnyIndexer, AnyIndexerError};
 use bpstd::Tx;
 use descriptors::Descriptor;
-#[cfg(any(feature = "esplora", feature = "mempool"))]
-pub use esplora::Client;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
 
