@@ -58,6 +58,10 @@ pub enum HotCommand {
     Seed {
         /// File to save generated seed data and extended master key
         output_file: PathBuf,
+
+        /// Provide the password to be used for the seed
+        #[clap(short = 'p', long)]
+        seed_password: Option<String>,
     },
 
     /// Derive new extended private key from the seed and saves it into a separate file as a new
@@ -71,6 +75,10 @@ pub enum HotCommand {
 
         /// Seed file containing extended master key, created previously with `seed` command
         seed_file: PathBuf,
+
+        /// Provide the password to be used for the seed
+        #[clap(long)]
+        seed_password: Option<String>,
 
         /// Derivation scheme.
         #[clap(short, long, default_value = "bip86")]
@@ -127,15 +135,27 @@ pub enum HotCommand {
 impl HotArgs {
     pub fn exec(self) -> Result<(), DataError> {
         match self.command {
-            HotCommand::Seed { output_file } => seed(&output_file)?,
+            HotCommand::Seed {
+                output_file,
+                seed_password,
+            } => seed(&output_file, &seed_password)?,
             HotCommand::Derive {
                 no_password,
                 seed_file,
+                seed_password,
                 scheme,
                 account,
                 mainnet,
                 output_file,
-            } => derive(&seed_file, scheme, account, mainnet, &output_file, no_password)?,
+            } => derive(
+                &seed_file,
+                &seed_password,
+                scheme,
+                account,
+                mainnet,
+                &output_file,
+                no_password,
+            )?,
             HotCommand::Info {
                 file,
                 print_private,
@@ -151,24 +171,44 @@ impl HotArgs {
     }
 }
 
-fn seed(output_file: &Path) -> Result<(), DataError> {
-    let seed = Seed::random(SeedType::Bit128);
-    let seed_password = loop {
-        let seed_password = rpassword::prompt_password("Seed password: ")?;
-        let entropy = calculate_entropy(&seed_password);
+fn get_password(
+    password_arg: &Option<String>,
+    prompt: &str,
+    accept_weak: bool,
+) -> Result<String, std::io::Error> {
+    let password = loop {
+        let password = if let Some(p) = password_arg {
+            p.clone()
+        } else {
+            rpassword::prompt_password(prompt)?
+        };
+
+        let entropy = calculate_entropy(&password);
         eprintln!("Password entropy: ~{entropy:.0} bits");
-        if seed_password.is_empty() || entropy < 64.0 {
+        if !accept_weak && (password.is_empty() || entropy < 64.0) {
             eprintln!("Entropy is too low, please try with a different password");
-            continue;
+            if password_arg.is_some() {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "low entropy"));
+            } else {
+                continue;
+            }
         }
 
-        let password2 = rpassword::prompt_password("Repeat the password: ")?;
-        if password2 != seed_password {
-            eprintln!("Passwords do not match, please try again");
-            continue;
+        if password_arg.is_none() {
+            let repeat = rpassword::prompt_password("Repeat the password: ")?;
+            if repeat != password {
+                eprintln!("Passwords do not match, please try again");
+                continue;
+            }
         }
-        break seed_password;
+        break password;
     };
+    Ok(password)
+}
+
+fn seed(output_file: &Path, seed_password: &Option<String>) -> Result<(), DataError> {
+    let seed = Seed::random(SeedType::Bit128);
+    let seed_password = get_password(seed_password, "Seed password:", false)?;
 
     seed.write(output_file, &seed_password)?;
     if let Err(e) = Seed::read(output_file, &seed_password) {
@@ -242,30 +282,19 @@ fn info_account(account: XprivAccount, print_private: bool) {
 
 fn derive(
     seed_file: &Path,
+    seed_password: &Option<String>,
     scheme: Bip43,
     account: HardenedIndex,
     mainnet: bool,
     output_file: &Path,
     no_password: bool,
 ) -> Result<(), DataError> {
-    let seed_password = rpassword::prompt_password("Seed password: ")?;
+    let seed_password = get_password(seed_password, "Seed password:", false)?;
 
     let account_password = if !mainnet && no_password {
         s!("")
     } else {
-        loop {
-            let account_password = rpassword::prompt_password("Account password: ")?;
-            let entropy = calculate_entropy(&seed_password);
-            eprintln!("Password entropy: ~{entropy:.0} bits");
-            if !account_password.is_empty() && entropy >= 64.0 {
-                break account_password;
-            }
-            if !mainnet {
-                eprintln!("Entropy is too low, but since we are on testnet we accept that");
-                break account_password;
-            }
-            eprintln!("Entropy is too low, please try with a different password")
-        }
+        get_password(&None, "Account password:", !mainnet)?
     };
 
     let seed = Seed::read(seed_file, &seed_password)?;
