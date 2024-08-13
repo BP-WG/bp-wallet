@@ -20,6 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::env::VarError;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
@@ -163,8 +164,20 @@ fn get_password(
     accept_weak: bool,
 ) -> Result<String, std::io::Error> {
     let password = loop {
-        let password =
-            if let Some(varname) = password_envvar { env::var(varname).ok() } else { None };
+        let password = if let Some(varname) = password_envvar {
+            match env::var(varname) {
+                Ok(password) => return Ok(password),
+                Err(VarError::NotUnicode(_)) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "password set by environment is not a valid unicode string",
+                    ))
+                }
+                Err(VarError::NotPresent) => None,
+            }
+        } else {
+            None
+        };
         let password =
             if let Some(pass) = password { pass } else { rpassword::prompt_password(prompt)? };
 
@@ -173,7 +186,7 @@ fn get_password(
         if !accept_weak && (password.is_empty() || entropy < 64.0) {
             eprintln!("Entropy is too low, please try with a different password");
             if password_envvar.is_some() {
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, "low entropy"));
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "low password entropy"));
             } else {
                 continue;
             }
