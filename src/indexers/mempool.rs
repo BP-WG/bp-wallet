@@ -34,6 +34,7 @@ impl super::esplora::Client {
     ///
     /// A `Result` containing the new mempool client if successful, or an `esplora::Error` if an
     /// error occurred.
+    #[allow(clippy::result_large_err)]
     pub fn new_mempool(url: &str) -> Result<Self, esplora::Error> {
         let inner = esplora::Builder::new(url).build_blocking()?;
         let client = Self {
@@ -45,9 +46,10 @@ impl super::esplora::Client {
 }
 
 pub trait Mempool {
+    #[allow(clippy::result_large_err)]
     fn address_txs(
         &self,
-        address: &String,
+        address: &str,
         last_seen: Option<Txid>,
     ) -> Result<Vec<esplora::Tx>, esplora::Error>;
 }
@@ -68,7 +70,7 @@ impl Mempool for BlockingClient {
     /// during the retrieval process.
     fn address_txs(
         &self,
-        address: &String,
+        address: &str,
         last_seen: Option<Txid>,
     ) -> Result<Vec<esplora::Tx>, esplora::Error> {
         let url = self.url();

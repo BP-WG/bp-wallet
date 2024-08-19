@@ -29,7 +29,7 @@ use descriptors::{Descriptor, StdDescr, TrKey, Wpkh};
 use strict_encoding::Ident;
 
 pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";
-#[cfg(any(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 pub const DATA_DIR: &str = "~/.lnp-bp";
 #[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
 pub const DATA_DIR: &str = "~/.lnp-bp";
@@ -114,10 +114,8 @@ impl DescriptorOpts for DescrStdOpts {
     fn descriptor(&self) -> Option<Self::Descr> {
         if let Some(ref x) = self.tr_key_only {
             Some(TrKey::from(x.clone()).into())
-        } else if let Some(ref x) = self.wpkh {
-            Some(Wpkh::from(x.clone()).into())
         } else {
-            None
+            self.wpkh.as_ref().map(|x| Wpkh::from(x.clone()).into())
         }
     }
 }

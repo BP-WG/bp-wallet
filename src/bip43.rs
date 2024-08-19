@@ -393,7 +393,7 @@ impl DerivationStandard for Bip43 {
     fn to_origin_derivation(&self, testnet: bool) -> DerivationPath<HardenedIndex> {
         let mut path = Vec::with_capacity(2);
         if let Some(purpose) = self.purpose() {
-            path.push(purpose.into())
+            path.push(purpose)
         }
         path.push(if testnet { HardenedIndex::ONE } else { HardenedIndex::ZERO });
         path.into()
@@ -407,9 +407,9 @@ impl DerivationStandard for Bip43 {
         let mut path = Vec::with_capacity(4);
         path.push(account_index);
         if self == &Bip43::Bip48Native {
-            path.push(HardenedIndex::from(2u8).into());
+            path.push(HardenedIndex::from(2u8));
         } else if self == &Bip43::Bip48Nested {
-            path.push(HardenedIndex::from(1u8).into());
+            path.push(HardenedIndex::ONE);
         }
         let mut derivation = self.to_origin_derivation(testnet);
         derivation.extend(&path);

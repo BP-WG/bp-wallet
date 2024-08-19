@@ -72,6 +72,7 @@ impl Client {
     /// # Errors
     ///
     /// Returns an error if the client fails to connect to the Esplora server.
+    #[allow(clippy::result_large_err)]
     pub fn new_esplora(url: &str) -> Result<Self, Error> {
         let inner = esplora::Builder::new(url).build_blocking()?;
         let client = Self {
@@ -156,6 +157,7 @@ impl From<esplora::Tx> for WalletTx {
 /// # Errors
 ///
 /// Returns an error if there was a problem retrieving the transactions.
+#[allow(clippy::result_large_err)]
 fn get_scripthash_txs_all(
     client: &Client,
     derive: &DerivedAddr,

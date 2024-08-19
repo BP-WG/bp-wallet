@@ -314,7 +314,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 psbt: psbt_path,
                 tx,
             } => {
-                let mut psbt = psbt_read(&psbt_path)?;
+                let mut psbt = psbt_read(psbt_path)?;
                 if psbt.is_finalized() {
                     eprintln!("The PSBT is already finalized");
                 } else {
@@ -322,7 +322,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     psbt_finalize(&mut psbt, wallet.descriptor())?;
                 }
 
-                psbt_write(&psbt, &psbt_path)?;
+                psbt_write(&psbt, psbt_path)?;
                 if let Ok(tx) = psbt_extract(&psbt, *publish, tx.as_deref()) {
                     if *publish {
                         let indexer = self.indexer()?;
@@ -337,7 +337,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 psbt: psbt_path,
                 tx,
             } => {
-                let mut psbt = psbt_read(&psbt_path)?;
+                let mut psbt = psbt_read(psbt_path)?;
                 if !psbt.is_finalized() {
                     let wallet = self.bp_wallet::<O::Descr>(&config)?;
                     psbt_finalize(&mut psbt, wallet.descriptor())?;
@@ -492,7 +492,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                 );
             }
             BpCommand::Inspect { psbt } => {
-                let psbt = psbt_read(&psbt)?;
+                let psbt = psbt_read(psbt)?;
                 println!(
                     "{}",
                     serde_yaml::to_string(&psbt).expect("unable to generate YAML representation")
@@ -549,7 +549,7 @@ fn psbt_read(psbt_path: &Path) -> Result<Psbt, ExecError> {
 
 fn psbt_write(psbt: &Psbt, psbt_path: &Path) -> Result<(), ExecError> {
     eprint!("Saving PSBT to file {} ... ", psbt_path.display());
-    let mut psbt_file = File::create(&psbt_path)?;
+    let mut psbt_file = File::create(psbt_path)?;
     psbt.encode(psbt.version, &mut psbt_file)?;
     eprintln!("success");
     Ok(())
@@ -558,7 +558,7 @@ fn psbt_write(psbt: &Psbt, psbt_path: &Path) -> Result<(), ExecError> {
 fn psbt_write_or_print(psbt: &Psbt, psbt_path: Option<&Path>) -> Result<(), ExecError> {
     match psbt_path {
         Some(file_name) => {
-            psbt_write(&psbt, file_name)?;
+            psbt_write(psbt, file_name)?;
         }
         None => match psbt.version {
             PsbtVer::V0 => println!("{psbt}"),

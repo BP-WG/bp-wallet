@@ -67,7 +67,7 @@ pub struct Args<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts = DescrStd
 impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn translate<C1: Clone + Eq + Debug + Subcommand>(&self, cmd: &C1) -> Args<C1, O> {
         Args {
-            verbose: self.verbose.clone(),
+            verbose: self.verbose,
             wallet: self.wallet.clone(),
             resolver: self.resolver.clone(),
             sync: self.sync,
@@ -114,6 +114,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         })
     }
 
+    #[allow(clippy::multiple_bound_locations)]
     pub fn bp_wallet<D: Descriptor>(
         &self,
         conf: &Config,

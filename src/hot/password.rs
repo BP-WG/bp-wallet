@@ -10,18 +10,16 @@ pub fn calculate_entropy(password: &str) -> f64 {
 fn calculate_charset(password: &str) -> f64 {
     let mut charset = 0u32;
 
-    if password.bytes().any(|byte| byte >= b'0' && byte <= b'9') {
+    if password.as_bytes().iter().any(u8::is_ascii_digit) {
         charset += 10; // Numbers
     }
-    if password.bytes().any(|byte| byte >= b'a' && byte <= b'z') {
+    if password.as_bytes().iter().any(u8::is_ascii_lowercase) {
         charset += 26; // Lowercase letters
     }
-    if password.bytes().any(|byte| byte >= b'A' && byte <= b'Z') {
+    if password.as_bytes().iter().any(u8::is_ascii_uppercase) {
         charset += 26; // Uppercase letters
     }
-    if password.bytes().any(|byte| {
-        byte < b'0' || (byte > b'9' && byte < b'A') || (byte > b'Z' && byte < b'a') || byte > b'z'
-    }) {
+    if !password.as_bytes().iter().all(u8::is_ascii_alphanumeric) {
         charset += 33; // Special characters, rough estimation
     }
 
