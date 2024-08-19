@@ -164,7 +164,7 @@ impl Indexer for Client {
                                             .unwrap_or(NonZeroU32::MIN),
                                         time: blocktime,
                                         block_hash: BlockHash::from_str(blockhash)
-                                            .expect("blockhash sould deserialize"),
+                                            .expect("blockhash should deserialize"),
                                     })
                                 };
                                 // get inputs to build TxCredit's and total amount,

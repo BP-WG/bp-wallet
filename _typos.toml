@@ -5,3 +5,4 @@ extend-exclude = ["stl/"]
 [default.extend-words]
 # Don't correct the name "Jon Atack".
 Atack = "Atack"
+deriver = "deriver"
