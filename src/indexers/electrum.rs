@@ -164,7 +164,7 @@ impl Indexer for Client {
                                             .unwrap_or(NonZeroU32::MIN),
                                         time: blocktime,
                                         block_hash: BlockHash::from_str(blockhash)
-                                            .expect("blockhash sould deserialize"),
+                                            .expect("blockhash should deserialize"),
                                     })
                                 };
                                 // get inputs to build TxCredit's and total amount,
@@ -336,11 +336,7 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() {
-            MayError::ok(cache)
-        } else {
-            MayError::err(cache, errors)
-        }
+        if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
     }
 
     fn update<K, D: Descriptor<K>, L2: Layer2>(

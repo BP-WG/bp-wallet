@@ -171,7 +171,7 @@ fn get_password(
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         "password set by environment is not a valid unicode string",
-                    ))
+                    ));
                 }
                 Err(VarError::NotPresent) => None,
             }
@@ -209,11 +209,10 @@ fn seed(output_file: &Path) -> Result<(), DataError> {
     let seed_password = get_password(Some(SEED_PASSWORD_ENVVAR), "Seed password:", false)?;
 
     seed.write(output_file, &seed_password)?;
-    if let Err(e) = Seed::read(output_file, &seed_password) {
+    Seed::read(output_file, &seed_password).inspect_err(|_| {
         eprintln!("Unable to save seed file");
-        fs::remove_file(output_file)?;
-        return Err(e.into());
-    }
+        let _ = fs::remove_file(output_file);
+    })?;
 
     info_seed(seed, false);
 
@@ -298,11 +297,10 @@ fn derive(
     let account = seed.derive(scheme, !mainnet, account);
 
     account.write(output_file, &account_password)?;
-    if let Err(e) = XprivAccount::read(output_file, &account_password) {
+    XprivAccount::read(output_file, &account_password).inspect_err(|_| {
         eprintln!("Unable to save account file");
-        fs::remove_file(output_file)?;
-        return Err(e.into());
-    }
+        let _ = fs::remove_file(output_file);
+    })?;
 
     info_account(account, false);
 

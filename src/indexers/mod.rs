@@ -37,7 +37,7 @@ use descriptors::Descriptor;
 use crate::{Layer2, MayError, WalletCache, WalletDescr};
 
 #[cfg(any(feature = "electrum", feature = "esplora"))]
-pub(self) const BATCH_SIZE: u8 = 10;
+const BATCH_SIZE: u8 = 10;
 
 pub trait Indexer {
     type Error;

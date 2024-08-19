@@ -62,7 +62,7 @@ mod io {
         let key = Sha256::digest(key.as_ref());
         let key = aes_gcm::Key::<Aes256Gcm>::from_slice(key.as_slice());
         let nonce = Nonce::<Aes256Gcm>::from_slice(&encrypted[..12]);
-        Aes256Gcm::new(key).decrypt(&nonce, &encrypted[12..])
+        Aes256Gcm::new(key).decrypt(nonce, &encrypted[12..])
     }
 
     #[derive(Clone, Eq, PartialEq, Debug, Display, Error, From)]

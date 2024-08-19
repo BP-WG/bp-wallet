@@ -43,12 +43,10 @@ impl Config {
         fs::read_to_string(conf_path)
             .map_err(|err| {
                 error!("Unable to read config file: {err:?}");
-                ()
             })
             .and_then(|s| {
                 toml::from_str(&s).map_err(|err| {
                     error!("Unable to parse config file: {err}");
-                    ()
                 })
             })
             .unwrap_or_else(|_| {

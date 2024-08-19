@@ -412,8 +412,7 @@ where Self: Save
         let keychain = keychain.into();
         let index = self.next_derivation_index(keychain, shift);
         self.addresses(keychain)
-            .skip(index.index() as usize)
-            .next()
+            .nth(index.index() as usize)
             .expect("address iterator always can produce address")
             .addr
     }
@@ -579,9 +578,7 @@ pub mod fs {
 
             let cache = fs::read_to_string(files.cache)
                 .map_err(|_| Warning::CacheAbsent)
-                .and_then(|cache| {
-                    serde_yaml::from_str(&cache).map_err(|err| Warning::CacheDamaged(err))
-                })
+                .and_then(|cache| serde_yaml::from_str(&cache).map_err(Warning::CacheDamaged))
                 .unwrap_or_else(|warn| {
                     warnings.push(warn);
                     WalletCache::default()
