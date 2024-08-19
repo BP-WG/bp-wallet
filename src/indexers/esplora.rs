@@ -300,11 +300,7 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() {
-            MayError::ok(cache)
-        } else {
-            MayError::err(cache, errors)
-        }
+        if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
     }
 
     fn update<K, D: Descriptor<K>, L2: Layer2>(

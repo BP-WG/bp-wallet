@@ -171,7 +171,7 @@ fn get_password(
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         "password set by environment is not a valid unicode string",
-                    ))
+                    ));
                 }
                 Err(VarError::NotPresent) => None,
             }
