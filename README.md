@@ -1,22 +1,20 @@
 # Bitcoin protocol command-line wallet & tools
 
-![Build](https://github.com/BP-WG/bp-tools/workflows/Build/badge.svg)
-![Tests](https://github.com/BP-WG/bp-tools/workflows/Tests/badge.svg)
-![Lints](https://github.com/BP-WG/bp-tools/workflows/Lints/badge.svg)
-[![codecov](https://codecov.io/gh/BP-WG/bp-tools/branch/master/graph/badge.svg)](https://codecov.io/gh/BP-WG/bp-tools)
+![Build](https://github.com/BP-WG/bp-wallet/workflows/Build/badge.svg)
+![Tests](https://github.com/BP-WG/bp-wallet/workflows/Tests/badge.svg)
+![Lints](https://github.com/BP-WG/bp-wallet/workflows/Lints/badge.svg)
+[![codecov](https://codecov.io/gh/BP-WG/bp-wallet/branch/master/graph/badge.svg)](https://codecov.io/gh/BP-WG/bp-wallet)
 
-[![crates.io](https://img.shields.io/crates/v/bp-tools)](https://crates.io/crates/bp-tools)
-[![Docs](https://docs.rs/bp-tools/badge.svg)](https://docs.rs/bp-tools)
-[![Apache-2 licensed](https://img.shields.io/crates/l/bp-tools)](./LICENSE)
+[![crates.io](https://img.shields.io/crates/v/bp-wallet)](https://crates.io/crates/bp-wallet)
+[![Docs](https://docs.rs/bp-wallet/badge.svg)](https://docs.rs/bp-wallet)
+[![Apache-2 licensed](https://img.shields.io/crates/l/bp-wallet)](./LICENSE)
 
-Modern, minimalistic & standard-compliant cold wallet from [LNP/BP Standards 
+Modern, minimalistic & standard-compliant cold wallet from [LNP/BP Standards
 Association][Assoc].
-
 
 ## Contributing
 
 Contribution guidelines can be found in [CONTRIBUTING](CONTRIBUTING.md)
-
 
 ## More information
 
