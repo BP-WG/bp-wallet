@@ -40,9 +40,9 @@ pub struct SignTxInfo {
 pub struct ConsoleSigner<'descr, 'me, D: Descriptor>
 where Self: 'me
 {
-    descriptor: &'descr D,
-    account: XprivAccount,
-    signer: XprivSigner<'me>,
+    pub descriptor: &'descr D,
+    pub account: XprivAccount,
+    pub signer: XprivSigner<'me>,
 }
 
 pub struct XprivSigner<'xpriv> {
