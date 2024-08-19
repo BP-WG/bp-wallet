@@ -2,11 +2,11 @@
 
 [package]
 name = "bp-convert"
-version = "0.11.0-beta.6"
+version = "0.11.0-beta.7"
 description = "Convertor between bp-wallet and rust-bitcoin data types"
 keywords = ["bitcoin", "wallet"]
 categories = ["cryptography::cryptocurrencies"]
-readme = "README.md"
+readme = "../README.md"
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
 homepage = "https://lnp-bp.org"
 repository = "https://github.com/BP-WG/bp-wallet"

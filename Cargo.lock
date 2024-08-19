@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "bp-wallet"
-version = "0.11.0-beta.6.1"
+version = "0.11.0-beta.7"
 dependencies = [
  "aes-gcm",
  "amplify",
