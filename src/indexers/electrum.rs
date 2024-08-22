@@ -55,12 +55,6 @@ impl From<VinExtended> for TxCredit {
     }
 }
 
-#[derive(Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct Pubkey {
-    hex: String,
-}
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(crate = "serde_crate", rename_all = "camelCase")]
 struct Vin {
@@ -80,21 +74,12 @@ struct VinExtended {
 
 #[derive(Deserialize)]
 #[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct Vout {
-    n: u64,
-    script_pub_key: Pubkey,
-    value: f64,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
 struct TxDetails {
     hex: String,
     locktime: u32,
     size: u32,
     version: i32,
     vin: Vec<Vin>,
-    vout: Vec<Vout>,
 }
 
 impl Indexer for Client {
@@ -215,19 +200,16 @@ impl Indexer for Client {
                                 input_errs.into_iter().for_each(|e| errors.push(e.unwrap_err()));
                                 // get outputs and total amount, build TxDebit's
                                 let mut output_tot: u64 = 0;
-                                let outputs = tx
-                                    .vout
-                                    .into_iter()
-                                    .map(|vout| {
-                                        let value = (vout.value * 100_000_000.0) as u64;
-                                        output_tot += value;
-                                        let script_pubkey =
-                                            ScriptPubkey::from_hex(&vout.script_pub_key.hex)
-                                                .expect("script pubkey hex should deserialize");
+                                let outputs = bp_tx
+                                    .outputs
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(n, vout)| {
+                                        output_tot += vout.value.sats();
                                         TxDebit {
-                                            outpoint: Outpoint::new(txid, vout.n as u32),
-                                            beneficiary: Party::Unknown(script_pubkey),
-                                            value: value.into(),
+                                            outpoint: Outpoint::new(txid, n as u32),
+                                            beneficiary: Party::Unknown(vout.script_pubkey.clone()),
+                                            value: vout.value,
                                             spent: None,
                                         }
                                     })
