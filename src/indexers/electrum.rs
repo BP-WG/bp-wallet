@@ -26,8 +26,8 @@ use std::str::FromStr;
 use amplify::hex::{FromHex, ToHex};
 use amplify::ByteArray;
 use bpstd::{
-    Address, BlockHash, ConsensusDecode, LockTime, Outpoint, ScriptPubkey, SeqNo, SigScript, Tx,
-    Txid, Weight, Witness,
+    Address, BlockHash, ConsensusDecode, LockTime, Outpoint, Sats, ScriptPubkey, SeqNo, SigScript,
+    Tx, Txid, Weight, Witness,
 };
 use descriptors::Descriptor;
 use electrum::{Client, ElectrumApi, Error, Param};
@@ -74,7 +74,7 @@ struct VinExtended {
     vin: Vin,
     sig_script: SigScript,
     witness: Witness,
-    value: u64,
+    value: Sats,
     payer: ScriptPubkey,
 }
 
@@ -83,7 +83,7 @@ struct VinExtended {
 struct Vout {
     n: u64,
     script_pub_key: Pubkey,
-    value: f64,
+    value: u64,
 }
 
 #[derive(Deserialize)]
@@ -173,7 +173,7 @@ impl Indexer for Client {
                                     .expect("tx hex should convert to u8 vec");
                                 let bp_tx = Tx::consensus_deserialize(hex_bytes)
                                     .expect("tx should deserialize");
-                                let mut input_tot: u64 = 0;
+                                let mut input_tot = Sats::ZERO;
                                 let input_results: Vec<Result<VinExtended, Self::Error>> = tx
                                     .vin
                                     .iter()
@@ -192,10 +192,11 @@ impl Indexer for Client {
                                             input.prev_output.txid.to_byte_array(),
                                         );
                                         let prev_tx = self.transaction_get(&prev_txid)?;
-                                        let value = prev_tx.outputs
-                                            [input.prev_output.vout.into_usize()]
-                                        .value
-                                        .0;
+                                        let value = Sats::from(
+                                            prev_tx.outputs[input.prev_output.vout.into_usize()]
+                                                .value
+                                                .0,
+                                        );
                                         input_tot += value;
                                         let payer = prev_tx.outputs
                                             [input.prev_output.vout.into_usize()]
@@ -214,20 +215,18 @@ impl Indexer for Client {
                                     input_results.into_iter().partition(Result::is_ok);
                                 input_errs.into_iter().for_each(|e| errors.push(e.unwrap_err()));
                                 // get outputs and total amount, build TxDebit's
-                                let mut output_tot: u64 = 0;
-                                let outputs = tx
-                                    .vout
+                                let mut output_tot = Sats::ZERO;
+                                let weight = bp_tx.weight_units().to_u32();
+                                let outputs = bp_tx
+                                    .outputs
                                     .into_iter()
-                                    .map(|vout| {
-                                        let value = (vout.value * 100_000_000.0) as u64;
-                                        output_tot += value;
-                                        let script_pubkey =
-                                            ScriptPubkey::from_hex(&vout.script_pub_key.hex)
-                                                .expect("script pubkey hex should deserialize");
+                                    .enumerate()
+                                    .map(|(n, txout)| {
+                                        output_tot += txout.value;
                                         TxDebit {
-                                            outpoint: Outpoint::new(txid, vout.n as u32),
-                                            beneficiary: Party::Unknown(script_pubkey),
-                                            value: value.into(),
+                                            outpoint: Outpoint::new(txid, n as u32),
+                                            beneficiary: Party::Unknown(txout.script_pubkey),
+                                            value: txout.value,
                                             spent: None,
                                         }
                                     })
@@ -242,9 +241,9 @@ impl Indexer for Client {
                                         .map(TxCredit::from)
                                         .collect(),
                                     outputs,
-                                    fee: (input_tot - output_tot).into(),
+                                    fee: input_tot - output_tot,
                                     size: tx.size,
-                                    weight: bp_tx.weight_units().to_u32(),
+                                    weight,
                                     version: tx.version,
                                     locktime: LockTime::from_consensus_u32(tx.locktime),
                                 })
