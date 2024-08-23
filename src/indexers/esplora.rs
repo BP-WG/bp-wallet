@@ -24,7 +24,7 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
@@ -141,7 +141,7 @@ impl From<esplora::Tx> for WalletTx {
             fee: tx.fee.into(),
             size: tx.size,
             weight: tx.weight,
-            version: tx.version,
+            version: TxVer::from_consensus_i32(tx.version),
             locktime: LockTime::from_consensus_u32(tx.locktime),
         }
     }
@@ -215,7 +215,7 @@ impl Indexer for Client {
                     }
                     Ok(txes) if txes.is_empty() => {
                         empty_count += 1;
-                        if empty_count >= BATCH_SIZE as usize {
+                        if empty_count >= BATCH_SIZE {
                             break;
                         }
                     }

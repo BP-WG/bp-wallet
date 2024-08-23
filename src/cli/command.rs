@@ -203,6 +203,7 @@ pub enum ExecError<L2: error::Error = Infallible> {
     /// indexer failed with {0}
     #[from]
     #[cfg_attr(feature = "electrum", from(electrum::Error))]
+    #[cfg_attr(feature = "electrum", from(crate::indexers::electrum::ElectrumError))]
     #[cfg_attr(feature = "esplora", from(esplora::Error))]
     #[display(doc_comments)]
     Indexer(AnyIndexerError),
