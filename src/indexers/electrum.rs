@@ -23,15 +23,10 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::str::FromStr;
 
-use amplify::hex::{FromHex, ToHex};
-use amplify::ByteArray;
-use bpstd::{
-    Address, BlockHash, ConsensusDecode, LockTime, Outpoint, ScriptPubkey, SeqNo, SigScript, Tx,
-    Txid, Weight, Witness,
-};
+use bpstd::{Address, BlockHash, ConsensusEncode, Outpoint, Sats, Tx, TxIn, Txid, Weight};
 use descriptors::Descriptor;
-use electrum::{Client, ElectrumApi, Error, Param};
-use serde_crate::Deserialize;
+use electrum::{Client, ElectrumApi, Error, GetHistoryRes, Param};
+use serde_json::Value;
 
 use super::BATCH_SIZE;
 use crate::{
@@ -39,73 +34,40 @@ use crate::{
     WalletCache, WalletDescr, WalletTx,
 };
 
-impl From<VinExtended> for TxCredit {
-    fn from(vine: VinExtended) -> Self {
-        let vin = vine.vin;
-        let txid = Txid::from_str(&vin.txid).expect("input txid should deserialize");
-        TxCredit {
-            outpoint: Outpoint::new(txid, vin.vout),
-            sequence: SeqNo::from_consensus_u32(vin.sequence),
-            coinbase: txid.is_coinbase(),
-            script_sig: vine.sig_script,
-            witness: vine.witness,
-            value: vine.value.into(),
-            payer: Party::Unknown(vine.payer),
-        }
-    }
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
+#[display(doc_comments)]
+pub enum ElectrumApiError {
+    /// Electrum indexer returned invalid hex value for the transaction {0}.
+    InvalidTx(Txid),
+    /// Electrum indexer returned invalid block hash hex value for the transaction {0}.
+    InvalidBlockHash(Txid),
+    /// Electrum indexer returned invalid block time value for the transaction {0}.
+    InvalidBlockTime(Txid),
+    /// electrum indexer returned zero block height for the transaction {0}.
+    InvalidBlockHeight(Txid),
+    /// electrum indexer returned invalid previous transaction, which doesn't have an output spent
+    /// by transaction {0} input {1:?}.
+    PrevOutTxMismatch(Txid, TxIn),
 }
 
-#[derive(Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct Pubkey {
-    hex: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct Vin {
-    sequence: u32,
-    txid: String,
-    vout: u32,
-}
-
-#[derive(Debug)]
-struct VinExtended {
-    vin: Vin,
-    sig_script: SigScript,
-    witness: Witness,
-    value: u64,
-    payer: ScriptPubkey,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct Vout {
-    n: u64,
-    script_pub_key: Pubkey,
-    value: f64,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "serde_crate", rename_all = "camelCase")]
-struct TxDetails {
-    hex: String,
-    locktime: u32,
-    size: u32,
-    version: i32,
-    vin: Vec<Vin>,
-    vout: Vec<Vout>,
+#[derive(Debug, Display, Error, From)]
+#[display(inner)]
+pub enum ElectrumError {
+    #[from]
+    Api(ElectrumApiError),
+    #[from]
+    Client(Error),
 }
 
 impl Indexer for Client {
-    type Error = Error;
+    type Error = ElectrumError;
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
-        let mut errors = vec![];
+        let mut errors = Vec::<ElectrumError>::new();
 
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
@@ -116,149 +78,122 @@ impl Indexer for Client {
 
                 eprint!(".");
                 let mut txids = Vec::new();
-                match self.script_get_history(&script) {
-                    Err(err) => {
-                        errors.push(err);
+                let Ok(hres) =
+                    self.script_get_history(&script).map_err(|err| errors.push(err.into()))
+                else {
+                    break;
+                };
+                if hres.is_empty() {
+                    empty_count += 1;
+                    if empty_count >= BATCH_SIZE {
                         break;
                     }
-                    Ok(hres) if hres.is_empty() => {
-                        empty_count += 1;
-                        if empty_count >= BATCH_SIZE as usize {
-                            break;
-                        }
-                    }
-                    Ok(hres) => {
-                        empty_count = 0;
+                    continue;
+                }
 
-                        // build WalletTx's from script tx history, collecting indexer errors
-                        let results: Vec<Result<WalletTx, Self::Error>> = hres
-                            .into_iter()
-                            .map(|hr| {
-                                let txid = Txid::from_hex(&hr.tx_hash.to_hex())
-                                    .expect("txid should deserialize");
-                                txids.push(txid);
-                                // get the tx details (requires electrum verbose support)
-                                let tx_details =
-                                    self.raw_call("blockchain.transaction.get", vec![
-                                        Param::String(hr.tx_hash.to_string()),
-                                        Param::Bool(true),
-                                    ])?;
-                                let tx = serde_json::from_value::<TxDetails>(tx_details.clone())
-                                    .expect("tx details should deserialize");
-                                // build TxStatus
-                                let status = if hr.height < 1 {
-                                    TxStatus::Mempool
-                                } else {
-                                    let blockhash = tx_details
-                                        .get("blockhash")
-                                        .expect("blockhash should be present")
-                                        .as_str()
-                                        .expect("blockhash should be a str");
-                                    let blocktime = tx_details
-                                        .get("blocktime")
-                                        .expect("blocktime should be present")
-                                        .as_u64()
-                                        .expect("blocktime should be a u64");
-                                    TxStatus::Mined(MiningInfo {
-                                        height: NonZeroU32::try_from(hr.height as u32)
-                                            .unwrap_or(NonZeroU32::MIN),
-                                        time: blocktime,
-                                        block_hash: BlockHash::from_str(blockhash)
-                                            .expect("blockhash should deserialize"),
-                                    })
-                                };
-                                // get inputs to build TxCredit's and total amount,
-                                // collecting indexer errors
-                                let hex_bytes = Vec::<u8>::from_hex(&tx.hex)
-                                    .expect("tx hex should convert to u8 vec");
-                                let bp_tx = Tx::consensus_deserialize(hex_bytes)
-                                    .expect("tx should deserialize");
-                                let mut input_tot: u64 = 0;
-                                let input_results: Vec<Result<VinExtended, Self::Error>> = tx
-                                    .vin
-                                    .iter()
-                                    .map(|v| {
-                                        let input = bp_tx
-                                            .inputs
-                                            .iter()
-                                            .find(|i| {
-                                                i.prev_output.txid.to_string() == v.txid
-                                                    && i.prev_output.vout.to_u32() == v.vout
-                                            })
-                                            .expect("input should be present");
-                                        let witness = input.witness.clone();
-                                        // get value from previous output tx
-                                        let prev_txid = Txid::from_byte_array(
-                                            input.prev_output.txid.to_byte_array(),
-                                        );
-                                        let prev_tx = self.transaction_get(&prev_txid)?;
-                                        let value = prev_tx.outputs
-                                            [input.prev_output.vout.into_usize()]
-                                        .value
-                                        .0;
-                                        input_tot += value;
-                                        let payer = prev_tx.outputs
-                                            [input.prev_output.vout.into_usize()]
-                                        .script_pubkey
-                                        .clone();
-                                        Ok(VinExtended {
-                                            vin: v.clone(),
-                                            sig_script: input.sig_script.clone(),
-                                            witness,
-                                            value,
-                                            payer,
-                                        })
-                                    })
-                                    .collect();
-                                let (input_oks, input_errs): (Vec<_>, Vec<_>) =
-                                    input_results.into_iter().partition(Result::is_ok);
-                                input_errs.into_iter().for_each(|e| errors.push(e.unwrap_err()));
-                                // get outputs and total amount, build TxDebit's
-                                let mut output_tot: u64 = 0;
-                                let outputs = tx
-                                    .vout
-                                    .into_iter()
-                                    .map(|vout| {
-                                        let value = (vout.value * 100_000_000.0) as u64;
-                                        output_tot += value;
-                                        let script_pubkey =
-                                            ScriptPubkey::from_hex(&vout.script_pub_key.hex)
-                                                .expect("script pubkey hex should deserialize");
-                                        TxDebit {
-                                            outpoint: Outpoint::new(txid, vout.n as u32),
-                                            beneficiary: Party::Unknown(script_pubkey),
-                                            value: value.into(),
-                                            spent: None,
-                                        }
-                                    })
-                                    .collect();
-                                // build the WalletTx
-                                Ok(WalletTx {
-                                    txid,
-                                    status,
-                                    inputs: input_oks
-                                        .into_iter()
-                                        .map(Result::unwrap)
-                                        .map(TxCredit::from)
-                                        .collect(),
-                                    outputs,
-                                    fee: (input_tot - output_tot).into(),
-                                    size: tx.size,
-                                    weight: bp_tx.weight_units().to_u32(),
-                                    version: tx.version,
-                                    locktime: LockTime::from_consensus_u32(tx.locktime),
-                                })
+                empty_count = 0;
+
+                let mut process_history_entry =
+                    |hr: GetHistoryRes| -> Result<WalletTx, ElectrumError> {
+                        let txid = hr.tx_hash;
+                        txids.push(txid);
+
+                        // get the tx details (requires electrum verbose support)
+                        let tx_details = self.raw_call("blockchain.transaction.get", vec![
+                            Param::String(hr.tx_hash.to_string()),
+                            Param::Bool(true),
+                        ])?;
+
+                        let tx = tx_details
+                            .get("hex")
+                            .and_then(Value::as_str)
+                            .and_then(|s| Tx::from_str(s).ok())
+                            .ok_or(ElectrumApiError::InvalidTx(txid))?;
+
+                        // build TxStatus
+                        let status = if hr.height < 1 {
+                            TxStatus::Mempool
+                        } else {
+                            let block_hash = tx_details
+                                .get("blockhash")
+                                .and_then(Value::as_str)
+                                .and_then(|s| BlockHash::from_str(s).ok())
+                                .ok_or(ElectrumApiError::InvalidBlockHash(txid))?;
+                            let blocktime = tx_details
+                                .get("blocktime")
+                                .and_then(Value::as_u64)
+                                .ok_or(ElectrumApiError::InvalidBlockTime(txid))?;
+                            let height = NonZeroU32::try_from(hr.height as u32)
+                                .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
+                            TxStatus::Mined(MiningInfo {
+                                height,
+                                time: blocktime,
+                                block_hash,
                             })
-                            .collect();
+                        };
+                        let tx_size = tx.consensus_serialize().len();
+                        let weight = tx.weight_units().to_u32();
 
-                        // update cache and errors
-                        let (oks, errs): (Vec<_>, Vec<_>) =
-                            results.into_iter().partition(Result::is_ok);
-                        errs.into_iter().for_each(|e| errors.push(e.unwrap_err()));
-                        cache.tx.extend(oks.into_iter().map(|tx| {
-                            let tx = tx.unwrap();
-                            (tx.txid, tx)
-                        }));
+                        // get inputs to build TxCredit's and total amount,
+                        // collecting indexer errors
+                        let mut input_total = Sats::ZERO;
+                        let mut inputs = Vec::with_capacity(tx.inputs.len());
+                        for input in tx.inputs {
+                            // get value from previous output tx
+                            let prev_tx = self.transaction_get(&input.prev_output.txid)?;
+                            let prev_out = prev_tx
+                                .outputs
+                                .get(input.prev_output.vout.into_usize())
+                                .ok_or_else(|| {
+                                    ElectrumApiError::PrevOutTxMismatch(txid, input.clone())
+                                })?;
+                            let value = prev_out.value;
+                            input_total += value;
+                            inputs.push(TxCredit {
+                                outpoint: input.prev_output,
+                                payer: Party::Unknown(prev_out.script_pubkey.clone()),
+                                sequence: input.sequence,
+                                coinbase: false,
+                                script_sig: input.sig_script,
+                                witness: input.witness,
+                                value,
+                            })
+                        }
+
+                        // get outputs and total amount, build TxDebit's
+                        let mut output_total = Sats::ZERO;
+                        let mut outputs = Vec::with_capacity(tx.outputs.len());
+                        for (no, txout) in tx.outputs.into_iter().enumerate() {
+                            output_total += txout.value;
+                            outputs.push(TxDebit {
+                                outpoint: Outpoint::new(txid, no as u32),
+                                beneficiary: Party::Unknown(txout.script_pubkey),
+                                value: txout.value,
+                                spent: None,
+                            })
+                        }
+
+                        // build the WalletTx
+                        return Ok(WalletTx {
+                            txid,
+                            status,
+                            inputs,
+                            outputs,
+                            fee: input_total - output_total,
+                            size: tx_size as u32,
+                            weight,
+                            version: tx.version,
+                            locktime: tx.lock_time,
+                        });
+                    };
+
+                // build wallet transactions from script tx history, collecting indexer errors
+                for hr in hres {
+                    match process_history_entry(hr) {
+                        Ok(tx) => {
+                            cache.tx.insert(tx.txid, tx);
+                        }
+                        Err(e) => errors.push(e.into()),
                     }
                 }
 

@@ -29,7 +29,7 @@ use amplify::hex;
 use amplify::hex::FromHex;
 use bpstd::{
     Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Sats,
-    ScriptPubkey, SeqNo, SigScript, Terminal, Txid, Witness,
+    ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
 };
 use psbt::{Prevout, Utxo};
 
@@ -197,7 +197,7 @@ pub struct WalletTx {
     pub fee: Sats,
     pub size: u32,
     pub weight: u32,
-    pub version: i32,
+    pub version: TxVer,
     pub locktime: LockTime,
 }
 

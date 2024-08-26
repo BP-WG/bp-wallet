@@ -55,14 +55,17 @@ impl AnyIndexer {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Display, Error)]
+#[derive(Debug, Display, Error, From)]
 #[display(doc_comments)]
 pub enum AnyIndexerError {
     #[cfg(feature = "electrum")]
     #[display(inner)]
-    Electrum(electrum::Error),
+    #[from]
+    #[from(electrum::Error)]
+    Electrum(super::electrum::ElectrumError),
     #[cfg(feature = "esplora")]
     #[display(inner)]
+    #[from]
     Esplora(esplora::Error),
 }
 
@@ -144,14 +147,4 @@ impl Indexer for AnyIndexer {
             AnyIndexer::Mempool(inner) => inner.publish(tx).map_err(|e| e.into()),
         }
     }
-}
-
-#[cfg(feature = "electrum")]
-impl From<electrum::Error> for AnyIndexerError {
-    fn from(e: electrum::Error) -> Self { AnyIndexerError::Electrum(e) }
-}
-
-#[cfg(feature = "esplora")]
-impl From<esplora::Error> for AnyIndexerError {
-    fn from(e: esplora::Error) -> Self { AnyIndexerError::Esplora(e) }
 }
