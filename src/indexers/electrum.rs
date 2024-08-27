@@ -23,12 +23,15 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::str::FromStr;
 
-use bpstd::{Address, BlockHash, ConsensusEncode, Outpoint, Sats, Tx, TxIn, Txid, Weight};
+use bpstd::{
+    Address, BlockHash, ConsensusEncode, DerivedAddr, Outpoint, Sats, Tx, TxIn, Txid, Weight,
+};
 use descriptors::Descriptor;
 use electrum::{Client, ElectrumApi, Error, GetHistoryRes, Param};
 use serde_json::Value;
 
-use super::BATCH_SIZE;
+use super::cache::TxDetail;
+use super::{IndexerCache, BATCH_SIZE};
 use crate::{
     Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
     WalletCache, WalletDescr, WalletTx,
@@ -59,7 +62,19 @@ pub enum ElectrumError {
     Client(Error),
 }
 
-impl Indexer for Client {
+pub struct ElectrumClient {
+    client: Client,
+    cache: IndexerCache,
+}
+
+impl ElectrumClient {
+    pub fn new(url: &str, cache: IndexerCache) -> Result<Self, ElectrumError> {
+        let client = Client::new(url).map_err(ElectrumError::Client)?;
+        Ok(Self { client, cache })
+    }
+}
+
+impl Indexer for ElectrumClient {
     type Error = ElectrumError;
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
@@ -78,11 +93,7 @@ impl Indexer for Client {
 
                 eprint!(".");
                 let mut txids = Vec::new();
-                let Ok(hres) =
-                    self.script_get_history(&script).map_err(|err| errors.push(err.into()))
-                else {
-                    break;
-                };
+                let hres = self.get_script_history(&derive, &mut errors);
                 if hres.is_empty() {
                     empty_count += 1;
                     if empty_count >= BATCH_SIZE {
@@ -98,37 +109,22 @@ impl Indexer for Client {
                         let txid = hr.tx_hash;
                         txids.push(txid);
 
-                        // get the tx details (requires electrum verbose support)
-                        let tx_details = self.raw_call("blockchain.transaction.get", vec![
-                            Param::String(hr.tx_hash.to_string()),
-                            Param::Bool(true),
-                        ])?;
-
-                        let tx = tx_details
-                            .get("hex")
-                            .and_then(Value::as_str)
-                            .and_then(|s| Tx::from_str(s).ok())
-                            .ok_or(ElectrumApiError::InvalidTx(txid))?;
+                        let TxDetail {
+                            inner: tx,
+                            blockhash,
+                            blocktime,
+                        } = self.get_transaction_details(&txid)?;
 
                         // build TxStatus
                         let status = if hr.height < 1 {
                             TxStatus::Mempool
                         } else {
-                            let block_hash = tx_details
-                                .get("blockhash")
-                                .and_then(Value::as_str)
-                                .and_then(|s| BlockHash::from_str(s).ok())
-                                .ok_or(ElectrumApiError::InvalidBlockHash(txid))?;
-                            let blocktime = tx_details
-                                .get("blocktime")
-                                .and_then(Value::as_u64)
-                                .ok_or(ElectrumApiError::InvalidBlockTime(txid))?;
                             let height = NonZeroU32::try_from(hr.height as u32)
                                 .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
                             TxStatus::Mined(MiningInfo {
                                 height,
-                                time: blocktime,
-                                block_hash,
+                                time: blocktime.expect("blocktime is missing"),
+                                block_hash: blockhash.expect("blockhash is missing"),
                             })
                         };
                         let tx_size = tx.consensus_serialize().len();
@@ -140,7 +136,8 @@ impl Indexer for Client {
                         let mut inputs = Vec::with_capacity(tx.inputs.len());
                         for input in tx.inputs {
                             // get value from previous output tx
-                            let prev_tx = self.transaction_get(&input.prev_output.txid)?;
+                            let prev_tx =
+                                self.get_transaction_details(&input.prev_output.txid)?.inner;
                             let prev_out = prev_tx
                                 .outputs
                                 .get(input.prev_output.vout.into_usize())
@@ -283,7 +280,68 @@ impl Indexer for Client {
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
-        self.transaction_broadcast(tx)?;
+        self.client.transaction_broadcast(tx)?;
         Ok(())
+    }
+}
+
+impl ElectrumClient {
+    fn get_script_history(
+        &self,
+        derived_addr: &DerivedAddr,
+        errors: &mut Vec<ElectrumError>,
+    ) -> Vec<GetHistoryRes> {
+        let mut cache = self.cache.script_history.lock().expect("poisoned lock");
+        if let Some(history) = cache.get(derived_addr) {
+            return history.clone();
+        }
+
+        let script = derived_addr.addr.script_pubkey();
+        let hres = self
+            .client
+            .script_get_history(&script)
+            .map_err(|err| errors.push(err.into()))
+            .unwrap_or_default();
+
+        cache.put(derived_addr.clone(), hres.clone());
+        hres
+    }
+
+    fn get_transaction_details(&self, txid: &Txid) -> Result<TxDetail, ElectrumError> {
+        let mut cache = self.cache.tx_details.lock().expect("poisoned lock");
+        if let Some(details) = cache.get(txid) {
+            return Ok(details.clone());
+        }
+
+        let tx_details = self.client.raw_call("blockchain.transaction.get", vec![
+            Param::String(txid.to_string()),
+            Param::Bool(true),
+        ])?;
+
+        let inner: Tx = tx_details
+            .get("hex")
+            .and_then(Value::as_str)
+            .and_then(|s| Tx::from_str(s).ok())
+            .ok_or(ElectrumApiError::InvalidTx(txid.clone()))?;
+
+        // FIXME: Maybe tx is in mempool, so blockhash and blocktime are not present?
+        let block_hash: BlockHash = tx_details
+            .get("blockhash")
+            .and_then(Value::as_str)
+            .and_then(|s| BlockHash::from_str(s).ok())
+            .ok_or(ElectrumApiError::InvalidBlockHash(txid.clone()))?;
+        let blocktime = tx_details
+            .get("blocktime")
+            .and_then(Value::as_u64)
+            .ok_or(ElectrumApiError::InvalidBlockTime(txid.clone()))?;
+
+        let tx_detail = TxDetail {
+            inner,
+            blockhash: Some(block_hash),
+            blocktime: Some(blocktime),
+        };
+
+        cache.put(*txid, tx_detail.clone());
+        Ok(tx_detail)
     }
 }

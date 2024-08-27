@@ -28,6 +28,7 @@ use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness}
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
+use super::cache::IndexerCache;
 #[cfg(feature = "mempool")]
 use super::mempool::Mempool;
 use super::BATCH_SIZE;
@@ -41,6 +42,7 @@ use crate::{
 pub struct Client {
     pub(crate) inner: BlockingClient,
     pub(crate) kind: ClientKind,
+    pub(crate) cache: IndexerCache,
 }
 
 impl Deref for Client {
@@ -73,11 +75,12 @@ impl Client {
     ///
     /// Returns an error if the client fails to connect to the Esplora server.
     #[allow(clippy::result_large_err)]
-    pub fn new_esplora(url: &str) -> Result<Self, Error> {
+    pub fn new_esplora(url: &str, cache: IndexerCache) -> Result<Self, Error> {
         let inner = esplora::Builder::new(url).build_blocking()?;
         let client = Self {
             inner,
             kind: ClientKind::Esplora,
+            cache,
         };
         Ok(client)
     }
@@ -162,6 +165,15 @@ fn get_scripthash_txs_all(
     client: &Client,
     derive: &DerivedAddr,
 ) -> Result<Vec<esplora::Tx>, Error> {
+    // Check the cache first
+    {
+        let mut addr_transactions_cache =
+            client.cache.addr_transactions.lock().expect("poisoned lock");
+        if let Some(cached_txs) = addr_transactions_cache.get(derive) {
+            return Ok(cached_txs.clone());
+        }
+    }
+
     const PAGE_SIZE: usize = 25;
     let mut res = Vec::new();
     let mut last_seen = None;
@@ -186,6 +198,14 @@ fn get_scripthash_txs_all(
             }
         }
     }
+
+    // Cache the results
+    {
+        let mut addr_transactions_cache =
+            client.cache.addr_transactions.lock().expect("poisoned lock");
+        addr_transactions_cache.put(derive.clone(), res.clone());
+    }
+
     Ok(res)
 }
 

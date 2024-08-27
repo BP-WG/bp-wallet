@@ -22,6 +22,7 @@
 use bpstd::Tx;
 use descriptors::Descriptor;
 
+use super::electrum::ElectrumClient;
 use crate::{Indexer, Layer2, MayError, WalletCache, WalletDescr};
 
 /// Type that contains any of the client types implementing the Indexer trait
@@ -31,7 +32,7 @@ pub enum AnyIndexer {
     #[cfg(feature = "electrum")]
     #[from]
     /// Electrum indexer
-    Electrum(Box<electrum::client::Client>),
+    Electrum(Box<ElectrumClient>),
     #[cfg(feature = "esplora")]
     #[from]
     /// Esplora indexer

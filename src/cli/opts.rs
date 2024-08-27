@@ -158,6 +158,11 @@ pub struct GeneralOpts {
     /// Network to use.
     #[arg(short, long, global = true, default_value = "testnet3", env = "LNPBP_NETWORK")]
     pub network: Network,
+
+    // TODO: Maybe update this to be a more general indexer cache size
+    /// Maximum number of transactions to keep in cache.
+    #[arg(long, global = true, default_value = "1000")]
+    pub indexer_cache_size: usize,
 }
 
 impl GeneralOpts {
