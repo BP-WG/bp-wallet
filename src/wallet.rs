@@ -81,7 +81,7 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
         )
     )
 )]
-#[derive(Getters, Clone, Eq, PartialEq, Debug)]
+#[derive(Getters, Clone, Eq, PartialEq, Debug, Hash)]
 pub struct WalletDescr<K, D, L2 = NoLayer2>
 where
     D: Descriptor<K>,
@@ -103,6 +103,12 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
             layer2: None,
             _phantom: PhantomData,
         }
+    }
+
+    // TODO:
+    // Use this unique identifier as an id for important cache of the wallet
+    pub fn unique_id(&self) -> String {
+        format!("{:?}-{:?}", self.generator.xpubs().collect::<Vec<_>>(), self.network)
     }
 }
 
