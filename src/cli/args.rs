@@ -160,10 +160,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         if sync {
             let indexer = self.indexer()?;
             eprint!("Syncing");
-            if let MayError {
-                err: Some(errors), ..
-            } = wallet.update(&indexer)
-            {
+            if let Some(errors) = wallet.update(&indexer).into_err() {
                 eprintln!(" partial, some requests has failed:");
                 for err in errors {
                     eprintln!("- {err}");
