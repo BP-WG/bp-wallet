@@ -23,36 +23,25 @@
 use std::convert::Infallible;
 use std::error;
 use std::fmt::Debug;
-use std::path::Path;
 
-pub trait Layer2: Debug {
+use crate::{Persistence, Persisting};
+
+pub trait Layer2: Debug + Persisting {
     type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;
     type Data: Layer2Data<LoadError = Self::LoadError, StoreError = Self::StoreError>;
     type Cache: Layer2Cache<LoadError = Self::LoadError, StoreError = Self::StoreError>;
     type LoadError: error::Error;
     type StoreError: error::Error;
-
-    fn load(path: &Path) -> Result<Self, Self::LoadError>
-    where Self: Sized;
-    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
 pub trait Layer2Descriptor: Debug {
     type LoadError: error::Error;
     type StoreError: error::Error;
-
-    fn load(path: &Path) -> Result<Self, Self::LoadError>
-    where Self: Sized;
-    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
 pub trait Layer2Data: Debug + Default {
     type LoadError: error::Error;
     type StoreError: error::Error;
-
-    fn load(path: &Path) -> Result<Self, Self::LoadError>
-    where Self: Sized;
-    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
 pub trait Layer2Cache: Debug + Default {
@@ -61,38 +50,48 @@ pub trait Layer2Cache: Debug + Default {
 
     type Tx: Layer2Tx;
     type Coin: Layer2Coin;
-
-    fn load(path: &Path) -> Result<Self, Self::LoadError>
-    where Self: Sized;
-    fn store(&self, path: &Path) -> Result<(), Self::StoreError>;
 }
 
 #[cfg(not(feature = "serde"))]
 pub trait Layer2Tx: Debug + Default {}
 
 #[cfg(feature = "serde")]
-pub trait Layer2Tx:
-    Clone + Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
-{
-}
+pub trait Layer2Tx: Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de> {}
 
 #[cfg(not(feature = "serde"))]
 pub trait Layer2Coin: Debug + Default {}
 
 #[cfg(feature = "serde")]
 pub trait Layer2Coin:
-    Clone + Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
+    Debug + Default + serde::Serialize + for<'de> serde::Deserialize<'de>
 {
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
     serde(crate = "serde_crate")
 )]
-pub enum ImpossibleLayer2 {}
-pub type NoLayer2 = Option<ImpossibleLayer2>;
+pub struct Empty;
+
+#[derive(Debug, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(crate = "serde_crate")
+)]
+pub struct NoLayer2 {
+    #[cfg_attr(feature = "serde", serde(skip))]
+    persistence: Option<Persistence<Self>>,
+}
+
+impl Persisting for NoLayer2 {
+    #[inline]
+    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
+    #[inline]
+    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+}
 
 impl Layer2 for NoLayer2 {
     type Descr = NoLayer2;
@@ -100,37 +99,25 @@ impl Layer2 for NoLayer2 {
     type Cache = NoLayer2;
     type LoadError = Infallible;
     type StoreError = Infallible;
-
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
-    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
 impl Layer2Descriptor for NoLayer2 {
     type LoadError = Infallible;
     type StoreError = Infallible;
-
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
-    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
 impl Layer2Data for NoLayer2 {
     type LoadError = Infallible;
     type StoreError = Infallible;
-
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
-    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
 impl Layer2Cache for NoLayer2 {
-    type Tx = NoLayer2;
-    type Coin = NoLayer2;
+    type Tx = Empty;
+    type Coin = Empty;
 
     type LoadError = Infallible;
     type StoreError = Infallible;
-
-    fn load(_: &Path) -> Result<Self, Self::LoadError> { Ok(None) }
-    fn store(&self, _: &Path) -> Result<(), Self::StoreError> { Ok(()) }
 }
 
-impl Layer2Tx for NoLayer2 {}
-impl Layer2Coin for NoLayer2 {}
+impl Layer2Tx for Empty {}
+impl Layer2Coin for Empty {}

@@ -32,8 +32,9 @@ use strict_encoding::Ident;
 use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
+use crate::fs::FsTextStore;
 use crate::indexers::esplora;
-use crate::{AnyIndexer, MayError, Wallet};
+use crate::{AnyIndexer, Wallet};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -123,7 +124,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
     {
         eprint!("Loading descriptor");
-        let mut sync = self.sync || self.wallet.descriptor_opts.is_some();
+        let sync = self.sync || self.wallet.descriptor_opts.is_some();
 
         let mut wallet: Wallet<XpubDerivable, D> =
             if let Some(d) = self.wallet.descriptor_opts.descriptor() {
@@ -144,16 +145,9 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                     eprint!(" from wallet {wallet_name} ... ");
                     self.general.wallet_dir(wallet_name)
                 };
-                let (wallet, warnings) = Wallet::load(&path, true)?;
-                if warnings.is_empty() {
-                    eprintln!("success");
-                } else {
-                    eprintln!("complete with warnings:");
-                    for warning in warnings {
-                        eprintln!("- {warning}");
-                    }
-                    sync = true;
-                }
+                let provider = FsTextStore::new(path);
+                let wallet = Wallet::load(provider, true)?;
+                eprintln!("success");
                 wallet
             };
 

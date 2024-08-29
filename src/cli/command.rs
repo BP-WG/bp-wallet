@@ -20,11 +20,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::convert::Infallible;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::{error, fs, io};
+use std::{fs, io};
 
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
@@ -35,10 +34,9 @@ use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, Unfinaliz
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
-use crate::wallet::fs::{LoadError, StoreError};
-use crate::wallet::Save;
+use crate::fs::FsTextStore;
 use crate::{
-    coinselect, AnyIndexerError, FsConfig, Indexer, OpType, Wallet, WalletAddr, WalletUtxo,
+    coinselect, AnyIndexerError, Indexer, OpType, PersistenceError, Wallet, WalletAddr, WalletUtxo,
 };
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
@@ -180,16 +178,13 @@ pub enum BpCommand {
 #[derive(Debug, Display, Error, From)]
 #[non_exhaustive]
 #[display(inner)]
-pub enum ExecError<L2: error::Error = Infallible> {
+pub enum ExecError {
     #[from]
     #[from(io::Error)]
     Io(IoError),
 
     #[from]
-    Load(LoadError<L2>),
-
-    #[from]
-    Store(StoreError<L2>),
+    Store(PersistenceError),
 
     #[from]
     ConstructPsbt(ConstructionError),
@@ -241,9 +236,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         "{name}{}",
                         if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
-                    let Ok((wallet, _warnings)) =
-                        Wallet::<XpubDerivable, StdDescr>::load(&entry.path(), true)
-                    else {
+                    let provider = FsTextStore::new(entry.path().clone());
+                    let Ok(wallet) = Wallet::<XpubDerivable, StdDescr>::load(provider, true) else {
                         println!("# broken wallet descriptor");
                         continue;
                     };
@@ -270,12 +264,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 print!("Saving the wallet as '{name}' ... ");
                 let mut wallet = self.bp_wallet::<O::Descr>(&config)?;
                 let name = name.to_string();
-                wallet.set_fs_config(FsConfig {
-                    path: self.general.wallet_dir(&name),
-                    autosave: true,
-                })?;
+                let provider = FsTextStore::new(self.general.wallet_dir(&name));
+                wallet.make_persistent(provider, true)?;
                 wallet.set_name(name);
-                if let Err(err) = wallet.save() {
+                if let Err(err) = wallet.store() {
                     println!("error: {err}");
                 } else {
                     println!("success");
