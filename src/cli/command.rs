@@ -30,14 +30,13 @@ use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx, XpubDerivable};
 use colored::Colorize;
 use descriptors::{Descriptor, StdDescr};
+use nonasync::persistence::PersistenceError;
 use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, UnfinalizedInputs};
 use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::fs::FsTextStore;
-use crate::{
-    coinselect, AnyIndexerError, Indexer, OpType, PersistenceError, Wallet, WalletAddr, WalletUtxo,
-};
+use crate::{coinselect, AnyIndexerError, Indexer, OpType, Wallet, WalletAddr, WalletUtxo};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {

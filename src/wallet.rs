@@ -29,12 +29,12 @@ use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
     Outpoint, Sats, Txid, Vout,
 };
+use nonasync::persistence::{Persistence, PersistenceError, PersistenceProvider, Persisting};
 use psbt::{PsbtConstructor, Utxo};
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    MiningInfo, NoLayer2, Persistence, PersistenceError, PersistenceProvider, Persisting, TxRow,
-    WalletAddr, WalletTx, WalletUtxo,
+    MiningInfo, NoLayer2, TxRow, WalletAddr, WalletTx, WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]

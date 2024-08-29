@@ -24,7 +24,7 @@ use std::convert::Infallible;
 use std::error;
 use std::fmt::Debug;
 
-use crate::{Persistence, Persisting};
+use nonasync::persistence::{Persistence, Persisting};
 
 pub trait Layer2: Debug + Persisting {
     type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;

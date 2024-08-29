@@ -43,7 +43,8 @@ pub mod cli;
 #[cfg(feature = "hot")]
 pub mod hot;
 mod bip43;
-mod persistence;
+#[cfg(feature = "fs")]
+pub mod fs;
 
 pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use data::{
@@ -60,9 +61,6 @@ pub use indexers::{AnyIndexer, AnyIndexerError};
 pub use layer2::{
     Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
 };
-#[cfg(feature = "fs")]
-pub use persistence::fs;
-pub use persistence::{Persistence, PersistenceError, PersistenceProvider, Persisting};
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 pub use util::MayError;
 pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
