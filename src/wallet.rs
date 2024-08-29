@@ -258,7 +258,9 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
     ) -> MayError<usize, Vec<I::Error>> {
-        indexer.update::<K, D, L2>(descriptor, self)
+        let res = indexer.update::<K, D, L2>(descriptor, self);
+        self.mark_dirty();
+        res
     }
 
     pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
