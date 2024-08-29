@@ -129,6 +129,15 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             _phantom: PhantomData,
         }
     }
+
+    pub fn with_descriptor_mut<E>(
+        &mut self,
+        f: impl FnOnce(&mut D) -> Result<(), E>,
+    ) -> Result<(), E> {
+        f(&mut self.generator)?;
+        self.mark_dirty();
+        Ok(())
+    }
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> {
