@@ -252,6 +252,7 @@ impl Indexer for ElectrumClient {
                     match self.process_history_entry(hr, &mut txids) {
                         Ok(tx) => {
                             cache.tx.insert(tx.txid, tx);
+                            update_size += 1;
                         }
                         Err(e) => errors.push(e.into()),
                     }
@@ -449,7 +450,6 @@ impl ElectrumClient {
     }
 
     // TODO: maybe WalletTx can be cached too
-    // TODO: status can change, so we need to update it
     fn process_history_entry(
         &self,
         hr: GetHistoryRes,
