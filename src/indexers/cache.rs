@@ -30,7 +30,7 @@ pub struct IndexerCache {
     #[allow(dead_code)]
     pub(crate) wallet_addresses: Arc<Mutex<LruCache<String, HashMap<Keychain, Vec<DerivedAddr>>>>>,
     // script_history: for electrum
-    pub(crate) script_history: Arc<Mutex<LruCache<DerivedAddr, Vec<GetHistoryRes>>>>,
+    pub(crate) script_history: Arc<Mutex<LruCache<DerivedAddr, HashMap<Txid, GetHistoryRes>>>>,
     // tx_details: for electrum
     pub(crate) tx_details: Arc<Mutex<LruCache<Txid, TxDetail>>>,
 }
@@ -90,6 +90,10 @@ impl IndexerCache {
         todo!()
     }
 
+    // TODO: when Indexer::create is called, iterate through new addresses normally,
+    // then store all addresses at once and save the index
+    // TODO: When Indexer::update is called,
+    // iterate through the cached addresses normally, Chain the new Iterator,
     #[allow(dead_code, unused_variables)]
     fn update_cached_addresses(&self, id: String, new_addresses: Vec<DerivedAddr>) {
         // Update the address cache in IndexerCache
