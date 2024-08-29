@@ -23,7 +23,7 @@
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Deref, DerefMut};
+use std::ops::{AddAssign, Deref};
 
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
@@ -135,10 +135,6 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> 
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.generator }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L2> {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.generator }
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Persisting for WalletDescr<K, D, L2> {
