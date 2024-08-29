@@ -183,7 +183,7 @@ pub mod fs {
     {
         fn load(&self) -> Result<WalletDescr<K, D, L2>, PersistenceError> {
             let descr = fs::read_to_string(&self.descr).map_err(PersistenceError::with)?;
-            Ok(toml::from_str(&descr).map_err(PersistenceError::with)?)
+            toml::from_str(&descr).map_err(PersistenceError::with)
         }
 
         fn store(&self, object: &WalletDescr<K, D, L2>) -> Result<(), PersistenceError> {
@@ -200,7 +200,7 @@ pub mod fs {
     {
         fn load(&self) -> Result<WalletCache<L2>, PersistenceError> {
             let file = fs::File::open(&self.cache).map_err(PersistenceError::with)?;
-            Ok(serde_yaml::from_reader(file).map_err(PersistenceError::with)?)
+            serde_yaml::from_reader(file).map_err(PersistenceError::with)
         }
 
         fn store(&self, object: &WalletCache<L2>) -> Result<(), PersistenceError> {
@@ -217,7 +217,7 @@ pub mod fs {
     {
         fn load(&self) -> Result<WalletData<L2>, PersistenceError> {
             let data = fs::read_to_string(&self.data).map_err(PersistenceError::with)?;
-            Ok(toml::from_str(&data).map_err(PersistenceError::with)?)
+            toml::from_str(&data).map_err(PersistenceError::with)
         }
 
         fn store(&self, object: &WalletData<L2>) -> Result<(), PersistenceError> {

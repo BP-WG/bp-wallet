@@ -174,7 +174,7 @@ impl Indexer for Client {
                         }
 
                         // build the WalletTx
-                        return Ok(WalletTx {
+                        Ok(WalletTx {
                             txid,
                             status,
                             inputs,
@@ -184,7 +184,7 @@ impl Indexer for Client {
                             weight,
                             version: tx.version,
                             locktime: tx.lock_time,
-                        });
+                        })
                     };
 
                 // build wallet transactions from script tx history, collecting indexer errors
@@ -193,7 +193,7 @@ impl Indexer for Client {
                         Ok(tx) => {
                             cache.tx.insert(tx.txid, tx);
                         }
-                        Err(e) => errors.push(e.into()),
+                        Err(e) => errors.push(e),
                     }
                 }
 
