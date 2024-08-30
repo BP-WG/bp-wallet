@@ -378,14 +378,14 @@ where Self: Save
         res
     }
 
-    pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
-        // Not yet implemented:
-        // self.cache.update::<B, K, D, L2>(&self.descr, &self.indexer)
+    pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<usize, Vec<I::Error>> {
+        self.cache.update::<I, K, D, L2>(&self.descr, indexer)
 
-        WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
-            self.cache = cache;
-            self.set_dirty();
-        })
+        // Original implementation
+        // WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
+        //     self.cache = cache;
+        //     self.set_dirty();
+        // })
     }
 
     pub fn to_deriver(&self) -> D

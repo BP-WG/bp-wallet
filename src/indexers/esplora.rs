@@ -268,6 +268,41 @@ impl From<esplora::Tx> for WalletTx {
 }
 
 impl Client {
+    fn process_wallet_descriptor<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+        errors: &mut Vec<Error>,
+        update_mode: bool,
+    ) -> BTreeMap<bpstd::ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)> {
+        let mut address_index = BTreeMap::new();
+
+        for keychain in descriptor.keychains() {
+            let mut empty_count = 0usize;
+            eprint!(" keychain {keychain} ");
+            for derive in descriptor.addresses(keychain) {
+                eprint!(".");
+                let empty = self.process_address::<K, D, L2>(
+                    derive,
+                    cache,
+                    &mut address_index,
+                    errors,
+                    update_mode,
+                );
+                if empty {
+                    empty_count += 1;
+                    if empty_count >= BATCH_SIZE {
+                        break;
+                    }
+                } else {
+                    empty_count = 0;
+                }
+            }
+        }
+
+        address_index
+    }
+
     fn process_address<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         derive: DerivedAddr,
@@ -275,11 +310,10 @@ impl Client {
         address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
         errors: &mut Vec<Error>,
         update_mode: bool,
-    ) -> (bool, usize) {
+    ) -> bool {
         let script = derive.addr.script_pubkey();
         let mut txids = Vec::new();
         let mut empty = false;
-        let mut update_size = 0;
 
         if update_mode {
             let tx_stats_by_cache = self.get_addr_tx_stats_by_cache(&derive);
@@ -288,7 +322,7 @@ impl Client {
                 .map_err(|err| errors.push(err))
                 .unwrap_or_default();
             if tx_stats_by_client.address.is_empty() || tx_stats_by_cache == tx_stats_by_client {
-                return (true, 0);
+                return true;
             }
         }
 
@@ -303,14 +337,13 @@ impl Client {
             Ok(txes) => {
                 txids = txes.iter().map(|tx| tx.txid).collect();
                 cache.tx.extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
-                update_size += 1;
             }
         }
 
         let wallet_addr = WalletAddr::<i64>::from(derive);
         address_index.insert(script, (wallet_addr, txids));
 
-        (empty, update_size)
+        empty
     }
 
     fn process_transactions<K, D: Descriptor<K>, L2: Layer2>(
@@ -410,30 +443,9 @@ impl Indexer for Client {
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
-        let mut address_index = BTreeMap::new();
 
-        for keychain in descriptor.keychains() {
-            let mut empty_count = 0usize;
-            eprint!(" keychain {keychain} ");
-            for derive in descriptor.addresses(keychain) {
-                eprint!(".");
-                let (empty, _) = self.process_address::<K, D, L2>(
-                    derive,
-                    &mut cache,
-                    &mut address_index,
-                    &mut errors,
-                    false,
-                );
-                if empty {
-                    empty_count += 1;
-                    if empty_count >= BATCH_SIZE {
-                        break;
-                    }
-                } else {
-                    empty_count = 0;
-                }
-            }
-        }
+        let mut address_index =
+            self.process_wallet_descriptor::<K, D, L2>(descriptor, &mut cache, &mut errors, false);
 
         self.process_transactions::<K, D, L2>(descriptor, &mut cache, &mut address_index);
 
@@ -446,39 +458,15 @@ impl Indexer for Client {
         cache: &mut WalletCache<L2::Cache>,
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
-        let mut update_size = 0;
-        let mut address_index = BTreeMap::new();
 
-        for keychain in descriptor.keychains() {
-            let mut empty_count = 0usize;
-            eprint!(" keychain {keychain} ");
-            for derive in descriptor.addresses(keychain) {
-                eprint!(".");
-                let (empty, size) = self.process_address::<K, D, L2>(
-                    derive,
-                    cache,
-                    &mut address_index,
-                    &mut errors,
-                    true,
-                );
-                update_size += size;
-                if empty {
-                    empty_count += 1;
-                    if empty_count >= BATCH_SIZE {
-                        break;
-                    }
-                } else {
-                    empty_count = 0;
-                }
-            }
-        }
-
+        let mut address_index =
+            self.process_wallet_descriptor::<K, D, L2>(descriptor, cache, &mut errors, false);
         self.process_transactions::<K, D, L2>(descriptor, cache, &mut address_index);
 
         if errors.is_empty() {
-            MayError::ok(update_size)
+            MayError::ok(address_index.len())
         } else {
-            MayError::err(update_size, errors)
+            MayError::err(address_index.len(), errors)
         }
     }
 

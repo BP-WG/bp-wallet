@@ -23,7 +23,6 @@
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Formatter, LowerHex};
 use std::num::{NonZeroU32, ParseIntError};
-use std::ops::Add;
 use std::str::FromStr;
 
 use amplify::hex;
@@ -373,22 +372,6 @@ pub struct WalletAddr<T = Sats> {
     pub used: u32,
     pub volume: Sats,
     pub balance: T,
-}
-
-impl<T> Add for WalletAddr<T>
-where T: Add<Output = T>
-{
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        WalletAddr {
-            terminal: self.terminal,
-            addr: self.addr,
-            used: self.used + rhs.used,
-            volume: self.volume + rhs.volume,
-            balance: self.balance + rhs.balance,
-        }
-    }
 }
 
 impl<T> Ord for WalletAddr<T>
