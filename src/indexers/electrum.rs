@@ -84,7 +84,8 @@ impl Indexer for ElectrumClient {
         let mut cache = WalletCache::new();
         let mut errors = Vec::<ElectrumError>::new();
 
-        let mut address_index = BTreeMap::new();
+        let mut address_index: BTreeMap<bpstd::ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)> =
+            BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
             eprint!(" keychain {keychain} ");

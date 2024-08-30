@@ -24,7 +24,9 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness};
+use bpstd::{
+    Address, DerivedAddr, LockTime, Outpoint, ScriptPubkey, SeqNo, Tx, TxVer, Txid, Witness,
+};
 use descriptors::Descriptor;
 use esplora::{BlockingClient, Error};
 
@@ -265,6 +267,140 @@ impl From<esplora::Tx> for WalletTx {
     }
 }
 
+impl Client {
+    fn process_address<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        derive: DerivedAddr,
+        cache: &mut WalletCache<L2::Cache>,
+        address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
+        errors: &mut Vec<Error>,
+        update_mode: bool,
+    ) -> (bool, usize) {
+        let script = derive.addr.script_pubkey();
+        let mut txids = Vec::new();
+        let mut empty = false;
+        let mut update_size = 0;
+
+        if update_mode {
+            let tx_stats_by_cache = self.get_addr_tx_stats_by_cache(&derive);
+            let tx_stats_by_client = self
+                .get_addr_tx_stats_by_client(&derive)
+                .map_err(|err| errors.push(err))
+                .unwrap_or_default();
+            if tx_stats_by_client.address.is_empty() || tx_stats_by_cache == tx_stats_by_client {
+                return (true, 0);
+            }
+        }
+
+        match self.get_scripthash_txs_all(&derive, update_mode) {
+            Err(err) => {
+                errors.push(err);
+                empty = true;
+            }
+            Ok(txes) if txes.is_empty() => {
+                empty = true;
+            }
+            Ok(txes) => {
+                txids = txes.iter().map(|tx| tx.txid).collect();
+                cache.tx.extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
+                update_size += 1;
+            }
+        }
+
+        let wallet_addr = WalletAddr::<i64>::from(derive);
+        address_index.insert(script, (wallet_addr, txids));
+
+        (empty, update_size)
+    }
+
+    fn process_transactions<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+        address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
+    ) {
+        for (script, (wallet_addr, txids)) in address_index.iter_mut() {
+            for txid in txids {
+                let mut tx = cache.tx.remove(txid).expect("broken logic");
+                self.process_outputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
+                self.process_inputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
+                cache.tx.insert(tx.txid, tx);
+            }
+            cache
+                .addr
+                .entry(wallet_addr.terminal.keychain)
+                .or_default()
+                .insert(wallet_addr.expect_transmute());
+        }
+    }
+
+    fn process_outputs<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        script: &ScriptPubkey,
+        wallet_addr: &mut WalletAddr<i64>,
+        tx: &mut WalletTx,
+        cache: &mut WalletCache<L2::Cache>,
+    ) {
+        for debit in &mut tx.outputs {
+            let Some(s) = debit.beneficiary.script_pubkey() else {
+                continue;
+            };
+            if &s == script {
+                cache.utxo.insert(debit.outpoint);
+                debit.beneficiary = Party::from_wallet_addr(wallet_addr);
+                wallet_addr.used = wallet_addr.used.saturating_add(1);
+                wallet_addr.volume.saturating_add_assign(debit.value);
+                wallet_addr.balance = wallet_addr
+                    .balance
+                    .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
+            } else if debit.beneficiary.is_unknown() {
+                Address::with(&s, descriptor.network())
+                    .map(|addr| {
+                        debit.beneficiary = Party::Counterparty(addr);
+                    })
+                    .ok();
+            }
+        }
+    }
+
+    fn process_inputs<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        script: &ScriptPubkey,
+        wallet_addr: &mut WalletAddr<i64>,
+        tx: &mut WalletTx,
+        cache: &mut WalletCache<L2::Cache>,
+    ) {
+        for credit in &mut tx.inputs {
+            let Some(s) = credit.payer.script_pubkey() else {
+                continue;
+            };
+            if &s == script {
+                credit.payer = Party::from_wallet_addr(wallet_addr);
+                wallet_addr.balance = wallet_addr
+                    .balance
+                    .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
+            } else if credit.payer.is_unknown() {
+                Address::with(&s, descriptor.network())
+                    .map(|addr| {
+                        credit.payer = Party::Counterparty(addr);
+                    })
+                    .ok();
+            }
+            if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
+                if let Some(txout) = prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize) {
+                    let outpoint = txout.outpoint;
+                    if tx.status.is_mined() {
+                        cache.utxo.remove(&outpoint);
+                    }
+                    txout.spent = Some(credit.outpoint.into())
+                };
+            }
+        }
+    }
+}
+
 impl Indexer for Client {
     type Error = Error;
 
@@ -274,240 +410,70 @@ impl Indexer for Client {
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new();
         let mut errors = vec![];
-
         let mut address_index = BTreeMap::new();
+
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
             eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
-                let script = derive.addr.script_pubkey();
-
                 eprint!(".");
-                let mut txids = Vec::new();
-                match self.get_scripthash_txs_all(&derive, false) {
-                    Err(err) => {
-                        errors.push(err);
+                let (empty, _) = self.process_address::<K, D, L2>(
+                    derive,
+                    &mut cache,
+                    &mut address_index,
+                    &mut errors,
+                    false,
+                );
+                if empty {
+                    empty_count += 1;
+                    if empty_count >= BATCH_SIZE {
                         break;
                     }
-                    Ok(txes) if txes.is_empty() => {
-                        empty_count += 1;
-                        if empty_count >= BATCH_SIZE {
-                            break;
-                        }
-                    }
-                    Ok(txes) => {
-                        empty_count = 0;
-                        txids = txes.iter().map(|tx| tx.txid).collect();
-                        cache
-                            .tx
-                            .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
-                    }
+                } else {
+                    empty_count = 0;
                 }
-
-                let wallet_addr = WalletAddr::<i64>::from(derive);
-                address_index.insert(script, (wallet_addr, txids));
             }
         }
 
-        // TODO: Update headers & tip
-
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
-                let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for debit in &mut tx.outputs {
-                    let Some(s) = debit.beneficiary.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        cache.utxo.insert(debit.outpoint);
-                        debit.beneficiary = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.used = wallet_addr.used.saturating_add(1);
-                        wallet_addr.volume.saturating_add_assign(debit.value);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
-                    } else if debit.beneficiary.is_unknown() {
-                        Address::with(&s, descriptor.network())
-                            .map(|addr| {
-                                debit.beneficiary = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                }
-                cache.tx.insert(tx.txid, tx);
-            }
-        }
-
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
-                let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for credit in &mut tx.inputs {
-                    let Some(s) = credit.payer.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        credit.payer = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
-                    } else if credit.payer.is_unknown() {
-                        Address::with(&s, descriptor.network())
-                            .map(|addr| {
-                                credit.payer = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
-                        if let Some(txout) =
-                            prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
-                        {
-                            let outpoint = txout.outpoint;
-                            if tx.status.is_mined() {
-                                cache.utxo.remove(&outpoint);
-                            }
-                            txout.spent = Some(credit.outpoint.into())
-                        };
-                    }
-                }
-                cache.tx.insert(tx.txid, tx);
-            }
-            cache
-                .addr
-                .entry(wallet_addr.terminal.keychain)
-                .or_default()
-                .insert(wallet_addr.expect_transmute());
-        }
+        self.process_transactions::<K, D, L2>(descriptor, &mut cache, &mut address_index);
 
         if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
     }
 
     fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
-        descr: &WalletDescr<K, D, L2::Descr>,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
         let mut update_size = 0;
-
         let mut address_index = BTreeMap::new();
-        for keychain in descr.keychains() {
+
+        for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
             eprint!(" keychain {keychain} ");
-            for derive in descr.addresses(keychain) {
-                let script = derive.addr.script_pubkey();
-
+            for derive in descriptor.addresses(keychain) {
                 eprint!(".");
-                let mut txids = Vec::new();
-                let tx_stats_by_cache = self.get_addr_tx_stats_by_cache(&derive);
-                let tx_stats_by_client = self
-                    .get_addr_tx_stats_by_client(&derive)
-                    .map_err(|err| {
-                        errors.push(err);
-                    })
-                    .unwrap_or_default();
-                if tx_stats_by_client.address.is_empty() {
-                    continue;
-                }
-
-                if tx_stats_by_cache == tx_stats_by_client {
-                    continue;
-                }
-
-                match self.get_scripthash_txs_all(&derive, true) {
-                    Err(err) => {
-                        errors.push(err);
-                        continue;
+                let (empty, size) = self.process_address::<K, D, L2>(
+                    derive,
+                    cache,
+                    &mut address_index,
+                    &mut errors,
+                    true,
+                );
+                update_size += size;
+                if empty {
+                    empty_count += 1;
+                    if empty_count >= BATCH_SIZE {
+                        break;
                     }
-                    Ok(txes) if txes.is_empty() => {
-                        empty_count += 1;
-                        if empty_count >= BATCH_SIZE {
-                            break;
-                        }
-                    }
-                    Ok(txes) => {
-                        empty_count = 0;
-                        txids = txes.iter().map(|tx| tx.txid).collect();
-                        cache
-                            .tx
-                            .extend(txes.into_iter().map(WalletTx::from).map(|tx| (tx.txid, tx)));
-                        update_size += 1;
-                    }
+                } else {
+                    empty_count = 0;
                 }
-
-                let wallet_addr = WalletAddr::<i64>::from(derive);
-                address_index.insert(script, (wallet_addr, txids));
             }
         }
 
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
-                let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for debit in &mut tx.outputs {
-                    let Some(s) = debit.beneficiary.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        cache.utxo.insert(debit.outpoint);
-                        debit.beneficiary = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.used = wallet_addr.used.saturating_add(1);
-                        wallet_addr.volume.saturating_add_assign(debit.value);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
-                    } else if debit.beneficiary.is_unknown() {
-                        Address::with(&s, descr.network())
-                            .map(|addr| {
-                                debit.beneficiary = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                }
-                cache.tx.insert(tx.txid, tx);
-            }
-        }
-
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
-                let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for credit in &mut tx.inputs {
-                    let Some(s) = credit.payer.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        credit.payer = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
-                    } else if credit.payer.is_unknown() {
-                        Address::with(&s, descr.network())
-                            .map(|addr| {
-                                credit.payer = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
-                        if let Some(txout) =
-                            prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
-                        {
-                            let outpoint = txout.outpoint;
-                            if tx.status.is_mined() {
-                                cache.utxo.remove(&outpoint);
-                            }
-                            txout.spent = Some(credit.outpoint.into())
-                        };
-                    }
-                }
-                cache.tx.insert(tx.txid, tx);
-            }
-
-            // replace the old wallet_addr with the new one
-            cache
-                .addr
-                .entry(wallet_addr.terminal.keychain)
-                .or_default()
-                .replace(wallet_addr.expect_transmute());
-            update_size += 1;
-        }
+        self.process_transactions::<K, D, L2>(descriptor, cache, &mut address_index);
 
         if errors.is_empty() {
             MayError::ok(update_size)

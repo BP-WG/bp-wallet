@@ -2,11 +2,9 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
-use bpstd::{BlockHash, DerivedAddr, Keychain, Tx, Txid};
+use bpstd::{BlockHash, DerivedAddr, Tx, Txid};
 use electrum::GetHistoryRes;
 use lru::LruCache;
-
-use super::electrum::ElectrumError;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxDetail {
@@ -26,9 +24,6 @@ pub struct IndexerCache {
     // In the create/update processing logic of &Indexer
     // addr_transactions: for esplora
     pub(crate) addr_transactions: Arc<Mutex<LruCache<DerivedAddr, Vec<esplora::Tx>>>>,
-    // TODO: WalletDescr::unique_id
-    #[allow(dead_code)]
-    pub(crate) wallet_addresses: Arc<Mutex<LruCache<String, HashMap<Keychain, Vec<DerivedAddr>>>>>,
     // script_history: for electrum
     pub(crate) script_history: Arc<Mutex<LruCache<DerivedAddr, HashMap<Txid, GetHistoryRes>>>>,
     // tx_details: for electrum
@@ -39,64 +34,11 @@ impl IndexerCache {
     pub fn new(size: NonZeroUsize) -> Self {
         Self {
             addr_transactions: Arc::new(Mutex::new(LruCache::new(size))),
-            wallet_addresses: Arc::new(Mutex::new(LruCache::new(size))),
             script_history: Arc::new(Mutex::new(LruCache::new(size))),
             // size of tx_details is 20 times the size of script_history for electrum
             tx_details: Arc::new(Mutex::new(LruCache::new(
                 size.saturating_mul(NonZeroUsize::new(20).expect("20 is not zero")),
             ))),
         }
-    }
-
-    #[allow(dead_code, unused_variables)]
-    fn get_cached_addresses(&self, id: String) -> HashMap<Keychain, Vec<DerivedAddr>> {
-        // From IndexerCache get cached addresses
-        todo!()
-    }
-
-    // #[allow(dead_code)]
-    // fn derive_new_addresses(&self, id:String, keychain: &Keychain, new_addresses: &mut
-    // Vec<DerivedAddr>) -> impl Iterator<Item = DerivedAddr> { Derive new addresses
-    // todo!()
-    // }
-
-    #[allow(dead_code, unused_variables)]
-    fn get_cached_history(&self, derived_addr: &DerivedAddr) -> Vec<GetHistoryRes> {
-        // Get cached transaction history from IndexerCache
-        todo!()
-    }
-
-    #[allow(dead_code, unused_variables)]
-    // , cache: &mut WalletCache<_>
-    fn update_transaction_cache(
-        &self,
-        derived_addr: &DerivedAddr,
-        new_history: Vec<GetHistoryRes>,
-        updated_count: &mut usize,
-        errors: &mut Vec<ElectrumError>,
-    ) {
-        // Update transaction cache
-        todo!()
-    }
-
-    #[allow(dead_code, unused_variables)]
-    fn derive_additional_addresses(
-        &self,
-        id: String,
-        keychain: &Keychain,
-        new_addresses: &mut Vec<DerivedAddr>,
-    ) {
-        // Derive additional addresses until 10 consecutive empty addresses are encountered
-        todo!()
-    }
-
-    // TODO: when Indexer::create is called, iterate through new addresses normally,
-    // then store all addresses at once and save the index
-    // TODO: When Indexer::update is called,
-    // iterate through the cached addresses normally, Chain the new Iterator,
-    #[allow(dead_code, unused_variables)]
-    fn update_cached_addresses(&self, id: String, new_addresses: Vec<DerivedAddr>) {
-        // Update the address cache in IndexerCache
-        todo!()
     }
 }
