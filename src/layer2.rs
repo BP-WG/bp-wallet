@@ -24,9 +24,9 @@ use std::convert::Infallible;
 use std::error;
 use std::fmt::Debug;
 
-use nonasync::persistence::{Persistence, Persisting};
+use nonasync::persistence::{CloneNoPersistence, Persistence, Persisting};
 
-pub trait Layer2: Debug + Persisting {
+pub trait Layer2: Debug + CloneNoPersistence + Persisting {
     type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;
     type Data: Layer2Data<LoadError = Self::LoadError, StoreError = Self::StoreError>;
     type Cache: Layer2Cache<LoadError = Self::LoadError, StoreError = Self::StoreError>;
@@ -34,17 +34,17 @@ pub trait Layer2: Debug + Persisting {
     type StoreError: error::Error;
 }
 
-pub trait Layer2Descriptor: Debug {
+pub trait Layer2Descriptor: Debug + CloneNoPersistence {
     type LoadError: error::Error;
     type StoreError: error::Error;
 }
 
-pub trait Layer2Data: Debug + Default {
+pub trait Layer2Data: Debug + CloneNoPersistence + Default {
     type LoadError: error::Error;
     type StoreError: error::Error;
 }
 
-pub trait Layer2Cache: Debug + Default {
+pub trait Layer2Cache: Debug + CloneNoPersistence + Default {
     type LoadError: error::Error;
     type StoreError: error::Error;
 
@@ -84,6 +84,10 @@ pub struct Empty;
 pub struct NoLayer2 {
     #[cfg_attr(feature = "serde", serde(skip))]
     persistence: Option<Persistence<Self>>,
+}
+
+impl CloneNoPersistence for NoLayer2 {
+    fn clone_no_persistence(&self) -> Self { none!() }
 }
 
 impl Persisting for NoLayer2 {

@@ -90,7 +90,7 @@ pub struct ResolverOpt {
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
-    type Descr: Descriptor + Display + serde::Serialize + for<'de> serde::Deserialize<'de>;
+    type Descr: Descriptor + Clone + Display + serde::Serialize + for<'de> serde::Deserialize<'de>;
     fn is_some(&self) -> bool;
     fn descriptor(&self) -> Option<Self::Descr>;
 }

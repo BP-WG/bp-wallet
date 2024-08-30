@@ -29,7 +29,9 @@ use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
     Outpoint, Sats, Txid, Vout,
 };
-use nonasync::persistence::{Persistence, PersistenceError, PersistenceProvider, Persisting};
+use nonasync::persistence::{
+    CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
+};
 use psbt::{PsbtConstructor, Utxo};
 
 use crate::{
@@ -82,7 +84,7 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
 #[derive(Getters, Debug)]
 pub struct WalletDescr<K, D, L2 = NoLayer2>
 where
-    D: Descriptor<K>,
+    D: Descriptor<K> + Clone,
     L2: Layer2Descriptor,
 {
     #[getter(skip)]
@@ -97,7 +99,7 @@ where
     _phantom: PhantomData<K>,
 }
 
-impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
+impl<K, D: Descriptor<K> + Clone> WalletDescr<K, D, NoLayer2> {
     pub fn new_standard(descr: D, network: Network) -> Self {
         WalletDescr {
             persistence: None,
@@ -109,7 +111,7 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
     pub fn new_layer2(descr: D, layer2: L2, network: Network) -> Self {
         WalletDescr {
             persistence: None,
@@ -140,20 +142,34 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target { &self.generator }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Persisting for WalletDescr<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> CloneNoPersistence
+    for WalletDescr<K, D, L2>
+{
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            generator: self.generator.clone(),
+            network: self.network,
+            layer2: self.layer2.clone_no_persistence(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> Persisting for WalletDescr<K, D, L2> {
     #[inline]
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
     #[inline]
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
     fn drop(&mut self) {
         if self.is_autosave() {
             if let Err(e) = self.store() {
@@ -188,6 +204,21 @@ pub struct WalletData<L2: Layer2Data> {
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
     pub last_used: BTreeMap<Keychain, NormalIndex>,
+}
+
+impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            name: self.name.clone(),
+            tx_annotations: self.tx_annotations.clone(),
+            txout_annotations: self.txout_annotations.clone(),
+            txin_annotations: self.txin_annotations.clone(),
+            addr_annotations: self.addr_annotations.clone(),
+            layer2_annotations: self.layer2_annotations.clone_no_persistence(),
+            last_used: self.last_used.clone(),
+        }
+    }
 }
 
 impl<L2: Layer2Data> Persisting for WalletData<L2> {
@@ -251,14 +282,14 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         }
     }
 
-    pub fn with<I: Indexer, K, D: Descriptor<K>, L2: Layer2<Cache = L2C>>(
+    pub fn with<I: Indexer, K, D: Descriptor<K> + Clone, L2: Layer2<Cache = L2C>>(
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
     ) -> MayError<Self, Vec<I::Error>> {
         indexer.create::<K, D, L2>(descriptor)
     }
 
-    pub fn update<I: Indexer, K, D: Descriptor<K>, L2: Layer2<Cache = L2C>>(
+    pub fn update<I: Indexer, K, D: Descriptor<K> + Clone, L2: Layer2<Cache = L2C>>(
         &mut self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
@@ -307,6 +338,21 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     }
 }
 
+impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            last_block: self.last_block.clone(),
+            last_change: self.last_change.clone(),
+            headers: self.headers.clone(),
+            tx: self.tx.clone(),
+            utxo: self.utxo.clone(),
+            addr: self.addr.clone(),
+            layer2: self.layer2.clone_no_persistence(),
+        }
+    }
+}
+
 impl<L2: Layer2Cache> Persisting for WalletCache<L2> {
     #[inline]
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
@@ -328,20 +374,31 @@ impl<L2: Layer2Cache> Drop for WalletCache<L2> {
 }
 
 #[derive(Debug)]
-pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2> {
+pub struct Wallet<K, D: Descriptor<K> + Clone, L2: Layer2 = NoLayer2> {
     descr: WalletDescr<K, D, L2::Descr>,
     data: WalletData<L2::Data>,
     cache: WalletCache<L2::Cache>,
     layer2: L2,
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2> Deref for Wallet<K, D, L2> {
     type Target = WalletDescr<K, D, L2::Descr>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2> CloneNoPersistence for Wallet<K, D, L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            descr: self.descr.clone_no_persistence(),
+            data: self.data.clone_no_persistence(),
+            cache: self.cache.clone_no_persistence(),
+            layer2: self.layer2.clone_no_persistence(),
+        }
+    }
+}
+
+impl<K, D: Descriptor<K> + Clone, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     type Key = K;
     type Descr = D;
 
@@ -366,7 +423,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     }
 }
 
-impl<K, D: Descriptor<K>> Wallet<K, D> {
+impl<K, D: Descriptor<K> + Clone> Wallet<K, D> {
     pub fn new_layer1(descr: D, network: Network) -> Self {
         Wallet {
             descr: WalletDescr::new_standard(descr, network),
@@ -377,7 +434,7 @@ impl<K, D: Descriptor<K>> Wallet<K, D> {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2> Wallet<K, D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Wallet {
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
@@ -497,7 +554,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
+impl<K, D: Descriptor<K> + Clone, L2: Layer2> Wallet<K, D, L2> {
     pub fn load<P>(provider: P, autosave: bool) -> Result<Wallet<K, D, L2>, PersistenceError>
     where P: Clone
             + PersistenceProvider<WalletDescr<K, D, L2::Descr>>

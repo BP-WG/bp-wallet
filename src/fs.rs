@@ -59,7 +59,7 @@ impl FsTextStore {
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> PersistenceProvider<WalletDescr<K, D, L2>>
+impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> PersistenceProvider<WalletDescr<K, D, L2>>
     for FsTextStore
 where
     for<'de> WalletDescr<K, D, L2>: serde::Serialize + serde::Deserialize<'de>,

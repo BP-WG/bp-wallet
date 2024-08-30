@@ -72,7 +72,7 @@ pub enum AnyIndexerError {
 impl Indexer for AnyIndexer {
     type Error = AnyIndexerError;
 
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
+    fn create<K, D: Descriptor<K> + Clone, L2: Layer2>(
         &self,
         descr: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
@@ -104,7 +104,7 @@ impl Indexer for AnyIndexer {
         }
     }
 
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
+    fn update<K, D: Descriptor<K> + Clone, L2: Layer2>(
         &self,
         descr: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,

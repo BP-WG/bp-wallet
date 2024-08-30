@@ -62,7 +62,7 @@ pub enum ElectrumError {
 impl Indexer for Client {
     type Error = ElectrumError;
 
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
+    fn create<K, D: Descriptor<K> + Clone, L2: Layer2>(
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
@@ -274,7 +274,7 @@ impl Indexer for Client {
         if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
     }
 
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
+    fn update<K, D: Descriptor<K> + Clone, L2: Layer2>(
         &self,
         _descr: &WalletDescr<K, D, L2::Descr>,
         _cache: &mut WalletCache<L2::Cache>,
