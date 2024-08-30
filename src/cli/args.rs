@@ -108,7 +108,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             .get_or_init(|| {
                 IndexerCache::new(
                     self.general
-                        .indexer_cache_size
+                        .indexer_cache_factor
                         .try_into()
                         .expect("Error: indexer cache size is invalid"),
                 )

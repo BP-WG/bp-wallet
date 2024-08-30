@@ -31,13 +31,20 @@ pub struct IndexerCache {
 }
 
 impl IndexerCache {
-    pub fn new(size: NonZeroUsize) -> Self {
+    /// Creates a new `IndexerCache` with the specified cache factor.
+    ///
+    /// # Parameters
+    /// - `cache_factor`: A non-zero size value that determines the capacity of the LRU caches. This
+    ///   factor is used to initialize the `addr_transactions` and `script_history` caches. The
+    ///   `tx_details` cache is initialized with a capacity that is 20 times the size of the
+    ///   `script_history` cache.
+    pub fn new(cache_factor: NonZeroUsize) -> Self {
         Self {
-            addr_transactions: Arc::new(Mutex::new(LruCache::new(size))),
-            script_history: Arc::new(Mutex::new(LruCache::new(size))),
+            addr_transactions: Arc::new(Mutex::new(LruCache::new(cache_factor))),
+            script_history: Arc::new(Mutex::new(LruCache::new(cache_factor))),
             // size of tx_details is 20 times the size of script_history for electrum
             tx_details: Arc::new(Mutex::new(LruCache::new(
-                size.saturating_mul(NonZeroUsize::new(20).expect("20 is not zero")),
+                cache_factor.saturating_mul(NonZeroUsize::new(20).expect("20 is not zero")),
             ))),
         }
     }
