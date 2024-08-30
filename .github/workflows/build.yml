@@ -41,6 +41,8 @@ jobs:
           - cli
           - clap
           - log
+          - client-side-validation
+          - strict-encoding
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

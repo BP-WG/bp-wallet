@@ -33,7 +33,7 @@ use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
 use crate::indexers::esplora;
-use crate::{AnyIndexer, MayError, Wallet};
+use crate::{AnyIndexer, Wallet};
 
 /// Command-line arguments
 #[derive(Parser)]

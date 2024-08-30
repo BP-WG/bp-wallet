@@ -237,6 +237,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base85"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36915bbaca237c626689b5bd14d02f2ba7a5a359d30a2a08be697392e3718079"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "bech32"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -312,6 +321,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp-core"
+version = "0.11.0-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b43a6b5389fd99298fca47f4566dda754fa10bdb41200b5cdfc16147400f5951"
+dependencies = [
+ "amplify",
+ "bp-consensus",
+ "bp-dbc",
+ "bp-seals",
+ "commit_verify",
+ "getrandom",
+ "single_use_seals",
+ "strict_encoding",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "bp-dbc"
+version = "0.11.0-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0f70bd407dfcbeadfbc012959e04decbe63e7dc6f30a4f705b804b699b37a0a"
+dependencies = [
+ "amplify",
+ "base85",
+ "bp-consensus",
+ "commit_verify",
+ "secp256k1",
+ "strict_encoding",
+]
+
+[[package]]
 name = "bp-derive"
 version = "0.11.0-beta.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -375,6 +415,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp-seals"
+version = "0.11.0-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "497bb5989b9b549cd8e4ebfabc50a5d57cf318ab56affd3d4d7b7749fcd780da"
+dependencies = [
+ "amplify",
+ "baid64",
+ "bp-consensus",
+ "bp-dbc",
+ "commit_verify",
+ "rand",
+ "single_use_seals",
+ "strict_encoding",
+]
+
+[[package]]
 name = "bp-std"
 version = "0.11.0-beta.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -382,6 +438,7 @@ checksum = "ac66f7e326e203f228fd60f1fb1f5629f6ec20f37c61b580a627c3194e85d7fc"
 dependencies = [
  "amplify",
  "bp-consensus",
+ "bp-core",
  "bp-derive",
  "bp-invoice",
  "descriptors",
@@ -580,6 +637,7 @@ checksum = "538b69bbb2f7259c1d07334fa8adae0006c8b559efbdb6daafacb6df249b897b"
 dependencies = [
  "amplify",
  "commit_encoding_derive",
+ "rand",
  "ripemd",
  "sha2",
  "strict_encoding",
@@ -1206,11 +1264,14 @@ checksum = "2afd0eef00260666da5c2c72e61c23bd2e07076e0791ea4cc3e79ab408246a17"
 dependencies = [
  "amplify",
  "base64",
+ "bp-core",
  "bp-derive",
  "chrono",
+ "commit_verify",
  "descriptors",
  "indexmap 2.4.0",
  "serde",
+ "strict_encoding",
 ]
 
 [[package]]
@@ -1535,6 +1596,15 @@ name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "single_use_seals"
+version = "0.11.0-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66c34b7d0a73e5b821f2647331b1303463ce58c51b32f54b006f0e7bb3edcd8a"
+dependencies = [
+ "amplify_derive",
+]
 
 [[package]]
 name = "socks"
