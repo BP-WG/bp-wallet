@@ -1123,7 +1123,7 @@ dependencies = [
 [[package]]
 name = "nonasync"
 version = "0.1.0"
-source = "git+https://github.com/rust-amplify/amplify-nonasync#31e8b00cc791b7ab64f2b0b97ae9e16a8bc5e8f6"
+source = "git+https://github.com/rust-amplify/amplify-nonasync#9c6ab8f0e19d80cc787633bad328e7817c256de4"
 dependencies = [
  "amplify 5.0.0-beta.1",
 ]
