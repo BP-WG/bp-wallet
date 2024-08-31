@@ -594,10 +594,11 @@ impl<K, D: Descriptor<K> + Clone, L2: Layer2> Wallet<K, D, L2> {
             + PersistenceProvider<L2>
             + 'static,
     {
-        Ok(self.descr.make_persistent(provider.clone(), autosave)?
-            && self.data.make_persistent(provider.clone(), autosave)?
-            && self.cache.make_persistent(provider.clone(), autosave)?
-            && self.layer2.make_persistent(provider, autosave)?)
+        let a = self.descr.make_persistent(provider.clone(), autosave)?;
+        let b = self.data.make_persistent(provider.clone(), autosave)?;
+        let c = self.cache.make_persistent(provider.clone(), autosave)?;
+        let d = self.layer2.make_persistent(provider, autosave)?;
+        Ok(a && b && c && d)
     }
 
     pub fn store(&mut self) -> Result<(), PersistenceError> {
