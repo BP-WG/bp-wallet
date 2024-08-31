@@ -460,7 +460,7 @@ impl Indexer for Client {
         let mut errors = vec![];
 
         let mut address_index =
-            self.process_wallet_descriptor::<K, D, L2>(descriptor, cache, &mut errors, false);
+            self.process_wallet_descriptor::<K, D, L2>(descriptor, cache, &mut errors, true);
         self.process_transactions::<K, D, L2>(descriptor, cache, &mut address_index);
 
         if errors.is_empty() {

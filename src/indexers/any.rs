@@ -22,6 +22,7 @@
 use bpstd::Tx;
 use descriptors::Descriptor;
 
+#[cfg(feature = "electrum")]
 use super::electrum::ElectrumClient;
 use crate::{Indexer, Layer2, MayError, WalletCache, WalletDescr};
 
