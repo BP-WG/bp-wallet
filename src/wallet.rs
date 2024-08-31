@@ -167,6 +167,8 @@ impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> Persisting for WalletDes
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
     #[inline]
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
 impl<K, D: Descriptor<K> + Clone, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
@@ -226,6 +228,8 @@ impl<L2: Layer2Data> Persisting for WalletData<L2> {
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
     #[inline]
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
 impl<L2: Layer2Data> Drop for WalletData<L2> {
@@ -358,6 +362,8 @@ impl<L2: Layer2Cache> Persisting for WalletCache<L2> {
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
     #[inline]
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
 impl<L2: Layer2Cache> Drop for WalletCache<L2> {

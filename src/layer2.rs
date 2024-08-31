@@ -95,6 +95,8 @@ impl Persisting for NoLayer2 {
     fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
     #[inline]
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
 impl Layer2 for NoLayer2 {
