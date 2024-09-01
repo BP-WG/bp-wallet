@@ -93,7 +93,7 @@ impl Seed {
         let account_xpriv = master_xpriv.derive_priv(&derivation);
 
         let origin = XkeyOrigin::new(master_xpub.fingerprint(), derivation);
-        XprivAccount::new(account_xpriv, origin)
+        XprivAccount::new(account_xpriv, origin).expect("seed must always derive")
     }
 }
 
