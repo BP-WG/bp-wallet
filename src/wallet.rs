@@ -197,6 +197,8 @@ pub struct WalletData<L2: Layer2Data> {
     #[cfg_attr(feature = "serde", serde(skip))]
     persistence: Option<Persistence<Self>>,
 
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub descriptor: String,
     pub name: String,
     pub tx_annotations: BTreeMap<Txid, String>,
     pub txout_annotations: BTreeMap<Outpoint, String>,
@@ -210,6 +212,7 @@ impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
     fn clone_no_persistence(&self) -> Self {
         Self {
             persistence: None,
+            descriptor: self.descriptor.clone(),
             name: self.name.clone(),
             tx_annotations: self.tx_annotations.clone(),
             txout_annotations: self.txout_annotations.clone(),
@@ -257,6 +260,8 @@ pub struct WalletCache<L2: Layer2Cache> {
     #[cfg_attr(feature = "serde", serde(skip))]
     persistence: Option<Persistence<Self>>,
 
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub descriptor: String,
     pub last_block: MiningInfo,
     pub last_change: NormalIndex,
     pub headers: BTreeSet<BlockInfo>,
@@ -266,14 +271,11 @@ pub struct WalletCache<L2: Layer2Cache> {
     pub layer2: L2,
 }
 
-impl<L2: Layer2Cache> Default for WalletCache<L2> {
-    fn default() -> Self { WalletCache::new() }
-}
-
 impl<L2C: Layer2Cache> WalletCache<L2C> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new_nonsync<K, D: Descriptor<K>>(descriptor: &D) -> Self {
         WalletCache {
             persistence: None,
+            descriptor: descriptor.to_string(),
             last_block: MiningInfo::genesis(),
             last_change: NormalIndex::ZERO,
             headers: none!(),
@@ -344,6 +346,7 @@ impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
     fn clone_no_persistence(&self) -> Self {
         Self {
             persistence: None,
+            descriptor: self.descriptor.clone(),
             last_block: self.last_block.clone(),
             last_change: self.last_change.clone(),
             headers: self.headers.clone(),
@@ -430,9 +433,9 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
 impl<K, D: Descriptor<K>> Wallet<K, D> {
     pub fn new_layer1(descr: D, network: Network) -> Self {
         Wallet {
+            cache: WalletCache::new_nonsync(&descr),
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
-            cache: WalletCache::new(),
             layer2: none!(),
         }
     }
@@ -441,9 +444,9 @@ impl<K, D: Descriptor<K>> Wallet<K, D> {
 impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Wallet {
+            cache: WalletCache::new_nonsync(&descr),
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
             data: empty!(),
-            cache: WalletCache::new(),
             layer2,
         }
     }
