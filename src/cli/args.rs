@@ -116,7 +116,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     }
 
     #[allow(clippy::multiple_bound_locations)]
-    pub fn bp_wallet<D: Descriptor + Clone>(
+    pub fn bp_wallet<D: Descriptor>(
         &self,
         conf: &Config,
     ) -> Result<Wallet<XpubDerivable, D>, ExecError>

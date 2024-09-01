@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 use bpstd::{Network, XpubDerivable};
@@ -90,7 +90,7 @@ pub struct ResolverOpt {
 }
 
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
-    type Descr: Descriptor + Clone + Display + serde::Serialize + for<'de> serde::Deserialize<'de>;
+    type Descr: Descriptor + serde::Serialize + for<'de> serde::Deserialize<'de>;
     fn is_some(&self) -> bool;
     fn descriptor(&self) -> Option<Self::Descr>;
 }
