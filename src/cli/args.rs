@@ -145,7 +145,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                     eprint!(" from wallet {wallet_name} ... ");
                     self.general.wallet_dir(wallet_name)
                 };
-                let provider = FsTextStore::new(path);
+                let provider = FsTextStore::new(path)?;
                 let wallet = Wallet::load(provider, true)?;
                 eprintln!("success");
                 wallet

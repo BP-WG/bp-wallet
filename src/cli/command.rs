@@ -235,7 +235,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         "{name}{}",
                         if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
-                    let provider = FsTextStore::new(entry.path().clone());
+                    let provider = FsTextStore::new(entry.path().clone())?;
                     let Ok(wallet) = Wallet::<XpubDerivable, StdDescr>::load(provider, true) else {
                         println!("# broken wallet descriptor");
                         continue;
@@ -263,7 +263,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 print!("Saving the wallet as '{name}' ... ");
                 let mut wallet = self.bp_wallet::<O::Descr>(&config)?;
                 let name = name.to_string();
-                let provider = FsTextStore::new(self.general.wallet_dir(&name));
+                let provider = FsTextStore::new(self.general.wallet_dir(&name))?;
                 wallet.make_persistent(provider, true)?;
                 wallet.set_name(name);
                 if let Err(err) = wallet.store() {

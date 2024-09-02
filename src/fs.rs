@@ -20,8 +20,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fs;
 use std::path::PathBuf;
+use std::{fs, io};
 
 use descriptors::Descriptor;
 use nonasync::persistence::{PersistenceError, PersistenceProvider};
@@ -40,7 +40,9 @@ pub struct FsTextStore {
 }
 
 impl FsTextStore {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf) -> io::Result<Self> {
+        fs::create_dir_all(&path)?;
+
         let mut descr = path.clone();
         descr.push("descriptor.toml");
         let mut data = path.clone();
@@ -50,12 +52,12 @@ impl FsTextStore {
         let mut l2 = path;
         l2.push("layer2.yaml");
 
-        Self {
+        Ok(Self {
             descr,
             data,
             cache,
             l2,
-        }
+        })
     }
 }
 
