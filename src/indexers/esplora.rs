@@ -69,7 +69,7 @@ pub enum ClientKind {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
+    serde(crate = "serde_crate")
 )]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct FullAddrStats {
@@ -81,7 +81,7 @@ pub struct FullAddrStats {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
+    serde(crate = "serde_crate")
 )]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct AddrTxStats {
@@ -198,6 +198,7 @@ impl Client {
         let url = self.url();
 
         let url = format!("{}/address/{}", url, address);
+
         let resp: FullAddrStats = agent.get(&url).call()?.into_json()?;
         Ok(resp)
     }
@@ -353,9 +354,20 @@ impl Client {
         address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
     ) {
         for (script, (wallet_addr, txids)) in address_index.iter_mut() {
-            for txid in txids {
+            // UTXOs and inputs must be processed separately due to the unordered nature and
+            // dependencies of transaction IDs. Handling them in a single loop can cause
+            // data inconsistencies. For example, if spending transactions are processed
+            // first, new change UTXOs are added and spent UTXOs are removed. However,
+            // in the subsequent loop, these already spent UTXOs are treated as new
+            // transactions and reinserted into the UTXO set.
+            for txid in txids.iter() {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
                 self.process_outputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
+                cache.tx.insert(tx.txid, tx);
+            }
+
+            for txid in txids.iter() {
+                let mut tx = cache.tx.remove(txid).expect("broken logic");
                 self.process_inputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
                 cache.tx.insert(tx.txid, tx);
             }
