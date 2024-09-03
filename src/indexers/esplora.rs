@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
@@ -353,6 +353,8 @@ impl Client {
         cache: &mut WalletCache<L2::Cache>,
         address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
     ) {
+        let wallet_self_script_set: BTreeSet<ScriptPubkey> =
+            address_index.keys().cloned().collect::<BTreeSet<_>>();
         for (script, (wallet_addr, txids)) in address_index.iter_mut() {
             // UTXOs and inputs must be processed separately due to the unordered nature and
             // dependencies of transaction IDs. Handling them in a single loop can cause
@@ -362,7 +364,14 @@ impl Client {
             // transactions and reinserted into the UTXO set.
             for txid in txids.iter() {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
-                self.process_outputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
+                self.process_outputs::<_, _, L2>(
+                    descriptor,
+                    script,
+                    wallet_addr,
+                    &mut tx,
+                    cache,
+                    &wallet_self_script_set,
+                );
                 cache.tx.insert(tx.txid, tx);
             }
 
@@ -386,11 +395,17 @@ impl Client {
         wallet_addr: &mut WalletAddr<i64>,
         tx: &mut WalletTx,
         cache: &mut WalletCache<L2::Cache>,
+        wallet_self_script_set: &BTreeSet<ScriptPubkey>,
     ) {
         for debit in &mut tx.outputs {
             let Some(s) = debit.beneficiary.script_pubkey() else {
                 continue;
             };
+            // Needs to be handled here. When iterating over keychain 0,
+            // it is possible that a UTXO is generated as change and is associated with keychain 1.
+            // However, the `script` of this UTXO belongs to keychain 0.
+            // This mismatch between the UTXO's script_pubkey and its associated keychain can cause
+            // errors. It should be handled using wallet_self_script_set.
             if &s == script {
                 cache.utxo.insert(debit.outpoint);
                 debit.beneficiary = Party::from_wallet_addr(wallet_addr);
@@ -400,6 +415,10 @@ impl Client {
                     .balance
                     .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
             } else if debit.beneficiary.is_unknown() {
+                if wallet_self_script_set.contains(&s) {
+                    debit.beneficiary = Party::from_wallet_addr(wallet_addr);
+                    continue;
+                }
                 Address::with(&s, descriptor.network())
                     .map(|addr| {
                         debit.beneficiary = Party::Counterparty(addr);
@@ -423,6 +442,8 @@ impl Client {
             };
             if &s == script {
                 credit.payer = Party::from_wallet_addr(wallet_addr);
+                // FIXME: balance calculation
+                // panicked at bp-wallet/src/data.rs:419:55
                 wallet_addr.balance = wallet_addr
                     .balance
                     .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
