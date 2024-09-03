@@ -174,10 +174,9 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
         if self.is_autosave() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
-                log::error!(
-                    "impossible to automatically-save wallet descriptor during the Drop \
-                     operation: {e}"
-                );
+                log::error!("impossible to automatically-save wallet descriptor on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet descriptor on Drop: {e}")
             }
         }
     }
@@ -238,9 +237,9 @@ impl<L2: Layer2Data> Drop for WalletData<L2> {
         if self.is_autosave() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
-                log::error!(
-                    "impossible to automatically-save wallet data during the Drop operation: {e}"
-                );
+                log::error!("impossible to automatically-save wallet data on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet data on Drop: {e}")
             }
         }
     }
@@ -372,9 +371,9 @@ impl<L2: Layer2Cache> Drop for WalletCache<L2> {
         if self.is_autosave() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
-                log::error!(
-                    "impossible to automatically-save wallet cache during the Drop operation: {e}"
-                );
+                log::error!("impossible to automatically-save wallet cache on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet cache on Drop: {e}")
             }
         }
     }
