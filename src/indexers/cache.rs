@@ -19,11 +19,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "electrum")]
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
-use bpstd::{BlockHash, DerivedAddr, Tx, Txid};
+#[cfg(feature = "electrum")]
+use bpstd::Txid;
+use bpstd::{BlockHash, DerivedAddr, Tx};
 #[cfg(feature = "electrum")]
 use electrum::GetHistoryRes;
 use lru::LruCache;
