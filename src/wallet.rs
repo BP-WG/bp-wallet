@@ -54,7 +54,6 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     generator: &'descr D,
     network: AddressNetwork,
     keychain: Keychain,
-    // TODO: get index
     index: NormalIndex,
     _phantom: PhantomData<K>,
 }
@@ -104,11 +103,6 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
             layer2: None,
             _phantom: PhantomData,
         }
-    }
-
-    // Use this unique identifier as an id for important cache of the wallet
-    pub fn unique_id(&self) -> String {
-        format!("{:?}-{:?}", self.generator.xpubs().collect::<Vec<_>>(), self.network)
     }
 }
 
