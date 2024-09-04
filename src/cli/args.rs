@@ -23,6 +23,7 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::exit;
+use std::sync::OnceLock;
 
 use bpstd::XpubDerivable;
 use clap::Subcommand;
@@ -32,6 +33,7 @@ use strict_encoding::Ident;
 use crate::cli::{
     Config, DescrStdOpts, DescriptorOpts, ExecError, GeneralOpts, ResolverOpt, WalletOpts,
 };
+use crate::indexers::electrum::ElectrumClient;
 use crate::indexers::esplora;
 use crate::{AnyIndexer, Wallet};
 
@@ -95,14 +97,36 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     }
 
     pub fn indexer(&self) -> Result<AnyIndexer, ExecError> {
+        use crate::indexers::IndexerCache;
+
+        // Define a static variable to store IndexerCache,
+        // Ensuring that all cached data is centralized
+        // Initialize only once
+        static INDEXER_CACHE: OnceLock<IndexerCache> = OnceLock::new();
+
+        let indexer_cache = INDEXER_CACHE
+            .get_or_init(|| {
+                IndexerCache::new(
+                    self.general
+                        .indexer_cache_factor
+                        .try_into()
+                        .expect("Error: indexer cache size is invalid"),
+                )
+            })
+            .clone();
+
         let network = self.general.network.to_string();
         Ok(match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
-            (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+            (None, Some(url), None) => {
+                AnyIndexer::Electrum(Box::new(ElectrumClient::new(url, indexer_cache)?))
+            }
             (Some(url), None, None) => AnyIndexer::Esplora(Box::new(esplora::Client::new_esplora(
                 &url.replace("{network}", &network),
+                indexer_cache,
             )?)),
             (None, None, Some(url)) => AnyIndexer::Mempool(Box::new(esplora::Client::new_mempool(
                 &url.replace("{network}", &network),
+                indexer_cache,
             )?)),
             _ => {
                 eprintln!(

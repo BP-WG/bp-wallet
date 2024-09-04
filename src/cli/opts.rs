@@ -158,6 +158,12 @@ pub struct GeneralOpts {
     /// Network to use.
     #[arg(short, long, global = true, default_value = "testnet3", env = "LNPBP_NETWORK")]
     pub network: Network,
+
+    /// Indexer cache factor.
+    /// `indexer_cache_factor`: A non-zero size value that determines the capacity of the LRU
+    /// caches for indexer.
+    #[arg(long, global = true, default_value = "1000")]
+    pub indexer_cache_factor: usize,
 }
 
 impl GeneralOpts {

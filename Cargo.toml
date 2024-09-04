@@ -66,6 +66,7 @@ rand = { version = "0.8.5", optional = true }
 rpassword = { version = "7.3.1", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 bip39 = { version = "2.0.0", optional = true }
+lru = "0.12.4"
 
 serde_crate = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
@@ -87,8 +88,8 @@ hot = ["bp-std/signers", "bip39", "rand", "aes-gcm", "rpassword"]
 cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "mempool", "log", "colored"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
-esplora = ["bp-esplora"]
-mempool = ["esplora"]
+esplora = ["bp-esplora", "serde", "serde_json"]
+mempool = ["esplora", "serde", "serde_json"]
 fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]

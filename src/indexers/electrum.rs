@@ -19,16 +19,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroU32;
 use std::str::FromStr;
 
-use bpstd::{Address, BlockHash, ConsensusEncode, Outpoint, Sats, Tx, TxIn, Txid, Weight};
+use bpstd::{
+    Address, BlockHash, ConsensusEncode, DerivedAddr, Outpoint, Sats, Tx, TxIn, Txid, Weight,
+};
 use descriptors::Descriptor;
 use electrum::{Client, ElectrumApi, Error, GetHistoryRes, Param};
 use serde_json::Value;
 
-use super::BATCH_SIZE;
+use super::cache::TxDetail;
+use super::{IndexerCache, BATCH_SIZE};
 use crate::{
     Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
     WalletCache, WalletDescr, WalletTx,
@@ -59,30 +62,34 @@ pub enum ElectrumError {
     Client(Error),
 }
 
-impl Indexer for Client {
-    type Error = ElectrumError;
+pub struct ElectrumClient {
+    client: Client,
+    cache: IndexerCache,
+}
 
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
+impl ElectrumClient {
+    fn process_wallet_descriptor<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
-    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        let mut cache = WalletCache::new();
-        let mut errors = Vec::<ElectrumError>::new();
-
+        cache: &mut WalletCache<L2::Cache>,
+        errors: &mut Vec<ElectrumError>,
+        is_update: bool,
+    ) -> BTreeMap<bpstd::ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)> {
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
             eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
-                let script = derive.addr.script_pubkey();
-
                 eprint!(".");
+                let script = derive.addr.script_pubkey();
                 let mut txids = Vec::new();
-                let Ok(hres) =
-                    self.script_get_history(&script).map_err(|err| errors.push(err.into()))
-                else {
-                    break;
+
+                let hres = if is_update {
+                    self.update_script_history(&derive, errors)
+                } else {
+                    self.get_script_history(&derive, errors)
                 };
+
                 if hres.is_empty() {
                     empty_count += 1;
                     if empty_count >= BATCH_SIZE {
@@ -93,197 +100,365 @@ impl Indexer for Client {
 
                 empty_count = 0;
 
-                let mut process_history_entry =
-                    |hr: GetHistoryRes| -> Result<WalletTx, ElectrumError> {
-                        let txid = hr.tx_hash;
-                        txids.push(txid);
-
-                        // get the tx details (requires electrum verbose support)
-                        let tx_details = self.raw_call("blockchain.transaction.get", vec![
-                            Param::String(hr.tx_hash.to_string()),
-                            Param::Bool(true),
-                        ])?;
-
-                        let tx = tx_details
-                            .get("hex")
-                            .and_then(Value::as_str)
-                            .and_then(|s| Tx::from_str(s).ok())
-                            .ok_or(ElectrumApiError::InvalidTx(txid))?;
-
-                        // build TxStatus
-                        let status = if hr.height < 1 {
-                            TxStatus::Mempool
-                        } else {
-                            let block_hash = tx_details
-                                .get("blockhash")
-                                .and_then(Value::as_str)
-                                .and_then(|s| BlockHash::from_str(s).ok())
-                                .ok_or(ElectrumApiError::InvalidBlockHash(txid))?;
-                            let blocktime = tx_details
-                                .get("blocktime")
-                                .and_then(Value::as_u64)
-                                .ok_or(ElectrumApiError::InvalidBlockTime(txid))?;
-                            let height = NonZeroU32::try_from(hr.height as u32)
-                                .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
-                            TxStatus::Mined(MiningInfo {
-                                height,
-                                time: blocktime,
-                                block_hash,
-                            })
-                        };
-                        let tx_size = tx.consensus_serialize().len();
-                        let weight = tx.weight_units().to_u32();
-
-                        // get inputs to build TxCredit's and total amount,
-                        // collecting indexer errors
-                        let mut input_total = Sats::ZERO;
-                        let mut inputs = Vec::with_capacity(tx.inputs.len());
-                        for input in tx.inputs {
-                            // get value from previous output tx
-                            let prev_tx = self.transaction_get(&input.prev_output.txid)?;
-                            let prev_out = prev_tx
-                                .outputs
-                                .get(input.prev_output.vout.into_usize())
-                                .ok_or_else(|| {
-                                    ElectrumApiError::PrevOutTxMismatch(txid, input.clone())
-                                })?;
-                            let value = prev_out.value;
-                            input_total += value;
-                            inputs.push(TxCredit {
-                                outpoint: input.prev_output,
-                                payer: Party::Unknown(prev_out.script_pubkey.clone()),
-                                sequence: input.sequence,
-                                coinbase: false,
-                                script_sig: input.sig_script,
-                                witness: input.witness,
-                                value,
-                            })
-                        }
-
-                        // get outputs and total amount, build TxDebit's
-                        let mut output_total = Sats::ZERO;
-                        let mut outputs = Vec::with_capacity(tx.outputs.len());
-                        for (no, txout) in tx.outputs.into_iter().enumerate() {
-                            output_total += txout.value;
-                            outputs.push(TxDebit {
-                                outpoint: Outpoint::new(txid, no as u32),
-                                beneficiary: Party::Unknown(txout.script_pubkey),
-                                value: txout.value,
-                                spent: None,
-                            })
-                        }
-
-                        // build the WalletTx
-                        return Ok(WalletTx {
-                            txid,
-                            status,
-                            inputs,
-                            outputs,
-                            fee: input_total - output_total,
-                            size: tx_size as u32,
-                            weight,
-                            version: tx.version,
-                            locktime: tx.lock_time,
-                        });
-                    };
-
-                // build wallet transactions from script tx history, collecting indexer errors
-                for hr in hres {
-                    match process_history_entry(hr) {
+                for (_, hr) in hres {
+                    match self.process_history_entry(hr, &mut txids) {
                         Ok(tx) => {
                             cache.tx.insert(tx.txid, tx);
                         }
-                        Err(e) => errors.push(e.into()),
+                        Err(e) => errors.push(e),
                     }
                 }
 
-                let wallet_addr = WalletAddr::<i64>::from(derive);
+                let wallet_addr = if is_update {
+                    self.get_or_create_wallet_addr::<L2>(cache, &derive)
+                } else {
+                    WalletAddr::<i64>::from(derive)
+                };
+
                 address_index.insert(script, (wallet_addr, txids));
             }
         }
+        address_index
+    }
 
-        // TODO: Update headers & tip
-
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
+    fn process_transactions<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+        address_index: &mut BTreeMap<bpstd::ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
+    ) {
+        for (script, (wallet_addr, txids)) in address_index {
+            // UTXOs and inputs must be processed separately due to the unordered nature and
+            // dependencies of transaction IDs. Handling them in a single loop can cause
+            // data inconsistencies. For example, if spending transactions are processed
+            // first, new change UTXOs are added and spent UTXOs are removed. However,
+            // in the subsequent loop, these already spent UTXOs are treated as new
+            // transactions and reinserted into the UTXO set.
+            for txid in txids.iter() {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for debit in &mut tx.outputs {
-                    let Some(s) = debit.beneficiary.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        cache.utxo.insert(debit.outpoint);
-                        debit.beneficiary = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.used = wallet_addr.used.saturating_add(1);
-                        wallet_addr.volume.saturating_add_assign(debit.value);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
-                    } else if debit.beneficiary.is_unknown() {
-                        Address::with(&s, descriptor.network())
-                            .map(|addr| {
-                                debit.beneficiary = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                }
+                self.process_outputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
                 cache.tx.insert(tx.txid, tx);
             }
-        }
 
-        for (script, (wallet_addr, txids)) in &mut address_index {
-            for txid in txids {
+            for txid in txids.iter() {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
-                for credit in &mut tx.inputs {
-                    let Some(s) = credit.payer.script_pubkey() else {
-                        continue;
-                    };
-                    if &s == script {
-                        credit.payer = Party::from_wallet_addr(wallet_addr);
-                        wallet_addr.balance = wallet_addr
-                            .balance
-                            .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
-                    } else if credit.payer.is_unknown() {
-                        Address::with(&s, descriptor.network())
-                            .map(|addr| {
-                                credit.payer = Party::Counterparty(addr);
-                            })
-                            .ok();
-                    }
-                    if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
-                        if let Some(txout) =
-                            prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
-                        {
-                            let outpoint = txout.outpoint;
-                            if tx.status.is_mined() {
-                                cache.utxo.remove(&outpoint);
-                            }
-                            txout.spent = Some(credit.outpoint.into())
-                        };
-                    }
-                }
+                self.process_inputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
                 cache.tx.insert(tx.txid, tx);
             }
+
             cache
                 .addr
                 .entry(wallet_addr.terminal.keychain)
                 .or_default()
                 .insert(wallet_addr.expect_transmute());
         }
+    }
 
+    fn process_outputs<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        script: &bpstd::ScriptPubkey,
+        wallet_addr: &mut WalletAddr<i64>,
+        tx: &mut WalletTx,
+        cache: &mut WalletCache<L2::Cache>,
+    ) {
+        for debit in &mut tx.outputs {
+            if let Some(s) = debit.beneficiary.script_pubkey() {
+                if &s == script {
+                    cache.utxo.insert(debit.outpoint);
+                    debit.beneficiary = Party::from_wallet_addr(wallet_addr);
+                    wallet_addr.used = wallet_addr.used.saturating_add(1);
+                    wallet_addr.volume.saturating_add_assign(debit.value);
+                    wallet_addr.balance = wallet_addr
+                        .balance
+                        .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
+                } else if debit.beneficiary.is_unknown() {
+                    Address::with(&s, descriptor.network())
+                        .map(|addr| debit.beneficiary = Party::Counterparty(addr))
+                        .ok();
+                }
+            }
+        }
+    }
+
+    fn process_inputs<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        script: &bpstd::ScriptPubkey,
+        wallet_addr: &mut WalletAddr<i64>,
+        tx: &mut WalletTx,
+        cache: &mut WalletCache<L2::Cache>,
+    ) {
+        for credit in &mut tx.inputs {
+            if let Some(s) = credit.payer.script_pubkey() {
+                if &s == script {
+                    credit.payer = Party::from_wallet_addr(wallet_addr);
+                    wallet_addr.balance = wallet_addr
+                        .balance
+                        .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
+                } else if credit.payer.is_unknown() {
+                    Address::with(&s, descriptor.network())
+                        .map(|addr| credit.payer = Party::Counterparty(addr))
+                        .ok();
+                }
+            }
+            if let Some(prev_tx) = cache.tx.get_mut(&credit.outpoint.txid) {
+                if let Some(txout) = prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize) {
+                    let outpoint = txout.outpoint;
+                    if tx.status.is_mined() {
+                        cache.utxo.remove(&outpoint);
+                    }
+                    txout.spent = Some(credit.outpoint.into())
+                };
+            }
+        }
+    }
+
+    fn get_or_create_wallet_addr<L2: Layer2>(
+        &self,
+        cache: &mut WalletCache<L2::Cache>,
+        derive: &DerivedAddr,
+    ) -> WalletAddr<i64> {
+        let wallet_addr_key = WalletAddr::from(*derive);
+        cache
+            .addr
+            .entry(wallet_addr_key.terminal.keychain)
+            .or_default()
+            .get(&wallet_addr_key)
+            .cloned()
+            .map(|wallet_addr| WalletAddr {
+                terminal: wallet_addr.terminal,
+                addr: derive.addr,
+                used: wallet_addr.used,
+                volume: wallet_addr.volume,
+                balance: wallet_addr.balance.sats_i64(),
+            })
+            .unwrap_or_else(|| WalletAddr::from(*derive))
+    }
+}
+
+impl ElectrumClient {
+    pub fn new(url: &str, cache: IndexerCache) -> Result<Self, ElectrumError> {
+        let client = Client::new(url).map_err(ElectrumError::Client)?;
+        Ok(Self { client, cache })
+    }
+
+    fn get_script_history(
+        &self,
+        derived_addr: &DerivedAddr,
+        errors: &mut Vec<ElectrumError>,
+    ) -> HashMap<Txid, GetHistoryRes> {
+        let mut cache = self.cache.script_history.lock().expect("poisoned lock");
+        if let Some(history) = cache.get(derived_addr) {
+            return history.clone();
+        }
+
+        let script = derived_addr.addr.script_pubkey();
+        let hres = self
+            .client
+            .script_get_history(&script)
+            .map_err(|err| errors.push(err.into()))
+            .unwrap_or_default();
+        let hres: HashMap<Txid, GetHistoryRes> =
+            hres.into_iter().map(|hr| (hr.tx_hash, hr)).collect();
+
+        cache.put(derived_addr.clone(), hres.clone());
+        hres
+    }
+
+    fn update_script_history(
+        &self,
+        derived_addr: &DerivedAddr,
+        errors: &mut Vec<ElectrumError>,
+    ) -> HashMap<Txid, GetHistoryRes> {
+        let mut upsert = HashMap::new();
+
+        let mut cache = self.cache.script_history.lock().expect("poisoned lock");
+
+        let old_history = cache.get(derived_addr).cloned().unwrap_or_default();
+
+        let script = derived_addr.addr.script_pubkey();
+        let new_history = self
+            .client
+            .script_get_history(&script)
+            .map_err(|err| {
+                errors.push(err.into());
+            })
+            .unwrap_or_default();
+        if new_history.is_empty() {
+            return upsert;
+        }
+
+        let new_history: HashMap<Txid, GetHistoryRes> =
+            new_history.into_iter().map(|hr| (hr.tx_hash, hr)).collect();
+
+        for (txid, hr) in new_history.iter() {
+            if let Some(old_hr) = old_history.get(txid) {
+                if old_hr.height != hr.height {
+                    upsert.insert(*txid, hr.clone());
+                }
+                continue;
+            }
+
+            upsert.insert(*txid, hr.clone());
+        }
+
+        cache.put(derived_addr.clone(), new_history.clone());
+        upsert
+    }
+
+    fn get_transaction_details(&self, txid: &Txid) -> Result<TxDetail, ElectrumError> {
+        let mut cache = self.cache.tx_details.lock().expect("poisoned lock");
+        if let Some(details) = cache.get(txid) {
+            // if blockhash exists, the transaction has been confirmed and will not change
+            // Otherwise, we need to get the latest information
+            if details.blockhash.is_some() {
+                return Ok(details.clone());
+            }
+        }
+
+        let tx_details = self.client.raw_call("blockchain.transaction.get", vec![
+            Param::String(txid.to_string()),
+            Param::Bool(true),
+        ])?;
+
+        let inner: Tx = tx_details
+            .get("hex")
+            .and_then(Value::as_str)
+            .and_then(|s| Tx::from_str(s).ok())
+            .ok_or(ElectrumApiError::InvalidTx(txid.clone()))?;
+
+        let blockhash = tx_details
+            .get("blockhash")
+            .and_then(Value::as_str)
+            .and_then(|s| BlockHash::from_str(s).ok());
+        let blocktime = tx_details.get("blocktime").and_then(Value::as_u64);
+
+        let tx_detail = TxDetail {
+            inner,
+            blockhash,
+            blocktime,
+        };
+
+        cache.put(*txid, tx_detail.clone());
+        Ok(tx_detail)
+    }
+
+    fn process_history_entry(
+        &self,
+        hr: GetHistoryRes,
+        txids: &mut Vec<Txid>,
+    ) -> Result<WalletTx, ElectrumError> {
+        let txid = hr.tx_hash;
+        txids.push(txid);
+
+        let TxDetail {
+            inner: tx,
+            blockhash,
+            blocktime,
+        } = self.get_transaction_details(&txid)?;
+
+        // build TxStatus
+        let status = if hr.height < 1 {
+            TxStatus::Mempool
+        } else {
+            let height = NonZeroU32::try_from(hr.height as u32)
+                .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
+            TxStatus::Mined(MiningInfo {
+                height,
+                time: blocktime.expect("blocktime is missing"),
+                block_hash: blockhash.expect("blockhash is missing"),
+            })
+        };
+        let tx_size = tx.consensus_serialize().len();
+        let weight = tx.weight_units().to_u32();
+
+        // get inputs to build TxCredit's and total amount,
+        // collecting indexer errors
+        let mut input_total = Sats::ZERO;
+        let mut inputs = Vec::with_capacity(tx.inputs.len());
+        for input in tx.inputs {
+            // get value from previous output tx
+            let prev_tx = self.get_transaction_details(&input.prev_output.txid)?.inner;
+            let prev_out = prev_tx
+                .outputs
+                .get(input.prev_output.vout.into_usize())
+                .ok_or_else(|| ElectrumApiError::PrevOutTxMismatch(txid, input.clone()))?;
+            let value = prev_out.value;
+            input_total += value;
+            inputs.push(TxCredit {
+                outpoint: input.prev_output,
+                payer: Party::Unknown(prev_out.script_pubkey.clone()),
+                sequence: input.sequence,
+                coinbase: false,
+                script_sig: input.sig_script,
+                witness: input.witness,
+                value,
+            })
+        }
+
+        // get outputs and total amount, build TxDebit's
+        let mut output_total = Sats::ZERO;
+        let mut outputs = Vec::with_capacity(tx.outputs.len());
+        for (no, txout) in tx.outputs.into_iter().enumerate() {
+            output_total += txout.value;
+            outputs.push(TxDebit {
+                outpoint: Outpoint::new(txid, no as u32),
+                beneficiary: Party::Unknown(txout.script_pubkey),
+                value: txout.value,
+                spent: None,
+            })
+        }
+
+        // build the WalletTx
+        return Ok(WalletTx {
+            txid,
+            status,
+            inputs,
+            outputs,
+            fee: input_total - output_total,
+            size: tx_size as u32,
+            weight,
+            version: tx.version,
+            locktime: tx.lock_time,
+        });
+    }
+}
+
+impl Indexer for ElectrumClient {
+    type Error = ElectrumError;
+
+    fn create<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
+        let mut cache = WalletCache::new();
+        let mut errors = Vec::new();
+        let mut address_index =
+            self.process_wallet_descriptor::<_, _, L2>(descriptor, &mut cache, &mut errors, false);
+        self.process_transactions::<_, _, L2>(descriptor, &mut cache, &mut address_index);
         if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
     }
 
     fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
-        _descr: &WalletDescr<K, D, L2::Descr>,
-        _cache: &mut WalletCache<L2::Cache>,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
     ) -> MayError<usize, Vec<Self::Error>> {
-        todo!()
+        let mut errors = Vec::new();
+        let mut address_index =
+            self.process_wallet_descriptor::<_, _, L2>(descriptor, cache, &mut errors, true);
+
+        self.process_transactions::<_, _, L2>(descriptor, cache, &mut address_index);
+        if errors.is_empty() {
+            MayError::ok(address_index.len())
+        } else {
+            MayError::err(address_index.len(), errors)
+        }
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
-        self.transaction_broadcast(tx)?;
+        self.client.transaction_broadcast(tx)?;
         Ok(())
     }
 }

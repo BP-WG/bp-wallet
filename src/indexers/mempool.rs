@@ -23,6 +23,8 @@
 use bpstd::Txid;
 use esplora::BlockingClient;
 
+use super::IndexerCache;
+
 impl super::esplora::Client {
     /// Creates a new mempool client with the specified URL.
     ///
@@ -35,11 +37,12 @@ impl super::esplora::Client {
     /// A `Result` containing the new mempool client if successful, or an `esplora::Error` if an
     /// error occurred.
     #[allow(clippy::result_large_err)]
-    pub fn new_mempool(url: &str) -> Result<Self, esplora::Error> {
+    pub fn new_mempool(url: &str, cache: IndexerCache) -> Result<Self, esplora::Error> {
         let inner = esplora::Builder::new(url).build_blocking()?;
         let client = Self {
             inner,
             kind: super::esplora::ClientKind::Mempool,
+            cache,
         };
         Ok(client)
     }

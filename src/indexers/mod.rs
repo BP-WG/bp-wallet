@@ -28,10 +28,14 @@ pub mod esplora;
 pub mod mempool;
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 mod any;
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
+mod cache;
 
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use any::{AnyIndexer, AnyIndexerError};
 use bpstd::Tx;
+#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
+pub use cache::IndexerCache;
 use descriptors::Descriptor;
 
 use crate::{Layer2, MayError, WalletCache, WalletDescr};

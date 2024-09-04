@@ -81,7 +81,7 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
         )
     )
 )]
-#[derive(Getters, Clone, Eq, PartialEq, Debug)]
+#[derive(Getters, Clone, Eq, PartialEq, Debug, Hash)]
 pub struct WalletDescr<K, D, L2 = NoLayer2>
 where
     D: Descriptor<K>,
@@ -373,13 +373,14 @@ where Self: Save
     }
 
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
-        // Not yet implemented:
-        // self.cache.update::<B, K, D, L2>(&self.descr, &self.indexer)
+        if self.cache.tx.is_empty() {
+            return WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
+                self.cache = cache;
+                self.set_dirty();
+            });
+        }
 
-        WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
-            self.cache = cache;
-            self.set_dirty();
-        })
+        self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| self.set_dirty())
     }
 
     pub fn to_deriver(&self) -> D

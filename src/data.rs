@@ -265,7 +265,7 @@ impl Party {
             Party::Subsidy => None,
             Party::Counterparty(addr) => Some(addr.script_pubkey()),
             Party::Unknown(script) => Some(script.clone()),
-            Party::Wallet(_) => None,
+            Party::Wallet(derive) => Some(derive.addr.script_pubkey()),
         }
     }
 }
@@ -416,6 +416,18 @@ impl WalletAddr<i64> {
             used: self.used,
             volume: self.volume,
             balance: Sats(u64::try_from(self.balance).expect("negative balance")),
+        }
+    }
+}
+
+impl WalletAddr<Sats> {
+    pub fn expect_transmute(self) -> WalletAddr<i64> {
+        WalletAddr {
+            terminal: self.terminal,
+            addr: self.addr,
+            used: self.used,
+            volume: self.volume,
+            balance: self.balance.sats_i64(),
         }
     }
 }
