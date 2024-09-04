@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
@@ -323,6 +323,20 @@ impl Client {
                 .map_err(|err| errors.push(err))
                 .unwrap_or_default();
             if tx_stats_by_client.address.is_empty() || tx_stats_by_cache == tx_stats_by_client {
+                let wallet_addr_key = WalletAddr::from(derive);
+                let keychain = wallet_addr_key.terminal.keychain;
+
+                if let Some(keychain_addr_set) = cache.addr.get(&keychain) {
+                    // If `wallet_addr` has been cached before, it must be set in `address_index`
+                    // to ensure the subsequent state updates correctly.
+                    // Also, return (empty = false);
+                    // This ensures that every cached `wallet_addr` is checked for updates.
+                    if let Some(cached_wallet_addr) = keychain_addr_set.get(&wallet_addr_key) {
+                        address_index
+                            .insert(script, ((*cached_wallet_addr).expect_transmute(), txids));
+                        return false;
+                    }
+                }
                 return true;
             }
         }
@@ -353,8 +367,13 @@ impl Client {
         cache: &mut WalletCache<L2::Cache>,
         address_index: &mut BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>,
     ) {
-        let wallet_self_script_set: BTreeSet<ScriptPubkey> =
-            address_index.keys().cloned().collect::<BTreeSet<_>>();
+        // Keep the completed WalletAddr<i64> set
+        // Ensure that the subsequent status is handled correctly
+        let wallet_self_script_map: BTreeMap<ScriptPubkey, WalletAddr<i64>> =
+            address_index.iter().map(|(s, (addr, _))| (s.clone(), addr.clone())).collect();
+        // Remove items with empty `txids`
+        address_index.retain(|_, (_, txids)| !txids.is_empty());
+
         for (script, (wallet_addr, txids)) in address_index.iter_mut() {
             // UTXOs and inputs must be processed separately due to the unordered nature and
             // dependencies of transaction IDs. Handling them in a single loop can cause
@@ -370,14 +389,21 @@ impl Client {
                     wallet_addr,
                     &mut tx,
                     cache,
-                    &wallet_self_script_set,
+                    &wallet_self_script_map,
                 );
                 cache.tx.insert(tx.txid, tx);
             }
 
             for txid in txids.iter() {
                 let mut tx = cache.tx.remove(txid).expect("broken logic");
-                self.process_inputs::<_, _, L2>(descriptor, script, wallet_addr, &mut tx, cache);
+                self.process_inputs::<_, _, L2>(
+                    descriptor,
+                    script,
+                    wallet_addr,
+                    &mut tx,
+                    cache,
+                    &wallet_self_script_map,
+                );
                 cache.tx.insert(tx.txid, tx);
             }
             cache
@@ -395,17 +421,28 @@ impl Client {
         wallet_addr: &mut WalletAddr<i64>,
         tx: &mut WalletTx,
         cache: &mut WalletCache<L2::Cache>,
-        wallet_self_script_set: &BTreeSet<ScriptPubkey>,
+        wallet_self_script_map: &BTreeMap<ScriptPubkey, WalletAddr<i64>>,
     ) {
         for debit in &mut tx.outputs {
             let Some(s) = debit.beneficiary.script_pubkey() else {
                 continue;
             };
+
             // Needs to be handled here. When iterating over keychain 0,
-            // it is possible that a UTXO is generated as change and is associated with keychain 1.
-            // However, the `script` of this UTXO belongs to keychain 0.
-            // This mismatch between the UTXO's script_pubkey and its associated keychain can cause
-            // errors. It should be handled using wallet_self_script_set.
+            // it is possible that a UTXO corresponds to the change `script-public-key` `s` and is
+            // associated with keychain 1. However, the `script` corresponds to keychain 0.
+            // This discrepancy can cause issues because the outer loop uses `address_index:
+            // BTreeMap<ScriptPubkey, (WalletAddr<i64>, Vec<Txid>)>`, which is unordered
+            // by keychain.
+            //
+            // If transactions related to keychain-1-ScriptPubkey are processed first, the change
+            // UTXOs are correctly handled. However, when subsequently processing
+            // transactions for keychain-0-ScriptPubkey, the previously set data for keychain-1
+            // can be incorrectly modified (to `Counterparty`). This specific condition needs to be
+            // handled.
+            //
+            // It should be handled using `wallet_self_script_map` to correctly process the
+            // beneficiary of the transaction output.
             if &s == script {
                 cache.utxo.insert(debit.outpoint);
                 debit.beneficiary = Party::from_wallet_addr(wallet_addr);
@@ -415,10 +452,11 @@ impl Client {
                     .balance
                     .saturating_add(debit.value.sats().try_into().expect("sats overflow"));
             } else if debit.beneficiary.is_unknown() {
-                if wallet_self_script_set.contains(&s) {
-                    debit.beneficiary = Party::from_wallet_addr(wallet_addr);
+                if let Some(real_addr) = wallet_self_script_map.get(&s) {
+                    debit.beneficiary = Party::from_wallet_addr(real_addr);
                     continue;
                 }
+
                 Address::with(&s, descriptor.network())
                     .map(|addr| {
                         debit.beneficiary = Party::Counterparty(addr);
@@ -435,6 +473,7 @@ impl Client {
         wallet_addr: &mut WalletAddr<i64>,
         tx: &mut WalletTx,
         cache: &mut WalletCache<L2::Cache>,
+        wallet_self_script_map: &BTreeMap<ScriptPubkey, WalletAddr<i64>>,
     ) {
         for credit in &mut tx.inputs {
             let Some(s) = credit.payer.script_pubkey() else {
@@ -442,12 +481,15 @@ impl Client {
             };
             if &s == script {
                 credit.payer = Party::from_wallet_addr(wallet_addr);
-                // FIXME: balance calculation
-                // panicked at bp-wallet/src/data.rs:419:55
                 wallet_addr.balance = wallet_addr
                     .balance
                     .saturating_sub(credit.value.sats().try_into().expect("sats overflow"));
             } else if credit.payer.is_unknown() {
+                if let Some(real_addr) = wallet_self_script_map.get(&s) {
+                    credit.payer = Party::from_wallet_addr(real_addr);
+                    continue;
+                }
+
                 Address::with(&s, descriptor.network())
                     .map(|addr| {
                         credit.payer = Party::Counterparty(addr);
