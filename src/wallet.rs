@@ -22,15 +22,15 @@
 
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::error::Error;
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Deref, DerefMut};
-#[cfg(feature = "fs")]
-use std::path::PathBuf;
+use std::ops::{AddAssign, Deref};
 
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
     Outpoint, Sats, Txid, Vout,
+};
+use nonasync::persistence::{
+    CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
 };
 use psbt::{PsbtConstructor, Utxo};
 
@@ -81,12 +81,16 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
         )
     )
 )]
-#[derive(Getters, Clone, Eq, PartialEq, Debug)]
+#[derive(Getters, Debug)]
 pub struct WalletDescr<K, D, L2 = NoLayer2>
 where
     D: Descriptor<K>,
     L2: Layer2Descriptor,
 {
+    #[getter(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
+    persistence: Option<Persistence<Self>>,
+
     generator: D,
     #[getter(as_copy)]
     network: Network,
@@ -98,9 +102,10 @@ where
 impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
     pub fn new_standard(descr: D, network: Network) -> Self {
         WalletDescr {
+            persistence: None,
             generator: descr,
             network,
-            layer2: None,
+            layer2: none!(),
             _phantom: PhantomData,
         }
     }
@@ -109,6 +114,7 @@ impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
     pub fn new_layer2(descr: D, layer2: L2, network: Network) -> Self {
         WalletDescr {
+            persistence: None,
             generator: descr,
             network,
             layer2,
@@ -125,6 +131,15 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             _phantom: PhantomData,
         }
     }
+
+    pub fn with_descriptor_mut<E>(
+        &mut self,
+        f: impl FnOnce(&mut D) -> Result<(), E>,
+    ) -> Result<(), E> {
+        f(&mut self.generator)?;
+        self.mark_dirty();
+        Ok(())
+    }
 }
 
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> {
@@ -133,11 +148,41 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> 
     fn deref(&self) -> &Self::Target { &self.generator }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L2> {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.generator }
+impl<K, D: Descriptor<K>, L2: Layer2Descriptor> CloneNoPersistence for WalletDescr<K, D, L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            generator: self.generator.clone(),
+            network: self.network,
+            layer2: self.layer2.clone_no_persistence(),
+            _phantom: PhantomData,
+        }
+    }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Default)]
+impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Persisting for WalletDescr<K, D, L2> {
+    #[inline]
+    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
+    #[inline]
+    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
+}
+
+impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
+    fn drop(&mut self) {
+        if self.is_autosave() {
+            if let Err(e) = self.store() {
+                #[cfg(feature = "log")]
+                log::error!("impossible to automatically-save wallet descriptor on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet descriptor on Drop: {e}")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
@@ -148,6 +193,11 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> DerefMut for WalletDescr<K, D, L
     )
 )]
 pub struct WalletData<L2: Layer2Data> {
+    #[cfg_attr(feature = "serde", serde(skip))]
+    persistence: Option<Persistence<Self>>,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub descriptor: String,
     pub name: String,
     pub tx_annotations: BTreeMap<Txid, String>,
     pub txout_annotations: BTreeMap<Outpoint, String>,
@@ -155,6 +205,44 @@ pub struct WalletData<L2: Layer2Data> {
     pub addr_annotations: BTreeMap<Address, String>,
     pub layer2_annotations: L2,
     pub last_used: BTreeMap<Keychain, NormalIndex>,
+}
+
+impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            descriptor: self.descriptor.clone(),
+            name: self.name.clone(),
+            tx_annotations: self.tx_annotations.clone(),
+            txout_annotations: self.txout_annotations.clone(),
+            txin_annotations: self.txin_annotations.clone(),
+            addr_annotations: self.addr_annotations.clone(),
+            layer2_annotations: self.layer2_annotations.clone_no_persistence(),
+            last_used: self.last_used.clone(),
+        }
+    }
+}
+
+impl<L2: Layer2Data> Persisting for WalletData<L2> {
+    #[inline]
+    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
+    #[inline]
+    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
+}
+
+impl<L2: Layer2Data> Drop for WalletData<L2> {
+    fn drop(&mut self) {
+        if self.is_autosave() {
+            if let Err(e) = self.store() {
+                #[cfg(feature = "log")]
+                log::error!("impossible to automatically-save wallet data on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet data on Drop: {e}")
+            }
+        }
+    }
 }
 
 #[cfg_attr(
@@ -166,8 +254,13 @@ pub struct WalletData<L2: Layer2Data> {
         bound(serialize = "L2: serde::Serialize", deserialize = "L2: serde::Deserialize<'de>")
     )
 )]
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Debug)]
 pub struct WalletCache<L2: Layer2Cache> {
+    #[cfg_attr(feature = "serde", serde(skip))]
+    persistence: Option<Persistence<Self>>,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub descriptor: String,
     pub last_block: MiningInfo,
     pub last_change: NormalIndex,
     pub headers: BTreeSet<BlockInfo>,
@@ -177,13 +270,11 @@ pub struct WalletCache<L2: Layer2Cache> {
     pub layer2: L2,
 }
 
-impl<L2: Layer2Cache> Default for WalletCache<L2> {
-    fn default() -> Self { WalletCache::new() }
-}
-
 impl<L2C: Layer2Cache> WalletCache<L2C> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new_nonsync<K, D: Descriptor<K>>(descriptor: &D) -> Self {
         WalletCache {
+            persistence: None,
+            descriptor: descriptor.to_string(),
             last_block: MiningInfo::genesis(),
             last_change: NormalIndex::ZERO,
             headers: none!(),
@@ -206,7 +297,9 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
     ) -> MayError<usize, Vec<I::Error>> {
-        indexer.update::<K, D, L2>(descriptor, self)
+        let res = indexer.update::<K, D, L2>(descriptor, self);
+        self.mark_dirty();
+        res
     }
 
     pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
@@ -248,42 +341,70 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     }
 }
 
-#[cfg(feature = "fs")]
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct FsConfig {
-    pub path: PathBuf,
-    pub autosave: bool,
+impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            persistence: None,
+            descriptor: self.descriptor.clone(),
+            last_block: self.last_block.clone(),
+            last_change: self.last_change.clone(),
+            headers: self.headers.clone(),
+            tx: self.tx.clone(),
+            utxo: self.utxo.clone(),
+            addr: self.addr.clone(),
+            layer2: self.layer2.clone_no_persistence(),
+        }
+    }
 }
 
-pub trait Save {
-    type SaveErr: Error;
-    fn save(&self) -> Result<bool, Self::SaveErr>;
+impl<L2: Layer2Cache> Persisting for WalletCache<L2> {
+    #[inline]
+    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
+    #[inline]
+    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
+    #[inline]
+    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2>
-where Self: Save
-{
+impl<L2: Layer2Cache> Drop for WalletCache<L2> {
+    fn drop(&mut self) {
+        if self.is_autosave() {
+            if let Err(e) = self.store() {
+                #[cfg(feature = "log")]
+                log::error!("impossible to automatically-save wallet cache on Drop: {e}");
+                #[cfg(not(feature = "log"))]
+                eprintln!("impossible to automatically-save wallet cache on Drop: {e}")
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2> {
     descr: WalletDescr<K, D, L2::Descr>,
     data: WalletData<L2::Data>,
     cache: WalletCache<L2::Cache>,
     layer2: L2,
-    #[cfg(feature = "fs")]
-    fs: Option<FsConfig>,
-    dirty: bool,
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2>
-where Self: Save
-{
+impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2> {
     type Target = WalletDescr<K, D, L2::Descr>;
 
     fn deref(&self) -> &Self::Target { &self.descr }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2>
-where Self: Save
-{
+impl<K, D: Descriptor<K>, L2: Layer2> CloneNoPersistence for Wallet<K, D, L2> {
+    fn clone_no_persistence(&self) -> Self {
+        Self {
+            descr: self.descr.clone_no_persistence(),
+            data: self.data.clone_no_persistence(),
+            cache: self.cache.clone_no_persistence(),
+            layer2: self.layer2.clone_no_persistence(),
+        }
+    }
+}
+
+impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     type Key = K;
     type Descr = D;
 
@@ -302,65 +423,36 @@ where Self: Save
         idx = cmp::max(*last_index, idx);
         if shift {
             *last_index = idx.saturating_add(1u32);
-            self.set_dirty();
+            self.data.mark_dirty();
         }
         idx
     }
 }
 
-impl<K, D: Descriptor<K>> Wallet<K, D>
-where Self: Save
-{
+impl<K, D: Descriptor<K>> Wallet<K, D> {
     pub fn new_layer1(descr: D, network: Network) -> Self {
         Wallet {
+            cache: WalletCache::new_nonsync(&descr),
             descr: WalletDescr::new_standard(descr, network),
             data: empty!(),
-            cache: WalletCache::new(),
-            layer2: None,
-            dirty: false,
-            #[cfg(feature = "fs")]
-            fs: None,
+            layer2: none!(),
         }
     }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2>
-where Self: Save
-{
+impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Wallet {
+            cache: WalletCache::new_nonsync(&descr),
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
             data: empty!(),
-            cache: WalletCache::new(),
             layer2,
-            dirty: false,
-            #[cfg(feature = "fs")]
-            fs: None,
-        }
-    }
-
-    #[cfg(feature = "fs")]
-    pub fn fs_config(&self) -> Option<&FsConfig> { self.fs.as_ref() }
-
-    #[cfg(feature = "fs")]
-    pub fn set_fs_config(&mut self, config: FsConfig) -> Result<Option<FsConfig>, fs::StoreError> {
-        let mut last = Some(config);
-        std::mem::swap(&mut self.fs, &mut last);
-        self.set_dirty();
-        Ok(last)
-    }
-
-    pub fn set_dirty(&mut self) {
-        self.dirty = true;
-        #[cfg(feature = "fs")]
-        if self.fs.as_ref().map(|fs| fs.autosave).unwrap_or_default() {
-            let _ = self.save();
         }
     }
 
     pub fn set_name(&mut self, name: String) {
         self.data.name = name;
-        self.set_dirty();
+        self.data.mark_dirty();
     }
 
     pub fn descriptor_mut<R>(
@@ -368,7 +460,7 @@ where Self: Save
         f: impl FnOnce(&mut WalletDescr<K, D, L2::Descr>) -> R,
     ) -> R {
         let res = f(&mut self.descr);
-        self.set_dirty();
+        self.descr.mark_dirty();
         res
     }
 
@@ -378,7 +470,7 @@ where Self: Save
 
         WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
             self.cache = cache;
-            self.set_dirty();
+            self.cache.mark_dirty();
         })
     }
 
@@ -468,185 +560,55 @@ where Self: Save
     }
 }
 
-#[cfg(feature = "fs")]
-pub mod fs {
-    use std::convert::Infallible;
-    use std::error::Error;
-    use std::path::{Path, PathBuf};
-    use std::{fs, io};
+impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
+    pub fn load<P>(provider: P, autosave: bool) -> Result<Wallet<K, D, L2>, PersistenceError>
+    where P: Clone
+            + PersistenceProvider<WalletDescr<K, D, L2::Descr>>
+            + PersistenceProvider<WalletData<L2::Data>>
+            + PersistenceProvider<WalletCache<L2::Cache>>
+            + PersistenceProvider<L2>
+            + 'static {
+        let descr = WalletDescr::<K, D, L2::Descr>::load(provider.clone(), autosave)?;
+        let data = WalletData::<L2::Data>::load(provider.clone(), autosave)?;
+        let cache = WalletCache::<L2::Cache>::load(provider.clone(), autosave)?;
+        let layer2 = L2::load(provider, autosave)?;
 
-    use amplify::IoError;
-
-    use super::*;
-
-    #[derive(Debug, Display, Error, From)]
-    #[display(doc_comments)]
-    pub enum LoadError<L2: Error = Infallible> {
-        /// I/O error loading wallet - {0}
-        #[from]
-        #[from(io::Error)]
-        Io(IoError),
-
-        /// unable to parse TOML file - {0}
-        #[from]
-        Toml(toml::de::Error),
-
-        #[display(inner)]
-        Layer2(L2),
-
-        #[display(inner)]
-        #[from]
-        Custom(String),
+        Ok(Wallet {
+            descr,
+            data,
+            cache,
+            layer2,
+        })
     }
 
-    #[derive(Debug, Display, Error, From)]
-    #[display(doc_comments)]
-    pub enum StoreError<L2: Error = Infallible> {
-        /// I/O error storing wallet - {0}
-        #[from]
-        #[from(io::Error)]
-        Io(IoError),
-
-        /// unable to serialize wallet data as TOML file - {0}
-        #[from]
-        Toml(toml::ser::Error),
-
-        /// unable to serialize wallet cache as YAML file - {0}
-        #[from]
-        Yaml(serde_yaml::Error),
-
-        #[display(inner)]
-        Layer2(L2),
-
-        #[display(inner)]
-        #[from]
-        Custom(String),
-    }
-
-    #[derive(Debug, Display)]
-    #[display(doc_comments)]
-    pub enum Warning {
-        /// no cache file is found, initializing with empty cache
-        CacheAbsent,
-        /// wallet cache damaged or has invalid version; resetting ({0})
-        CacheDamaged(serde_yaml::Error),
-    }
-
-    struct WalletFiles {
-        pub descr: PathBuf,
-        pub data: PathBuf,
-        pub cache: PathBuf,
-    }
-
-    impl WalletFiles {
-        pub fn new(path: &Path) -> Self {
-            let mut descr = path.to_owned();
-            descr.push("descriptor.toml");
-
-            let mut data = path.to_owned();
-            data.push("data.toml");
-
-            let mut cache = path.to_owned();
-            cache.push("cache.yaml");
-
-            WalletFiles { descr, data, cache }
-        }
-    }
-
-    impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2>
+    pub fn make_persistent<P>(
+        &mut self,
+        provider: P,
+        autosave: bool,
+    ) -> Result<bool, PersistenceError>
     where
-        for<'de> WalletDescr<K, D>: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> D: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Descr: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Data: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Cache: serde::Serialize + serde::Deserialize<'de>,
+        P: Clone
+            + PersistenceProvider<WalletDescr<K, D, L2::Descr>>
+            + PersistenceProvider<WalletData<L2::Data>>
+            + PersistenceProvider<WalletCache<L2::Cache>>
+            + PersistenceProvider<L2>
+            + 'static,
     {
-        pub fn load(
-            path: &Path,
-            autosave: bool,
-        ) -> Result<(Self, Vec<Warning>), LoadError<L2::LoadError>> {
-            let mut warnings = Vec::new();
-
-            let files = WalletFiles::new(path);
-
-            let descr = fs::read_to_string(files.descr)?;
-            let descr = toml::from_str(&descr)?;
-
-            let data = fs::read_to_string(files.data)?;
-            let data = toml::from_str(&data)?;
-
-            let cache = fs::read_to_string(files.cache)
-                .map_err(|_| Warning::CacheAbsent)
-                .and_then(|cache| serde_yaml::from_str(&cache).map_err(Warning::CacheDamaged))
-                .unwrap_or_else(|warn| {
-                    warnings.push(warn);
-                    WalletCache::default()
-                });
-
-            let layer2 = L2::load(path).map_err(LoadError::Layer2)?;
-
-            let fs = Some(FsConfig {
-                path: path.to_owned(),
-                autosave,
-            });
-
-            let wallet = Wallet::<K, D, L2> {
-                descr,
-                data,
-                cache,
-                layer2,
-                dirty: false,
-                fs,
-            };
-            Ok((wallet, warnings))
-        }
+        let a = self.descr.make_persistent(provider.clone(), autosave)?;
+        let b = self.data.make_persistent(provider.clone(), autosave)?;
+        let c = self.cache.make_persistent(provider.clone(), autosave)?;
+        let d = self.layer2.make_persistent(provider, autosave)?;
+        Ok(a && b && c && d)
     }
 
-    impl<K, D: Descriptor<K>, L2: Layer2> Save for Wallet<K, D, L2>
-    where
-        for<'de> WalletDescr<K, D>: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> D: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Descr: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Data: serde::Serialize + serde::Deserialize<'de>,
-        for<'de> L2::Cache: serde::Serialize + serde::Deserialize<'de>,
-    {
-        type SaveErr = StoreError<L2::StoreError>;
+    pub fn store(&mut self) -> Result<(), PersistenceError> {
+        // TODO: Revert on failure
 
-        fn save(&self) -> Result<bool, StoreError<L2::StoreError>> {
-            let Some(path) = self.fs.as_ref().map(|fs| &fs.path) else {
-                return Ok(false);
-            };
-            if self.dirty {
-                fs::create_dir_all(path)?;
-                let files = WalletFiles::new(path);
-                fs::write(files.descr, toml::to_string_pretty(&self.descr)?)?;
-                fs::write(files.data, toml::to_string_pretty(&self.data)?)?;
-                fs::write(files.cache, serde_yaml::to_string(&self.cache)?)?;
-                self.layer2.store(path).map_err(StoreError::Layer2)?;
-            }
+        self.descr.store()?;
+        self.data.store()?;
+        self.cache.store()?;
+        self.layer2.store()?;
 
-            Ok(true)
-        }
-    }
-
-    impl<K, D: Descriptor<K>, L2: Layer2> Drop for Wallet<K, D, L2>
-    where Wallet<K, D, L2>: Save
-    {
-        fn drop(&mut self) {
-            if self.dirty && self.fs.as_ref().map(|fs| fs.autosave).unwrap_or_default() {
-                let _ = self.save();
-            }
-        }
-    }
-}
-
-#[cfg(not(feature = "fs"))]
-impl<K, D: Descriptor<K>, L2: Layer2> Save for Wallet<K, D, L2> {
-    type SaveErr = std::convert::Infallible;
-
-    fn save(&self) -> Result<bool, Self::SaveErr> {
-        panic!("Attempt to save wallet with no file system support during compilation");
+        Ok(())
     }
 }

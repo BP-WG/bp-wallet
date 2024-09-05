@@ -43,6 +43,8 @@ pub mod cli;
 #[cfg(feature = "hot")]
 pub mod hot;
 mod bip43;
+#[cfg(feature = "fs")]
+pub mod fs;
 
 pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use bpstd::*;
@@ -62,6 +64,4 @@ pub use layer2::{
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 pub use util::MayError;
-#[cfg(feature = "fs")]
-pub use wallet::{fs, FsConfig};
-pub use wallet::{Save, Wallet, WalletCache, WalletData, WalletDescr};
+pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};

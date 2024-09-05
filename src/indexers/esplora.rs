@@ -196,7 +196,7 @@ impl Indexer for Client {
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        let mut cache = WalletCache::new();
+        let mut cache = WalletCache::new_nonsync(descriptor.generator());
         let mut errors = vec![];
 
         let mut address_index = BTreeMap::new();

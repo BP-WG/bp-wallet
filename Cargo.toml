@@ -15,6 +15,7 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.7.0"
+nonasync = "0.1.0"
 bp-std = "0.11.0-beta.7"
 psbt = "0.11.0-beta.7"
 descriptors = "0.11.0-beta.7"
@@ -54,6 +55,7 @@ name = "bpwallet"
 
 [dependencies]
 amplify = { workspace = true }
+nonasync = { workspace = true }
 strict_encoding = "2.7.0-beta.4"
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
@@ -95,8 +97,9 @@ strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
 
 [patch.crates-io]
-bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-psbt = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
-bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "master" }
+nonasync = { git = "https://github.com/rust-amplify/amplify-nonasync" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "store" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "store" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "store" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "store" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "store" }
