@@ -26,7 +26,9 @@ use std::str::FromStr;
 use amplify::hex::FromHex;
 use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 
-use crate::{BlockHeight, Layer2Cache, Layer2Coin, Layer2Tx, Party, TxStatus, WalletCache};
+use crate::{
+    BlockHeight, Layer2Cache, Layer2Coin, Layer2Empty, Layer2Tx, Party, TxStatus, WalletCache,
+};
 
 #[cfg_attr(
     feature = "serde",
@@ -105,7 +107,7 @@ impl FromStr for Counterparty {
     )
 )]
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct TxRow<L2: Layer2Tx> {
+pub struct TxRow<L2: Layer2Tx = Layer2Empty> {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
