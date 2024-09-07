@@ -207,7 +207,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
     type Error = ExecError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec(self, mut config: Config, name: &'static str) -> Result<(), Self::Error> {
+    fn exec(self, mut config: Config, conf_filename: &'static str) -> Result<(), Self::Error> {
         match &self.command {
             Command::List => {
                 let dir = self.general.base_dir();
@@ -230,18 +230,22 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     if !meta.is_dir() {
                         continue;
                     }
+                    count += 1;
                     let name = entry.file_name().into_string().expect("invalid directory name");
                     print!(
                         "{name}{}",
                         if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
                     let provider = FsTextStore::new(entry.path().clone())?;
-                    let Ok(wallet) = Wallet::<XpubDerivable, StdDescr>::load(provider, true) else {
-                        println!("# broken wallet descriptor");
-                        continue;
+                    let wallet = match Wallet::<XpubDerivable, StdDescr>::load(provider, true) {
+                        Err(err) => {
+                            error!("Error loading wallet descriptor: {err}");
+                            println!("# broken wallet descriptor");
+                            continue;
+                        }
+                        Ok(wallet) => wallet,
                     };
                     println!("\t{}", wallet.descriptor());
-                    count += 1;
                 }
                 if count == 0 {
                     println!("no wallets found");
@@ -250,7 +254,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
             Command::Default { default } => {
                 if let Some(default) = default {
                     config.default_wallet = default.to_string();
-                    config.store(&self.conf_path(name));
+                    config.store(&self.conf_path(conf_filename));
                 } else {
                     println!("Default wallet is '{}'", config.default_wallet);
                 }
@@ -354,9 +358,9 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
     type Error = ExecError;
     const CONF_FILE_NAME: &'static str = "bp.toml";
 
-    fn exec(mut self, config: Config, name: &'static str) -> Result<(), Self::Error> {
+    fn exec(mut self, config: Config, conf_filename: &'static str) -> Result<(), Self::Error> {
         match &self.command {
-            BpCommand::General(cmd) => self.translate(cmd).exec(config, name)?,
+            BpCommand::General(cmd) => self.translate(cmd).exec(config, conf_filename)?,
             BpCommand::Balance {
                 addr: false,
                 utxo: false,
@@ -385,7 +389,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     utxo: false,
                 };
                 self.sync = false;
-                self.exec(config, name)?;
+                self.exec(config, conf_filename)?;
             }
             BpCommand::Balance {
                 addr: false,
@@ -405,7 +409,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     utxo: false,
                 };
                 self.sync = false;
-                self.exec(config, name)?;
+                self.exec(config, conf_filename)?;
             }
             BpCommand::Balance {
                 addr: true,
@@ -426,7 +430,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                     utxo: false,
                 };
                 self.sync = false;
-                self.exec(config, name)?;
+                self.exec(config, conf_filename)?;
             }
             BpCommand::History { txid, details } => {
                 let wallet = self.bp_wallet::<O::Descr>(&config)?;
