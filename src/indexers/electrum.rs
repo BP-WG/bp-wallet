@@ -67,6 +67,14 @@ impl Indexer for Client {
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new_nonsync(descriptor.generator());
+        self.update::<K, D, L2>(descriptor, &mut cache).map(|_| cache)
+    }
+
+    fn update<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+    ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = Vec::<ElectrumError>::new();
 
         let mut address_index = BTreeMap::new();
@@ -271,15 +279,7 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
-    }
-
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        _descr: &WalletDescr<K, D, L2::Descr>,
-        _cache: &mut WalletCache<L2::Cache>,
-    ) -> MayError<usize, Vec<Self::Error>> {
-        todo!()
+        if errors.is_empty() { MayError::ok(0) } else { MayError::err(0, errors) }
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {

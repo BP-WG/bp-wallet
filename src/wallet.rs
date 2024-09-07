@@ -465,13 +465,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     }
 
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
-        // Not yet implemented:
-        // self.cache.update::<B, K, D, L2>(&self.descr, &self.indexer)
-
-        WalletCache::with::<_, K, _, L2>(&self.descr, indexer).map(|cache| {
-            self.cache = cache;
-            self.cache.mark_dirty();
-        })
+        self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
     }
 
     pub fn to_deriver(&self) -> D
