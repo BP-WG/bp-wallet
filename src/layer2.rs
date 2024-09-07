@@ -73,7 +73,7 @@ pub trait Layer2Coin:
     derive(serde::Serialize, serde::Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct Empty;
+pub struct Layer2Empty;
 
 #[derive(Debug, Default)]
 #[cfg_attr(
@@ -118,12 +118,12 @@ impl Layer2Data for NoLayer2 {
 }
 
 impl Layer2Cache for NoLayer2 {
-    type Tx = Empty;
-    type Coin = Empty;
+    type Tx = Layer2Empty;
+    type Coin = Layer2Empty;
 
     type LoadError = Infallible;
     type StoreError = Infallible;
 }
 
-impl Layer2Tx for Empty {}
-impl Layer2Coin for Empty {}
+impl Layer2Tx for Layer2Empty {}
+impl Layer2Coin for Layer2Empty {}
