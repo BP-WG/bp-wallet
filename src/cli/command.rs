@@ -29,7 +29,7 @@ use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx, XpubDerivable};
 use colored::Colorize;
-use descriptors::{Descriptor, StdDescr};
+use descriptors::Descriptor;
 use nonasync::persistence::PersistenceError;
 use psbt::{ConstructionError, Payment, Psbt, PsbtConstructor, PsbtVer, UnfinalizedInputs};
 use strict_encoding::Ident;
@@ -237,7 +237,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         if config.default_wallet == name { "\t[default]" } else { "\t\t" }
                     );
                     let provider = FsTextStore::new(entry.path().clone())?;
-                    let wallet = match Wallet::<XpubDerivable, StdDescr>::load(provider, true) {
+                    let wallet = match Wallet::<XpubDerivable, O::Descr>::load(provider, true) {
                         Err(err) => {
                             error!("Error loading wallet descriptor: {err}");
                             println!("# broken wallet descriptor");
