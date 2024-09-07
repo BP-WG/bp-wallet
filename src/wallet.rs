@@ -182,7 +182,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
@@ -230,6 +230,39 @@ impl<L2: Layer2Data> Persisting for WalletData<L2> {
     fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
     #[inline]
     fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
+}
+
+impl WalletData<NoLayer2> {
+    pub fn new_layer1<K, D: Descriptor<K>>(descriptor: &D) -> Self {
+        WalletData {
+            persistence: None,
+            descriptor: descriptor.to_string(),
+            name: none!(),
+            tx_annotations: empty!(),
+            txout_annotations: empty!(),
+            txin_annotations: empty!(),
+            addr_annotations: empty!(),
+            layer2_annotations: none!(),
+            last_used: empty!(),
+        }
+    }
+}
+
+impl<L2: Layer2Data> WalletData<L2> {
+    pub fn new_layer2<K, D: Descriptor<K>>(descriptor: &D) -> Self
+    where L2: Default {
+        WalletData {
+            persistence: None,
+            descriptor: descriptor.to_string(),
+            name: none!(),
+            tx_annotations: empty!(),
+            txout_annotations: empty!(),
+            txin_annotations: empty!(),
+            addr_annotations: empty!(),
+            layer2_annotations: none!(),
+            last_used: empty!(),
+        }
+    }
 }
 
 impl<L2: Layer2Data> Drop for WalletData<L2> {
@@ -433,8 +466,8 @@ impl<K, D: Descriptor<K>> Wallet<K, D> {
     pub fn new_layer1(descr: D, network: Network) -> Self {
         Wallet {
             cache: WalletCache::new_nonsync(&descr),
+            data: WalletData::new_layer1(&descr),
             descr: WalletDescr::new_standard(descr, network),
-            data: empty!(),
             layer2: none!(),
         }
     }
@@ -444,8 +477,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
         Wallet {
             cache: WalletCache::new_nonsync(&descr),
+            data: WalletData::new_layer2(&descr),
             descr: WalletDescr::new_layer2(descr, l2_descr, network),
-            data: empty!(),
             layer2,
         }
     }
@@ -563,9 +596,13 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             + PersistenceProvider<L2>
             + 'static {
         let descr = WalletDescr::<K, D, L2::Descr>::load(provider.clone(), autosave)?;
-        let data = WalletData::<L2::Data>::load(provider.clone(), autosave)?;
-        let cache = WalletCache::<L2::Cache>::load(provider.clone(), autosave)?;
+        let mut data = WalletData::<L2::Data>::load(provider.clone(), autosave)?;
+        let mut cache = WalletCache::<L2::Cache>::load(provider.clone(), autosave)?;
         let layer2 = L2::load(provider, autosave)?;
+
+        let descriptor = descr.generator.to_string();
+        data.descriptor = descriptor.clone();
+        cache.descriptor = descriptor.clone();
 
         Ok(Wallet {
             descr,
