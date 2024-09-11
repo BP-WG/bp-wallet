@@ -210,10 +210,12 @@ impl Indexer for Client {
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
+            #[cfg(feature = "cli")]
             eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
                 let script = derive.addr.script_pubkey();
 
+                #[cfg(feature = "cli")]
                 eprint!(".");
                 let mut txids = Vec::new();
                 match get_scripthash_txs_all(self, &derive) {
