@@ -456,11 +456,11 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                             println!(
                                 "\t* {value: >-12}ṩ\t{}\t{cp}",
                                 if *value < 0 {
-                                    "debit from"
+                                    "taken from"
                                 } else if row.operation == OpType::Credit {
-                                    "credit to "
+                                    "moved to  "
                                 } else {
-                                    "change to "
+                                    "change    "
                                 }
                             );
                         }
@@ -468,11 +468,11 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                             println!(
                                 "\t* {value: >-12}ṩ\t{}\t{cp}",
                                 if *value > 0 {
-                                    "paid from "
+                                    "received  "
                                 } else if row.operation == OpType::Credit {
-                                    "change to "
+                                    "change?   "
                                 } else {
-                                    "sent to   "
+                                    "paid to   "
                                 }
                             );
                         }
