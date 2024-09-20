@@ -341,6 +341,35 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         })
     }
 
+    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool {
+        let Some(tx) = self.tx.get(&outpoint.txid) else {
+            return false;
+        };
+        let Some(out) = tx.outputs.get(outpoint.vout.to_usize()) else {
+            return false;
+        };
+        matches!(out.beneficiary, Party::Wallet(_))
+    }
+
+    #[inline]
+    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxo.contains(&outpoint) }
+
+    pub fn outpoint_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+        let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
+        let debit = tx
+            .outputs
+            .get(outpoint.vout.into_usize())
+            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
+        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
+        // TODO: Check whether TXO is spend
+        Ok(WalletUtxo {
+            outpoint,
+            value: debit.value,
+            terminal,
+            status: tx.status,
+        })
+    }
+
     pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
         self.tx.iter().flat_map(|(txid, tx)| {
             tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
@@ -355,22 +384,6 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
                     None
                 }
             })
-        })
-    }
-
-    pub fn utxo_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
-        let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
-        let debit = tx
-            .outputs
-            .get(outpoint.vout.into_usize())
-            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
-        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
-        // TODO: Check whether TXO is spend
-        Ok(WalletUtxo {
-            outpoint,
-            value: debit.value,
-            terminal,
-            status: tx.status,
         })
     }
 
@@ -461,7 +474,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     fn descriptor(&self) -> &D { &self.descr.generator }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<Utxo> {
-        self.cache.utxo_by(outpoint).ok().map(WalletUtxo::into_utxo)
+        self.cache.outpoint_by(outpoint).ok().map(WalletUtxo::into_utxo)
     }
 
     fn network(&self) -> Network { self.descr.network }
@@ -582,10 +595,14 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         self.cache.history()
     }
 
-    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.txos() }
-    pub fn utxo_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
-        self.cache.utxo_by(outpoint)
+    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool { self.cache.has_outpoint(outpoint) }
+    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.cache.is_unspent(outpoint) }
+
+    pub fn outpoint_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+        self.cache.outpoint_by(outpoint)
     }
+
+    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.txos() }
     pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.utxos() }
 
     pub fn coinselect<'a>(
