@@ -36,7 +36,7 @@ use psbt::{PsbtConstructor, Utxo};
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    MiningInfo, NoLayer2, TxRow, WalletAddr, WalletTx, WalletUtxo,
+    MiningInfo, NoLayer2, Party, TxRow, WalletAddr, WalletTx, WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -341,7 +341,24 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         })
     }
 
-    pub fn utxo(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
+        self.tx.iter().flat_map(|(txid, tx)| {
+            tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
+                if let Party::Wallet(w) = out.beneficiary {
+                    Some(WalletUtxo {
+                        outpoint: Outpoint::new(*txid, vout as u32),
+                        value: out.value,
+                        terminal: w.terminal,
+                        status: tx.status,
+                    })
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn utxo_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
         let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
         let debit = tx
             .outputs
@@ -357,7 +374,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         })
     }
 
-    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
+    pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
         self.utxo.iter().map(|outpoint| {
             let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
             let debit = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
@@ -444,7 +461,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     fn descriptor(&self) -> &D { &self.descr.generator }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<Utxo> {
-        self.cache.utxo(outpoint).ok().map(WalletUtxo::into_utxo)
+        self.cache.utxo_by(outpoint).ok().map(WalletUtxo::into_utxo)
     }
 
     fn network(&self) -> Network { self.descr.network }
@@ -565,7 +582,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         self.cache.history()
     }
 
-    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.all_utxos() }
+    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.utxos() }
 
     pub fn coinselect<'a>(
         &'a self,
