@@ -197,15 +197,25 @@ impl Indexer for Client {
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
         let mut cache = WalletCache::new_nonsync(descriptor.generator());
+        self.update::<K, D, L2>(descriptor, &mut cache).map(|_| cache)
+    }
+
+    fn update<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+    ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
 
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
+            #[cfg(feature = "cli")]
             eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
                 let script = derive.addr.script_pubkey();
 
+                #[cfg(feature = "cli")]
                 eprint!(".");
                 let mut txids = Vec::new();
                 match get_scripthash_txs_all(self, &derive) {
@@ -302,15 +312,7 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
-    }
-
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        _descr: &WalletDescr<K, D, L2::Descr>,
-        _cache: &mut WalletCache<L2::Cache>,
-    ) -> MayError<usize, Vec<Self::Error>> {
-        todo!()
+        if errors.is_empty() { MayError::ok(0) } else { MayError::err(0, errors) }
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }

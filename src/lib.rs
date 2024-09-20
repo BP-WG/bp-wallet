@@ -60,7 +60,7 @@ pub use indexers::Indexer;
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use indexers::{AnyIndexer, AnyIndexerError};
 pub use layer2::{
-    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Tx, NoLayer2,
+    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Empty, Layer2Tx, NoLayer2,
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 pub use util::MayError;
