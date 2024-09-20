@@ -582,7 +582,11 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         self.cache.history()
     }
 
-    pub fn all_utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.utxos() }
+    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.txos() }
+    pub fn utxo_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+        self.cache.utxo_by(outpoint)
+    }
+    pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.utxos() }
 
     pub fn coinselect<'a>(
         &'a self,
@@ -590,7 +594,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         selector: impl Fn(&WalletUtxo) -> bool + 'a,
     ) -> impl Iterator<Item = Outpoint> + '_ {
         let mut selected = Sats::ZERO;
-        self.all_utxos()
+        self.utxos()
             .filter(selector)
             .take_while(move |utxo| {
                 if selected <= up_to {

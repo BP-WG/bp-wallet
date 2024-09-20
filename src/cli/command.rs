@@ -517,7 +517,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
                             "Warning: you are not paying to anybody but just aggregating all your \
                              balances to a single UTXO",
                         );
-                        wallet.all_utxos().map(WalletUtxo::into_outpoint).collect()
+                        wallet.utxos().map(WalletUtxo::into_outpoint).collect()
                     }
                 };
 
