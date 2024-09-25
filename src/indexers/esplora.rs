@@ -26,7 +26,8 @@ use std::ops::{Deref, DerefMut};
 
 use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness};
 use descriptors::Descriptor;
-use esplora::{BlockingClient, Error};
+use esplora::BlockingClient;
+pub use esplora::Error;
 
 #[cfg(feature = "mempool")]
 use super::mempool::Mempool;

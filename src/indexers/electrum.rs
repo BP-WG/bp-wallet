@@ -25,7 +25,8 @@ use std::str::FromStr;
 
 use bpstd::{Address, BlockHash, ConsensusEncode, Outpoint, Sats, Tx, TxIn, Txid, Weight};
 use descriptors::Descriptor;
-use electrum::{Client, ElectrumApi, Error, GetHistoryRes, Param};
+pub use electrum::Error;
+use electrum::{Client, ElectrumApi, GetHistoryRes, Param};
 use serde_json::Value;
 
 use super::BATCH_SIZE;
