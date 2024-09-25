@@ -27,27 +27,18 @@ use std::fmt::Debug;
 use nonasync::persistence::{CloneNoPersistence, Persistence, Persisting};
 
 pub trait Layer2: Debug + CloneNoPersistence + Persisting {
-    type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;
-    type Data: Layer2Data<LoadError = Self::LoadError, StoreError = Self::StoreError>;
-    type Cache: Layer2Cache<LoadError = Self::LoadError, StoreError = Self::StoreError>;
+    type Descr: Layer2Descriptor;
+    type Data: Layer2Data;
+    type Cache: Layer2Cache;
     type LoadError: error::Error;
     type StoreError: error::Error;
 }
 
-pub trait Layer2Descriptor: Debug + CloneNoPersistence {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-}
+pub trait Layer2Descriptor: Debug + Clone {}
 
-pub trait Layer2Data: Debug + CloneNoPersistence + Default {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-}
+pub trait Layer2Data: Debug + Clone + Default {}
 
-pub trait Layer2Cache: Debug + CloneNoPersistence + Default {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-
+pub trait Layer2Cache: Debug + Clone + Default {
     type Tx: Layer2Tx;
     type Coin: Layer2Coin;
 }
@@ -100,29 +91,20 @@ impl Persisting for NoLayer2 {
 }
 
 impl Layer2 for NoLayer2 {
-    type Descr = NoLayer2;
-    type Data = NoLayer2;
-    type Cache = NoLayer2;
+    type Descr = Layer2Empty;
+    type Data = Layer2Empty;
+    type Cache = Layer2Empty;
     type LoadError = Infallible;
     type StoreError = Infallible;
 }
 
-impl Layer2Descriptor for NoLayer2 {
-    type LoadError = Infallible;
-    type StoreError = Infallible;
-}
+impl Layer2Descriptor for Layer2Empty {}
 
-impl Layer2Data for NoLayer2 {
-    type LoadError = Infallible;
-    type StoreError = Infallible;
-}
+impl Layer2Data for Layer2Empty {}
 
-impl Layer2Cache for NoLayer2 {
+impl Layer2Cache for Layer2Empty {
     type Tx = Layer2Empty;
     type Coin = Layer2Empty;
-
-    type LoadError = Infallible;
-    type StoreError = Infallible;
 }
 
 impl Layer2Tx for Layer2Empty {}

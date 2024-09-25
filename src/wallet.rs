@@ -35,8 +35,8 @@ use nonasync::persistence::{
 use psbt::{PsbtConstructor, Utxo};
 
 use crate::{
-    BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, MayError,
-    MiningInfo, NoLayer2, Party, TxRow, WalletAddr, WalletTx, WalletUtxo,
+    BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty,
+    MayError, MiningInfo, NoLayer2, Party, TxRow, WalletAddr, WalletTx, WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -82,7 +82,7 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
     )
 )]
 #[derive(Getters, Debug)]
-pub struct WalletDescr<K, D, L2 = NoLayer2>
+pub struct WalletDescr<K, D, L2 = Layer2Empty>
 where
     D: Descriptor<K>,
     L2: Layer2Descriptor,
@@ -99,7 +99,7 @@ where
     _phantom: PhantomData<K>,
 }
 
-impl<K, D: Descriptor<K>> WalletDescr<K, D, NoLayer2> {
+impl<K, D: Descriptor<K>> WalletDescr<K, D, Layer2Empty> {
     pub fn new_standard(descr: D, network: Network) -> Self {
         WalletDescr {
             persistence: None,
@@ -154,7 +154,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> CloneNoPersistence for WalletDes
             persistence: None,
             generator: self.generator.clone(),
             network: self.network,
-            layer2: self.layer2.clone_no_persistence(),
+            layer2: self.layer2.clone(),
             _phantom: PhantomData,
         }
     }
@@ -204,8 +204,8 @@ pub struct WalletData<L2: Layer2Data> {
     pub txout_annotations: BTreeMap<Outpoint, String>,
     pub txin_annotations: BTreeMap<Outpoint, String>,
     pub addr_annotations: BTreeMap<Address, String>,
-    pub layer2_annotations: L2,
     pub last_used: BTreeMap<Keychain, NormalIndex>,
+    pub layer2: L2,
 }
 
 impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
@@ -218,7 +218,7 @@ impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
             txout_annotations: self.txout_annotations.clone(),
             txin_annotations: self.txin_annotations.clone(),
             addr_annotations: self.addr_annotations.clone(),
-            layer2_annotations: self.layer2_annotations.clone_no_persistence(),
+            layer2: self.layer2.clone(),
             last_used: self.last_used.clone(),
         }
     }
@@ -233,7 +233,7 @@ impl<L2: Layer2Data> Persisting for WalletData<L2> {
     fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
 }
 
-impl WalletData<NoLayer2> {
+impl WalletData<Layer2Empty> {
     pub fn new_layer1() -> Self {
         WalletData {
             persistence: None,
@@ -243,7 +243,7 @@ impl WalletData<NoLayer2> {
             txout_annotations: empty!(),
             txin_annotations: empty!(),
             addr_annotations: empty!(),
-            layer2_annotations: none!(),
+            layer2: none!(),
             last_used: empty!(),
         }
     }
@@ -260,7 +260,7 @@ impl<L2: Layer2Data> WalletData<L2> {
             txout_annotations: empty!(),
             txin_annotations: empty!(),
             addr_annotations: empty!(),
-            layer2_annotations: none!(),
+            layer2: none!(),
             last_used: empty!(),
         }
     }
@@ -417,7 +417,7 @@ impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
             tx: self.tx.clone(),
             utxo: self.utxo.clone(),
             addr: self.addr.clone(),
-            layer2: self.layer2.clone_no_persistence(),
+            layer2: self.layer2.clone(),
         }
     }
 }
