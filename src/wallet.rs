@@ -529,6 +529,9 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         res
     }
 
+    pub fn data_l2(&self) -> &L2::Data { &self.data.layer2 }
+    pub fn cache_l2(&self) -> &L2::Cache { &self.cache.layer2 }
+
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
         self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
     }
