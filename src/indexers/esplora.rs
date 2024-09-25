@@ -196,7 +196,7 @@ impl Indexer for Client {
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        let mut cache = WalletCache::new_nonsync(descriptor.generator());
+        let mut cache = WalletCache::new_nonsync();
         self.update::<K, D, L2>(descriptor, &mut cache).map(|_| cache)
     }
 
