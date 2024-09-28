@@ -532,6 +532,17 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn data_l2(&self) -> &L2::Data { &self.data.layer2 }
     pub fn cache_l2(&self) -> &L2::Cache { &self.cache.layer2 }
 
+    pub fn with_data_l2<R>(&mut self, f: impl FnOnce(&mut L2::Data) -> R) -> R {
+        let res = f(&mut self.data.layer2);
+        self.data.mark_dirty();
+        res
+    }
+    pub fn with_cache_l2<R>(&mut self, f: impl FnOnce(&mut L2::Cache) -> R) -> R {
+        let res = f(&mut self.cache.layer2);
+        self.cache.mark_dirty();
+        res
+    }
+
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
         self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
     }
