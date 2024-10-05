@@ -20,7 +20,7 @@ bp-std = "0.11.0-beta.8"
 psbt = "0.11.0-beta.8"
 descriptors = "0.11.0-beta.8"
 bp-esplora = { version = "0.11.0-beta.8", default-features = false, features = ["blocking"] }
-bp-electrum = "0.11.0-beta.8"
+bp-electrum = "0.11.0-beta.8.1"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.19"
@@ -96,3 +96,6 @@ fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
+
+[patch.crates-io]
+bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client", branch = "master" }
