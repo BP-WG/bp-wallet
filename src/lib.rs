@@ -40,7 +40,7 @@ mod layer2;
 pub mod coinselect;
 #[cfg(feature = "cli")]
 pub mod cli;
-#[cfg(feature = "hot")]
+#[cfg(feature = "signers")]
 pub mod hot;
 mod bip43;
 #[cfg(feature = "fs")]
@@ -52,9 +52,9 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
-#[cfg(all(feature = "cli", feature = "hot"))]
-pub use hot::{HotArgs, HotCommand};
 #[cfg(feature = "hot")]
+pub use hot::{HotArgs, HotCommand};
+#[cfg(feature = "signers")]
 pub use hot::{Seed, SeedType};
 pub use indexers::Indexer;
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
