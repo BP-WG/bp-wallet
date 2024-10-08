@@ -234,7 +234,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     let name = entry.file_name().into_string().expect("invalid directory name");
                     print!(
                         "{name}{}",
-                        if config.default_wallet == name { "\t[default]" } else { "\t\t" }
+                        if config.default_wallet == name { "\t[default]\t" } else { "\t\t" }
                     );
                     let provider = FsTextStore::new(entry.path().clone())?;
                     let wallet = match Wallet::<XpubDerivable, O::Descr>::load(provider, true) {
