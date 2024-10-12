@@ -411,8 +411,8 @@ impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
         Self {
             persistence: None,
             id: self.id.clone(),
-            last_block: self.last_block.clone(),
-            last_change: self.last_change.clone(),
+            last_block: self.last_block,
+            last_change: self.last_change,
             headers: self.headers.clone(),
             tx: self.tx.clone(),
             utxo: self.utxo.clone(),
