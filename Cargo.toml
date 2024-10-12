@@ -98,4 +98,13 @@ strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
 
 [patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-dbc = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-seals = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-core = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
 bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client", branch = "master" }
