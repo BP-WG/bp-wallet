@@ -20,7 +20,7 @@ bp-std = "0.11.0-beta.8"
 psbt = "0.11.0-beta.8"
 descriptors = "0.11.0-beta.8"
 bp-esplora = { version = "0.11.0-beta.8", default-features = false, features = ["blocking"] }
-bp-electrum = "0.11.0-beta.8"
+bp-electrum = "0.11.0-beta.8.1"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.19"
@@ -84,8 +84,9 @@ shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "esplora", "mempool", "fs", "cli", "clap", "log", "client-side-validation", "strict-encoding"]
-hot = ["bp-std/signers", "bip39", "rand", "aes-gcm", "rpassword"]
+all = ["electrum", "esplora", "mempool", "fs", "cli", "clap", "log", "hot", "signers", "client-side-validation", "strict-encoding"]
+signers = ["bp-std/signers", "bip39", "rand", "aes-gcm"]
+hot = ["signers", "rpassword", "cli"]
 cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "mempool", "log", "colored"]
 log = ["env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
@@ -95,3 +96,15 @@ fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
+
+[patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-dbc = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-seals = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-core = { git = "https://github.com/BP-WG/bp-core", branch = "develop" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
+bp-esplora = { git = "https://github.com/BP-WG/bp-esplora-client", branch = "master" }

@@ -27,27 +27,18 @@ use std::fmt::Debug;
 use nonasync::persistence::{CloneNoPersistence, Persistence, Persisting};
 
 pub trait Layer2: Debug + CloneNoPersistence + Persisting {
-    type Descr: Layer2Descriptor<LoadError = Self::LoadError, StoreError = Self::StoreError>;
-    type Data: Layer2Data<LoadError = Self::LoadError, StoreError = Self::StoreError>;
-    type Cache: Layer2Cache<LoadError = Self::LoadError, StoreError = Self::StoreError>;
+    type Descr: Layer2Descriptor;
+    type Data: Layer2Data;
+    type Cache: Layer2Cache;
     type LoadError: error::Error;
     type StoreError: error::Error;
 }
 
-pub trait Layer2Descriptor: Debug + CloneNoPersistence {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-}
+pub trait Layer2Descriptor: Debug + Clone {}
 
-pub trait Layer2Data: Debug + CloneNoPersistence + Default {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-}
+pub trait Layer2Data: Debug + Clone + Default {}
 
-pub trait Layer2Cache: Debug + CloneNoPersistence + Default {
-    type LoadError: error::Error;
-    type StoreError: error::Error;
-
+pub trait Layer2Cache: Debug + Clone + Default {
     type Tx: Layer2Tx;
     type Coin: Layer2Coin;
 }
@@ -67,13 +58,41 @@ pub trait Layer2Coin:
 {
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate")
-)]
-pub struct Empty;
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Layer2Empty;
+
+#[cfg(feature = "serde")]
+mod _empty_serde {
+    use std::collections::HashMap;
+    use std::fmt::{self, Formatter};
+
+    use serde_crate::de::{Error, Expected, Unexpected};
+    use serde_crate::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::*;
+
+    impl Expected for Layer2Empty {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result { f.write_str("unit struct") }
+    }
+
+    impl Serialize for Layer2Empty {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer {
+            HashMap::<String, toml::Value>::new().serialize(serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Layer2Empty {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de> {
+            let map: HashMap<String, toml::Value> = Deserialize::deserialize(deserializer)?;
+            if !map.is_empty() {
+                return Err(D::Error::invalid_type(Unexpected::Map, &Layer2Empty));
+            }
+            Ok(Layer2Empty)
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 #[cfg_attr(
@@ -100,30 +119,21 @@ impl Persisting for NoLayer2 {
 }
 
 impl Layer2 for NoLayer2 {
-    type Descr = NoLayer2;
-    type Data = NoLayer2;
-    type Cache = NoLayer2;
+    type Descr = Layer2Empty;
+    type Data = Layer2Empty;
+    type Cache = Layer2Empty;
     type LoadError = Infallible;
     type StoreError = Infallible;
 }
 
-impl Layer2Descriptor for NoLayer2 {
-    type LoadError = Infallible;
-    type StoreError = Infallible;
+impl Layer2Descriptor for Layer2Empty {}
+
+impl Layer2Data for Layer2Empty {}
+
+impl Layer2Cache for Layer2Empty {
+    type Tx = Layer2Empty;
+    type Coin = Layer2Empty;
 }
 
-impl Layer2Data for NoLayer2 {
-    type LoadError = Infallible;
-    type StoreError = Infallible;
-}
-
-impl Layer2Cache for NoLayer2 {
-    type Tx = Empty;
-    type Coin = Empty;
-
-    type LoadError = Infallible;
-    type StoreError = Infallible;
-}
-
-impl Layer2Tx for Empty {}
-impl Layer2Coin for Empty {}
+impl Layer2Tx for Layer2Empty {}
+impl Layer2Coin for Layer2Empty {}

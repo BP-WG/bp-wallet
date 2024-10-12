@@ -136,13 +136,13 @@ pub struct WalletOpts<O: DescriptorOpts = DescrStdOpts> {
     )]
     pub wallet_path: Option<PathBuf>,
 
-    #[clap(flatten)]
+    #[command(flatten)]
     pub descriptor_opts: O,
 }
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
 pub struct GeneralOpts {
-    /// Data directory path.
+    /// Data directory path
     ///
     /// Path to the directory that contains RGB stored data.
     #[arg(
@@ -155,9 +155,13 @@ pub struct GeneralOpts {
     )]
     pub data_dir: PathBuf,
 
-    /// Network to use.
+    /// Network to use
     #[arg(short, long, global = true, default_value = "testnet3", env = "LNPBP_NETWORK")]
     pub network: Network,
+
+    /// Do not add network prefix to the `--data-dir`
+    #[arg(long = "no-network-prefix", global = true)]
+    pub no_prefix: bool,
 }
 
 impl GeneralOpts {
@@ -168,7 +172,9 @@ impl GeneralOpts {
 
     pub fn base_dir(&self) -> PathBuf {
         let mut dir = self.data_dir.clone();
-        dir.push(self.network.to_string());
+        if !self.no_prefix {
+            dir.push(self.network.to_string());
+        }
         dir
     }
 

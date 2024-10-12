@@ -56,6 +56,8 @@ pub struct HotArgs {
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum HotCommand {
+    /// Generate new seed file
+    ///
     /// Generate new seed and saves it as an encoded file. The password can be provided via the
     /// `SEED_PASSWORD` environment variable (security warning: don't set it on the command line,
     /// use instead the shell's builtin `read` and then export it).
@@ -65,6 +67,8 @@ pub enum HotCommand {
         output_file: PathBuf,
     },
 
+    /// Derive new extended private key from seed file
+    ///
     /// Derive new extended private key from the seed and saves it into a separate file as a new
     /// signing account. The seed password can be provided via the `SEED_PASSWORD` environment
     /// variable (security warning: don't set it on the command line, use instead the shell's
@@ -95,7 +99,7 @@ pub enum HotCommand {
         output_file: PathBuf,
     },
 
-    /// Print information about seed or the signing account
+    /// Print information about a seed or a signing account
     #[display("info")]
     Info {
         /// File containing either seed information or extended private key for the account,
@@ -123,7 +127,7 @@ pub enum HotCommand {
         signing_account: PathBuf,
     },
 
-    /// Analyze PSBT and print debug signing information
+    /// Analyze PSBT and print debug information
     #[display("sighash")]
     Sighash {
         /// File containing PSBT
