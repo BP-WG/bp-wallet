@@ -111,6 +111,7 @@ pub struct TxRow<L2: Layer2Tx = Layer2Empty> {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
+    pub our_inputs: Vec<u32>,
     pub counterparties: Vec<(Counterparty, i64)>,
     pub own: Vec<(DerivedAddr, i64)>,
     pub txid: Txid,
@@ -166,6 +167,12 @@ impl<L2: Layer2Cache> WalletCache<L2> {
             let mut row = TxRow {
                 height: tx.status.map(|info| info.height),
                 operation: OpType::Credit,
+                our_inputs: tx
+                    .inputs
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, inp)| inp.derived_addr().map(|_| idx as u32))
+                    .collect(),
                 counterparties: none!(),
                 own: none!(),
                 txid: tx.txid,
