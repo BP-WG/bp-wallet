@@ -282,7 +282,11 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() { MayError::ok(0) } else { MayError::err(0, errors) }
+        if errors.is_empty() {
+            MayError::ok(0)
+        } else {
+            MayError::err(0, errors)
+        }
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
