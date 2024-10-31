@@ -53,7 +53,9 @@ pub struct XprivSigner<'xpriv> {
 impl<'descr, 'me, D: Descriptor> Signer for ConsoleSigner<'descr, 'me, D>
 where Self: 'me
 {
-    type Sign<'s> = &'s XprivSigner<'s> where Self: 's + 'me;
+    type Sign<'s>
+        = &'s XprivSigner<'s>
+    where Self: 's + 'me;
 
     fn approve(&self, _psbt: &Psbt) -> Result<Self::Sign<'_>, Rejected> { Ok(&self.signer) }
 }
@@ -104,7 +106,7 @@ impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
         {
             return None;
         }
-        Some(output_pair.sign_schnorr(message.into()))
+        Some(output_pair.sign_schnorr(message.as_ref()))
     }
 
     fn sign_bip340_script_path(
@@ -117,7 +119,7 @@ impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
         if sk.to_xonly_pk() != pk {
             return None;
         }
-        Some(sk.to_keypair_bip340().sign_schnorr(message.into()))
+        Some(sk.to_keypair_bip340().sign_schnorr(message.as_ref()))
     }
 
     fn should_sign_script_path(

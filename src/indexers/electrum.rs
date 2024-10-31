@@ -25,7 +25,8 @@ use std::str::FromStr;
 
 use bpstd::{Address, BlockHash, ConsensusEncode, Outpoint, Sats, Tx, TxIn, Txid, Weight};
 use descriptors::Descriptor;
-use electrum::{Client, ElectrumApi, Error, GetHistoryRes, Param};
+use electrum::{Client, ElectrumApi, GetHistoryRes, Param};
+pub use electrum::{Config, ConfigBuilder, Error, Socks5Config};
 use serde_json::Value;
 
 use super::BATCH_SIZE;
@@ -66,16 +67,26 @@ impl Indexer for Client {
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
     ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        let mut cache = WalletCache::new_nonsync(descriptor.generator());
+        let mut cache = WalletCache::new_nonsync();
+        self.update::<K, D, L2>(descriptor, &mut cache).map(|_| cache)
+    }
+
+    fn update<K, D: Descriptor<K>, L2: Layer2>(
+        &self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        cache: &mut WalletCache<L2::Cache>,
+    ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = Vec::<ElectrumError>::new();
 
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
+            #[cfg(feature = "cli")]
             eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
                 let script = derive.addr.script_pubkey();
 
+                #[cfg(feature = "cli")]
                 eprint!(".");
                 let mut txids = Vec::new();
                 let Ok(hres) =
@@ -271,15 +282,11 @@ impl Indexer for Client {
                 .insert(wallet_addr.expect_transmute());
         }
 
-        if errors.is_empty() { MayError::ok(cache) } else { MayError::err(cache, errors) }
-    }
-
-    fn update<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        _descr: &WalletDescr<K, D, L2::Descr>,
-        _cache: &mut WalletCache<L2::Cache>,
-    ) -> MayError<usize, Vec<Self::Error>> {
-        todo!()
+        if errors.is_empty() {
+            MayError::ok(0)
+        } else {
+            MayError::err(0, errors)
+        }
     }
 
     fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
