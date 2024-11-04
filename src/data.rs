@@ -419,3 +419,35 @@ impl WalletAddr<i64> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inpoint_str_round_trip() {
+        let s = "cca7507897abc89628f450e8b1e0c6fca4ec3f7b34cccf55f3f531c659ff4d79.1";
+        assert_eq!(Inpoint::from_str(s).unwrap().to_string(), s);
+    }
+
+    #[test]
+    fn test_party_str_round_trip() {
+        fn assert_from_str_to_str(party: Party) {
+            let str = party.to_string();
+            let from_str = Party::from_str(&str).unwrap();
+
+            assert_eq!(party, from_str);
+        }
+
+        assert_from_str_to_str(Party::Subsidy);
+        assert_from_str_to_str(Party::Counterparty(
+            Address::from_str("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq").unwrap(),
+        ));
+        assert_from_str_to_str(Party::Unknown(
+            ScriptPubkey::from_hex("76a91455ae51684c43435da751ac8d2173b2652eb6410588ac").unwrap(),
+        ));
+        assert_from_str_to_str(Party::Wallet(
+            DerivedAddr::from_str("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq&1/1").unwrap(),
+        ));
+    }
+}

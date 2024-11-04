@@ -221,3 +221,26 @@ impl<L2: Layer2Cache> WalletCache<L2> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_counterparty_str_round_trip() {
+        fn assert_from_str_to_str(counterparty: Counterparty) {
+            let str = counterparty.to_string();
+            let from_str = Counterparty::from_str(&str).unwrap();
+
+            assert_eq!(counterparty, from_str);
+        }
+
+        assert_from_str_to_str(Counterparty::Miner);
+        assert_from_str_to_str(Counterparty::Address(
+            Address::from_str("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq").unwrap(),
+        ));
+        assert_from_str_to_str(Counterparty::Unknown(
+            ScriptPubkey::from_hex("0014a3f8e1f1e1c7e8b4b2f4f3a1b4f7f0a1b4f7f0a1").unwrap(),
+        ));
+    }
+}

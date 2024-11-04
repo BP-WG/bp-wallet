@@ -433,3 +433,30 @@ impl DerivationStandard for Bip43 {
         derivation
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bip43_str_round_trip() {
+        fn assert_from_str_to_str(bip43: Bip43) {
+            let str = bip43.to_string();
+            let from_str = Bip43::from_str(&str).unwrap();
+
+            assert_eq!(bip43, from_str);
+        }
+
+        assert_from_str_to_str(Bip43::Bip44);
+        assert_from_str_to_str(Bip43::Bip84);
+        assert_from_str_to_str(Bip43::Bip49);
+        assert_from_str_to_str(Bip43::Bip86);
+        assert_from_str_to_str(Bip43::Bip45);
+        assert_from_str_to_str(Bip43::Bip48Nested);
+        assert_from_str_to_str(Bip43::Bip48Native);
+        assert_from_str_to_str(Bip43::Bip87);
+        assert_from_str_to_str(Bip43::Bip43 {
+            purpose: HardenedIndex::hardened(1),
+        });
+    }
+}
