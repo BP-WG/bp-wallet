@@ -625,7 +625,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         &'a self,
         up_to: Sats,
         selector: impl Fn(&WalletUtxo) -> bool + 'a,
-    ) -> impl Iterator<Item = Outpoint> + '_ {
+    ) -> impl Iterator<Item = Outpoint> + 'a {
         let mut selected = Sats::ZERO;
         self.utxos()
             .filter(selector)
