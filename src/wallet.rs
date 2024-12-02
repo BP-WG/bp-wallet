@@ -58,7 +58,7 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     _phantom: PhantomData<K>,
 }
 
-impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
+impl<K, D: Descriptor<K>> Iterator for AddrIter<'_, K, D> {
     type Item = DerivedAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -625,7 +625,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         &'a self,
         up_to: Sats,
         selector: impl Fn(&WalletUtxo) -> bool + 'a,
-    ) -> impl Iterator<Item = Outpoint> + '_ {
+    ) -> impl Iterator<Item = Outpoint> + 'a {
         let mut selected = Sats::ZERO;
         self.utxos()
             .filter(selector)
