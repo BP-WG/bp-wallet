@@ -50,7 +50,7 @@ pub struct XprivSigner<'xpriv> {
     // TODO: Support key- and script-path selection
 }
 
-impl<'descr, 'me, D: Descriptor> Signer for ConsoleSigner<'descr, 'me, D>
+impl<'me, D: Descriptor> Signer for ConsoleSigner<'_, 'me, D>
 where Self: 'me
 {
     type Sign<'s>
@@ -60,7 +60,7 @@ where Self: 'me
     fn approve(&self, _psbt: &Psbt) -> Result<Self::Sign<'_>, Rejected> { Ok(&self.signer) }
 }
 
-impl<'xpriv> XprivSigner<'xpriv> {
+impl XprivSigner<'_> {
     fn derive_subkey(&self, origin: Option<&KeyOrigin>) -> Option<Xpriv> {
         let origin = origin?;
         if !self.account.origin().is_subset_of(origin) {
@@ -74,7 +74,7 @@ impl<'xpriv> XprivSigner<'xpriv> {
     }
 }
 
-impl<'a, 'xpriv> Sign for &'a XprivSigner<'xpriv> {
+impl Sign for &'_ XprivSigner<'_> {
     fn sign_ecdsa(
         &self,
         message: Sighash,

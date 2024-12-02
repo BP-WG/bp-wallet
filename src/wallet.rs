@@ -58,7 +58,7 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     _phantom: PhantomData<K>,
 }
 
-impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
+impl<K, D: Descriptor<K>> Iterator for AddrIter<'_, K, D> {
     type Item = DerivedAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
