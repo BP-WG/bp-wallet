@@ -21,13 +21,13 @@
 // limitations under the License.
 
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
-    Outpoint, Sats, Txid, Vout,
+    Outpoint, Sats, ScriptPubkey, Txid, Vout,
 };
 use nonasync::persistence::{
     CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
@@ -55,6 +55,7 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     network: AddressNetwork,
     keychain: Keychain,
     index: NormalIndex,
+    remainder: VecDeque<DerivedAddr>,
     _phantom: PhantomData<K>,
 }
 
@@ -62,10 +63,17 @@ impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
     type Item = DerivedAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let addr = self.generator.derive_address(self.network, self.keychain, self.index).ok()?;
-        let derived = DerivedAddr::new(addr, self.keychain, self.index);
-        self.index.wrapping_inc_assign();
-        Some(derived)
+        loop {
+            if let Some(derived) = self.remainder.pop_front() {
+                return Some(derived);
+            }
+            self.index.checked_inc_assign()?;
+            self.remainder = self
+                .generator
+                .derive_address(self.network, self.keychain, self.index)
+                .map(|addr| DerivedAddr::new(addr, self.keychain, self.index))
+                .collect();
+        }
     }
 }
 
@@ -128,6 +136,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             network: self.network.into(),
             keychain: keychain.into(),
             index: NormalIndex::ZERO,
+            remainder: VecDeque::new(),
             _phantom: PhantomData,
         }
     }
@@ -356,7 +365,10 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     #[inline]
     pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxo.contains(&outpoint) }
 
-    pub fn outpoint_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+    pub fn outpoint_by(
+        &self,
+        outpoint: Outpoint,
+    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
         let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
         let debit = tx
             .outputs
@@ -364,12 +376,15 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
             .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
         let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
         // TODO: Check whether TXO is spend
-        Ok(WalletUtxo {
+        let utxo = WalletUtxo {
             outpoint,
             value: debit.value,
             terminal,
             status: tx.status,
-        })
+        };
+        let spk =
+            debit.beneficiary.script_pubkey().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?;
+        Ok((utxo, spk))
     }
 
     pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
@@ -475,8 +490,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
 
     fn descriptor(&self) -> &D { &self.descr.generator }
 
-    fn utxo(&self, outpoint: Outpoint) -> Option<Utxo> {
-        self.cache.outpoint_by(outpoint).ok().map(WalletUtxo::into_utxo)
+    fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
+        self.cache.outpoint_by(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
     }
 
     fn network(&self) -> Network { self.descr.network }
@@ -614,7 +629,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
     pub fn has_outpoint(&self, outpoint: Outpoint) -> bool { self.cache.has_outpoint(outpoint) }
     pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.cache.is_unspent(outpoint) }
 
-    pub fn outpoint_by(&self, outpoint: Outpoint) -> Result<WalletUtxo, NonWalletItem> {
+    pub fn outpoint_by(
+        &self,
+        outpoint: Outpoint,
+    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
         self.cache.outpoint_by(outpoint)
     }
 
@@ -625,7 +643,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         &'a self,
         up_to: Sats,
         selector: impl Fn(&WalletUtxo) -> bool + 'a,
-    ) -> impl Iterator<Item = Outpoint> + '_ {
+    ) -> impl Iterator<Item = Outpoint> + 'a {
         let mut selected = Sats::ZERO;
         self.utxos()
             .filter(selector)
