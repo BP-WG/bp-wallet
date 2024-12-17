@@ -385,9 +385,9 @@ dependencies = [
 
 [[package]]
 name = "bp-derive"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "394f8a2c3f4df405aff7269d1727b463e2cf74ec35a077fe7425084cdbdd0448"
+checksum = "65e52af1dc2c8c8efd82ae24e48a556cae7f35de9cb42745aae3a79b8fd8cd3d"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -401,9 +401,9 @@ dependencies = [
 
 [[package]]
 name = "bp-electrum"
-version = "0.11.0-beta.9.2"
+version = "0.11.0-beta.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc58108a622b07755bf4a9468325b76e74f47042b1b493ff30a9059a20c2c34a"
+checksum = "6a29031201fff78a28aa8539c1568713d204235e2d1c858ea0b7445401c0959a"
 dependencies = [
  "amplify",
  "bp-std",
@@ -435,9 +435,9 @@ dependencies = [
 
 [[package]]
 name = "bp-invoice"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cfe7be7b2d740de57e895f2ac93b305bbd67a2a0914dac424f8569bb9981679"
+checksum = "929663905dd8447a01a14fe35b31e62a4763c77f0757899cb9442b6d906fe701"
 dependencies = [
  "amplify",
  "bech32",
@@ -464,9 +464,9 @@ dependencies = [
 
 [[package]]
 name = "bp-std"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23c585b49b6d3112b0ea1a2d2e143f493fd0ecbb3bb11bbbe41c69b63a4411c"
+checksum = "fe06ed7abc1faf9b8dd7d2e6b08ca0b8dbaff0b0f487926b8e1724938628f31c"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -483,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "bp-wallet"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 dependencies = [
  "aes-gcm",
  "amplify",
@@ -775,9 +775,9 @@ dependencies = [
 
 [[package]]
 name = "descriptors"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49798157ca640745a3c898714b5805c28482295de8819cb7b2c530b8f9246df1"
+checksum = "644bbfd06245939d6d61f937362c1870ef9e5af169aa85920452d70dd75b5993"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1315,9 +1315,9 @@ dependencies = [
 
 [[package]]
 name = "psbt"
-version = "0.11.0-beta.9"
+version = "0.11.0-beta.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d36b72ab550141a04a368c25611bf04c87178b65d3be5165529e0b010ee551b"
+checksum = "1fc697c385d5829ae4d92ea388ebb6f5fa657f1e328a6a3320e06d75dac8a437"
 dependencies = [
  "amplify",
  "base64",
