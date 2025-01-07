@@ -56,7 +56,7 @@ name = "bpwallet"
 [dependencies]
 amplify = { workspace = true }
 nonasync = { workspace = true }
-strict_encoding = "2.7.0-beta.4"
+strict_encoding = "2.7.0"
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 bp-electrum = { workspace = true, optional = true }

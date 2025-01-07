@@ -59,7 +59,7 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     _phantom: PhantomData<K>,
 }
 
-impl<'descr, K, D: Descriptor<K>> Iterator for AddrIter<'descr, K, D> {
+impl<K, D: Descriptor<K>> Iterator for AddrIter<'_, K, D> {
     type Item = DerivedAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -180,7 +180,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Persisting for WalletDescr<K, D,
 
 impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
     fn drop(&mut self) {
-        if self.is_autosave() {
+        if self.is_autosave() && self.is_dirty() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
                 log::error!("impossible to automatically-save wallet descriptor on Drop: {e}");
@@ -277,7 +277,7 @@ impl<L2: Layer2Data> WalletData<L2> {
 
 impl<L2: Layer2Data> Drop for WalletData<L2> {
     fn drop(&mut self) {
-        if self.is_autosave() {
+        if self.is_autosave() && self.is_dirty() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
                 log::error!("impossible to automatically-save wallet data on Drop: {e}");
@@ -448,7 +448,7 @@ impl<L2: Layer2Cache> Persisting for WalletCache<L2> {
 
 impl<L2: Layer2Cache> Drop for WalletCache<L2> {
     fn drop(&mut self) {
-        if self.is_autosave() {
+        if self.is_autosave() && self.is_dirty() {
             if let Err(e) = self.store() {
                 #[cfg(feature = "log")]
                 log::error!("impossible to automatically-save wallet cache on Drop: {e}");
