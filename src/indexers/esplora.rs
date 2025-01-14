@@ -215,7 +215,7 @@ impl Indexer for Client {
         // cache. We remove old transaction, since its data are now updated (for instance, if a
         // transaction was re-orged, it may have a different height).
 
-        let mut old_cache = mem::replace(&mut cache.tx, BTreeMap::new());
+        let mut old_cache = mem::take(&mut cache.tx);
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
