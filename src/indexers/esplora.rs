@@ -248,14 +248,6 @@ impl Indexer for Client {
             }
         }
 
-        // The remaining transactions are unmined ones.
-        if !prune {
-            for (txid, mut tx) in old_cache {
-                tx.status = TxStatus::Unknown;
-                cache.tx.insert(txid, tx);
-            }
-        }
-
         // TODO: Update headers & tip
 
         for (script, (wallet_addr, txids)) in &mut address_index {
@@ -323,6 +315,14 @@ impl Indexer for Client {
                 .entry(wallet_addr.terminal.keychain)
                 .or_default()
                 .insert(wallet_addr.expect_transmute());
+        }
+
+        // The remaining transactions are unmined ones.
+        if !prune {
+            for (txid, mut tx) in old_cache {
+                tx.status = TxStatus::Unknown;
+                cache.tx.insert(txid, tx);
+            }
         }
 
         if errors.is_empty() {
