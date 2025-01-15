@@ -332,5 +332,5 @@ impl Indexer for Client {
         }
     }
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
 }
