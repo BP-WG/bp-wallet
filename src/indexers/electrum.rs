@@ -289,7 +289,7 @@ impl Indexer for Client {
         }
     }
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> {
         self.transaction_broadcast(tx)?;
         Ok(())
     }
