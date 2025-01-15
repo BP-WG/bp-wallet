@@ -331,8 +331,9 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         &mut self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
         indexer: &I,
+        prune: bool,
     ) -> MayError<usize, Vec<I::Error>> {
-        let res = indexer.update::<K, D, L2>(descriptor, self);
+        let res = indexer.update::<K, D, L2>(descriptor, self, prune);
         self.mark_dirty();
         res
     }
@@ -546,8 +547,8 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         res
     }
 
-    pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
-        self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
+    pub fn update<I: Indexer>(&mut self, indexer: &I, prune: bool) -> MayError<(), Vec<I::Error>> {
+        self.cache.update::<I, K, D, L2>(&self.descr, indexer, prune).map(|_| ())
     }
 
     /// Prunes transaction cache by removing all transactions with `TxStatus::Unknown`

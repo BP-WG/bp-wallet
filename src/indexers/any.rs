@@ -72,47 +72,16 @@ pub enum AnyIndexerError {
 impl Indexer for AnyIndexer {
     type Error = AnyIndexerError;
 
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        descr: &WalletDescr<K, D, L2::Descr>,
-    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        match self {
-            #[cfg(feature = "electrum")]
-            AnyIndexer::Electrum(inner) => {
-                let result = inner.create::<K, D, L2>(descr);
-                MayError {
-                    ok: result.ok,
-                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
-                }
-            }
-            #[cfg(feature = "esplora")]
-            AnyIndexer::Esplora(inner) => {
-                let result = inner.create::<K, D, L2>(descr);
-                MayError {
-                    ok: result.ok,
-                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
-                }
-            }
-            #[cfg(feature = "mempool")]
-            AnyIndexer::Mempool(inner) => {
-                let result = inner.create::<K, D, L2>(descr);
-                MayError {
-                    ok: result.ok,
-                    err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
-                }
-            }
-        }
-    }
-
     fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         descr: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
+        prune: bool,
     ) -> MayError<usize, Vec<Self::Error>> {
         match self {
             #[cfg(feature = "electrum")]
             AnyIndexer::Electrum(inner) => {
-                let result = inner.update::<K, D, L2>(descr, cache);
+                let result = inner.update::<K, D, L2>(descr, cache, prune);
                 MayError {
                     ok: result.ok,
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
@@ -120,7 +89,7 @@ impl Indexer for AnyIndexer {
             }
             #[cfg(feature = "esplora")]
             AnyIndexer::Esplora(inner) => {
-                let result = inner.update::<K, D, L2>(descr, cache);
+                let result = inner.update::<K, D, L2>(descr, cache, prune);
                 MayError {
                     ok: result.ok,
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),
@@ -128,7 +97,7 @@ impl Indexer for AnyIndexer {
             }
             #[cfg(feature = "mempool")]
             AnyIndexer::Mempool(inner) => {
-                let result = inner.update::<K, D, L2>(descr, cache);
+                let result = inner.update::<K, D, L2>(descr, cache, prune);
                 MayError {
                     ok: result.ok,
                     err: result.err.map(|v| v.into_iter().map(|e| e.into()).collect()),

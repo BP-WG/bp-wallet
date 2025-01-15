@@ -194,18 +194,11 @@ fn get_scripthash_txs_all(
 impl Indexer for Client {
     type Error = Error;
 
-    fn create<K, D: Descriptor<K>, L2: Layer2>(
-        &self,
-        descriptor: &WalletDescr<K, D, L2::Descr>,
-    ) -> MayError<WalletCache<L2::Cache>, Vec<Self::Error>> {
-        let mut cache = WalletCache::new_nonsync();
-        self.update::<K, D, L2>(descriptor, &mut cache).map(|_| cache)
-    }
-
     fn update<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
         cache: &mut WalletCache<L2::Cache>,
+        prune: bool,
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
 
@@ -256,9 +249,11 @@ impl Indexer for Client {
         }
 
         // The remaining transactions are unmined ones.
-        for (txid, mut tx) in old_cache {
-            tx.status = TxStatus::Unknown;
-            cache.tx.insert(txid, tx);
+        if !prune {
+            for (txid, mut tx) in old_cache {
+                tx.status = TxStatus::Unknown;
+                cache.tx.insert(txid, tx);
+            }
         }
 
         // TODO: Update headers & tip
