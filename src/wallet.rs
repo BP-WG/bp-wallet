@@ -141,13 +141,13 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
         }
     }
 
-    pub fn with_descriptor_mut<E>(
+    pub fn with_descriptor_mut<T, E>(
         &mut self,
-        f: impl FnOnce(&mut D) -> Result<(), E>,
-    ) -> Result<(), E> {
-        f(&mut self.generator)?;
+        f: impl FnOnce(&mut D) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let res = f(&mut self.generator)?;
         self.mark_dirty();
-        Ok(())
+        Ok(res)
     }
 }
 
