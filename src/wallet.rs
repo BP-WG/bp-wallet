@@ -141,7 +141,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
         }
     }
 
-    pub fn with_descriptor_mut<T, E>(
+    pub fn with_descriptor<T, E>(
         &mut self,
         f: impl FnOnce(&mut D) -> Result<T, E>,
     ) -> Result<T, E> {
@@ -535,27 +535,41 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         self.data.mark_dirty();
     }
 
-    pub fn descriptor_mut<R>(
+    pub fn with_descriptor<T, E>(
         &mut self,
-        f: impl FnOnce(&mut WalletDescr<K, D, L2::Descr>) -> R,
-    ) -> R {
-        let res = f(&mut self.descr);
-        self.descr.mark_dirty();
-        res
+        f: impl FnOnce(&mut D) -> Result<T, E>,
+    ) -> Result<T, E> {
+        self.descr.with_descriptor(f)
     }
 
     pub fn data_l2(&self) -> &L2::Data { &self.data.layer2 }
     pub fn cache_l2(&self) -> &L2::Cache { &self.cache.layer2 }
 
-    pub fn with_data_l2<R>(&mut self, f: impl FnOnce(&mut L2::Data) -> R) -> R {
-        let res = f(&mut self.data.layer2);
+    pub fn with_data<T, E>(
+        &mut self,
+        f: impl FnOnce(&mut WalletData<L2::Data>) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let res = f(&mut self.data)?;
         self.data.mark_dirty();
-        res
+        Ok(res)
     }
-    pub fn with_cache_l2<R>(&mut self, f: impl FnOnce(&mut L2::Cache) -> R) -> R {
-        let res = f(&mut self.cache.layer2);
+
+    pub fn with_data_l2<T, E>(
+        &mut self,
+        f: impl FnOnce(&mut L2::Data) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let res = f(&mut self.data.layer2)?;
+        self.data.mark_dirty();
+        Ok(res)
+    }
+
+    pub fn with_cache_l2<T, E>(
+        &mut self,
+        f: impl FnOnce(&mut L2::Cache) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let res = f(&mut self.cache.layer2)?;
         self.cache.mark_dirty();
-        res
+        Ok(res)
     }
 
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
