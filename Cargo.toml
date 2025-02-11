@@ -73,7 +73,7 @@ serde_crate = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
-log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"], optional = true }
 colored = { version = "2", optional = true }
 
 # Cli-only:
@@ -88,7 +88,7 @@ all = ["electrum", "esplora", "mempool", "fs", "cli", "clap", "log", "hot", "sig
 signers = ["bp-std/signers", "bip39", "rand", "aes-gcm"]
 hot = ["signers", "rpassword", "cli"]
 cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "mempool", "log", "colored"]
-log = ["env_logger"]
+log = ["dep:log", "env_logger"]
 electrum = ["bp-electrum", "serde", "serde_json"]
 esplora = ["bp-esplora"]
 mempool = ["esplora"]

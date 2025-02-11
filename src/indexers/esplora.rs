@@ -208,16 +208,18 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
 
+        #[cfg(feature = "log")]
+        log::debug!("Updating wallet from Esplora indexer");
+
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
-            #[cfg(feature = "cli")]
-            eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
+                #[cfg(feature = "log")]
+                log::trace!("Retrieving transaction for {derive}");
+
                 let script = derive.addr.script_pubkey();
 
-                #[cfg(feature = "cli")]
-                eprint!(".");
                 let mut txids = Vec::new();
                 match get_scripthash_txs_all(self, &derive) {
                     Err(err) => {
@@ -314,8 +316,19 @@ impl Indexer for Client {
         }
 
         if errors.is_empty() {
+            #[cfg(feature = "log")]
+            log::debug!("Wallet update from the indexer successfully complete with no errors");
             MayError::ok(0)
         } else {
+            #[cfg(feature = "log")]
+            {
+                log::error!(
+                    "The following errors has happened during wallet update from the indexer"
+                );
+                for err in &errors {
+                    log::error!("- {err}");
+                }
+            }
             MayError::err(0, errors)
         }
     }
