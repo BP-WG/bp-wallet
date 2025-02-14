@@ -337,6 +337,18 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         res
     }
 
+    pub fn sync_from_scratch<I: Indexer, K, D: Descriptor<K>, L2: Layer2<Cache = L2C>>(
+        &mut self,
+        descriptor: &WalletDescr<K, D, L2::Descr>,
+        indexer: &I,
+    ) -> MayError<(), Vec<I::Error>> {
+        let res = indexer.create::<K, D, L2>(descriptor);
+        let (ok, err) = res.split();
+        *self = ok;
+        self.mark_dirty();
+        MayError { ok: (), err }
+    }
+
     pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
         self.addr.get(&keychain).unwrap_or_else(|| {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
@@ -545,6 +557,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
 
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
         self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
+    }
+
+    pub fn sync_from_scratch<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
+        self.cache.sync_from_scratch::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
     }
 
     pub fn to_deriver(&self) -> D
