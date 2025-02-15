@@ -29,8 +29,6 @@ use descriptors::Descriptor;
 use esplora::BlockingClient;
 pub use esplora::{Builder, Config, Error};
 
-#[cfg(feature = "mempool")]
-use super::mempool::Mempool;
 use super::BATCH_SIZE;
 use crate::{
     Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
@@ -167,14 +165,12 @@ fn get_scripthash_txs_all(
     let mut res = Vec::new();
     let mut last_seen = None;
     let script = derive.addr.script_pubkey();
-    #[cfg(feature = "mempool")]
-    let address = derive.addr.to_string();
 
     loop {
         let r = match client.kind {
             ClientKind::Esplora => client.inner.scripthash_txs(&script, last_seen)?,
             #[cfg(feature = "mempool")]
-            ClientKind::Mempool => client.inner.address_txs(&address, last_seen)?,
+            ClientKind::Mempool => client.inner.address_txs(&derive.addr, last_seen)?,
         };
         match &r[..] {
             [a @ .., esplora::Tx { txid, .. }] if a.len() >= PAGE_SIZE - 1 => {
