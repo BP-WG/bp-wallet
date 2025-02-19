@@ -401,8 +401,9 @@ dependencies = [
 
 [[package]]
 name = "bp-electrum"
-version = "0.11.0-beta.9.3"
-source = "git+https://github.com/zoedberg/bp-electrum-client?branch=v0.11_fixes#45a82ea5d78b399afeab44d48f40a736cf1316f6"
+version = "0.11.1-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43476738e6327bfda9c1d7bcffcdb5f931ad03cbe4dc26fe4087fe505b7d96d2"
 dependencies = [
  "amplify",
  "bp-std",
@@ -419,8 +420,9 @@ dependencies = [
 
 [[package]]
 name = "bp-esplora"
-version = "0.11.0-beta.9"
-source = "git+https://github.com/zoedberg/bp-esplora-client?branch=v0.11_fixes#a7705cc77bc4a825d52626c34668d99b83547aed"
+version = "0.11.1-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fea6ad8f3ae73ea99517a9eab934a8abf7a1463e562da47dc124b4cd1b16692f"
 dependencies = [
  "amplify",
  "bp-std",
@@ -1105,7 +1107,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
