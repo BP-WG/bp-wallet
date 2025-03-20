@@ -265,7 +265,7 @@ impl Party {
             Party::Subsidy => None,
             Party::Counterparty(addr) => Some(addr.script_pubkey()),
             Party::Unknown(script) => Some(script.clone()),
-            Party::Wallet(_) => None,
+            Party::Wallet(derived_addr) => Some(derived_addr.addr.script_pubkey()),
         }
     }
 }

@@ -385,8 +385,7 @@ dependencies = [
 [[package]]
 name = "bp-derive"
 version = "0.11.1-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23ebed0079fc2e75dc238103f0f81fefd2cbbc3120ae55c58fe0aa61dad26ddc"
+source = "git+https://github.com/zoedberg/bp-std?branch=0.11.1-2#77e215dc3e8e2993ea02c8a6f4e089589f4611ca"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -434,8 +433,7 @@ dependencies = [
 [[package]]
 name = "bp-invoice"
 version = "0.11.1-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6955d67eec75b22532edb859f1f4d7d4ba4af1db304abc511530f4e1a827b7"
+source = "git+https://github.com/zoedberg/bp-std?branch=0.11.1-2#77e215dc3e8e2993ea02c8a6f4e089589f4611ca"
 dependencies = [
  "amplify",
  "bech32",
@@ -463,8 +461,7 @@ dependencies = [
 [[package]]
 name = "bp-std"
 version = "0.11.1-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f78d36be2d9ef2f70821c8d73f9f58739d0057f7cba9aa30b05d64247bd8554d"
+source = "git+https://github.com/zoedberg/bp-std?branch=0.11.1-2#77e215dc3e8e2993ea02c8a6f4e089589f4611ca"
 dependencies = [
  "amplify",
  "bp-consensus",
@@ -765,8 +762,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.11.1-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bb1e86bc1bbf96aa464ae3f8bbec92afc83da40f1470109ce4207d708773d06"
+source = "git+https://github.com/zoedberg/bp-std?branch=0.11.1-2#77e215dc3e8e2993ea02c8a6f4e089589f4611ca"
 dependencies = [
  "amplify",
  "bp-derive",
@@ -1106,7 +1102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -1268,8 +1264,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.11.1-alpha.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60fcac15e3bd83cbca0388d70ac696f066790e992a5ceb230a04317ae8b991e"
+source = "git+https://github.com/zoedberg/bp-std?branch=0.11.1-2#77e215dc3e8e2993ea02c8a6f4e089589f4611ca"
 dependencies = [
  "amplify",
  "base64 0.22.1",
