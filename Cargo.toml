@@ -98,6 +98,8 @@ strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
 
 [patch.crates-io]
+bp-consensus = { git = "https://github.com/zoedberg/bp-core", branch = "0.11.1-2" }
+bp-core = { git = "https://github.com/zoedberg/bp-core", branch = "0.11.1-2" }
 bp-std = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
 descriptors = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
 psbt = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }

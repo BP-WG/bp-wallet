@@ -22,18 +22,16 @@
 
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Formatter, LowerHex};
-use std::num::{NonZeroU32, ParseIntError};
+use std::num::ParseIntError;
 use std::str::FromStr;
 
 use amplify::hex;
 use amplify::hex::FromHex;
 use bpstd::{
-    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Sats,
-    ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
+    Address, BlockHash, BlockHeader, BlockHeight, DerivedAddr, Keychain, LockTime, NormalIndex,
+    Outpoint, Sats, ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
 };
 use psbt::{Prevout, Utxo};
-
-pub type BlockHeight = NonZeroU32;
 
 #[cfg_attr(
     feature = "serde",

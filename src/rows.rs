@@ -24,11 +24,9 @@ use std::fmt::{self, Display, Formatter, LowerHex};
 use std::str::FromStr;
 
 use amplify::hex::FromHex;
-use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
+use bpstd::{Address, BlockHeight, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 
-use crate::{
-    BlockHeight, Layer2Cache, Layer2Coin, Layer2Empty, Layer2Tx, Party, TxStatus, WalletCache,
-};
+use crate::{Layer2Cache, Layer2Coin, Layer2Empty, Layer2Tx, Party, TxStatus, WalletCache};
 
 #[cfg_attr(
     feature = "serde",
