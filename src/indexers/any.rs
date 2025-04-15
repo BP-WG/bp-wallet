@@ -19,10 +19,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bpstd::Tx;
+use bpstd::{Tx, Txid};
 use descriptors::Descriptor;
 
-use crate::{Indexer, Layer2, MayError, WalletCache, WalletDescr};
+use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr};
 
 /// Type that contains any of the client types implementing the Indexer trait
 #[derive(From)]
@@ -145,6 +145,17 @@ impl Indexer for AnyIndexer {
             AnyIndexer::Esplora(inner) => inner.broadcast(tx).map_err(|e| e.into()),
             #[cfg(feature = "mempool")]
             AnyIndexer::Mempool(inner) => inner.broadcast(tx).map_err(|e| e.into()),
+        }
+    }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.status(txid).map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.status(txid).map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.status(txid).map_err(|e| e.into()),
         }
     }
 }

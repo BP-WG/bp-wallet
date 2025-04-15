@@ -31,8 +31,8 @@ use serde_json::Value;
 
 use super::BATCH_SIZE;
 use crate::{
-    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
-    WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus,
+    WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
@@ -162,7 +162,15 @@ impl Indexer for Client {
                         let mut inputs = Vec::with_capacity(tx.inputs.len());
                         for input in tx.inputs {
                             // get value from previous output tx
-                            let prev_tx = self.transaction_get(&input.prev_output.txid)?;
+                            let Some(prev_tx) = self.transaction_get(&input.prev_output.txid)?
+                            else {
+                                #[cfg(feature = "log")]
+                                log::error!(
+                                    "- {txid}: previous output {} transaction is not found",
+                                    input.prev_output
+                                );
+                                return Err(ElectrumApiError::PrevOutTxMismatch(txid, input).into());
+                            };
                             let prev_out = prev_tx
                                 .outputs
                                 .get(input.prev_output.vout.into_usize())
@@ -314,5 +322,29 @@ impl Indexer for Client {
     fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> {
         self.transaction_broadcast(tx)?;
         Ok(())
+    }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        let Some(info) = self.transaction_get_verbose(&txid)? else {
+            return Ok(TxStatus::Unknown);
+        };
+        let Some(block_hash) = info.block_hash else {
+            return Ok(TxStatus::Mempool);
+        };
+        let Some(time) = info.time else {
+            return Ok(TxStatus::Mempool);
+        };
+        let last_header = self.block_headers_subscribe()?;
+        let height = last_header.height as u32 - info.confirmations;
+        let height = BlockHeight::try_from(height).map_err(|_| {
+            Error::InvalidResponse(serde_json::Value::Number(
+                serde_json::Number::from_u128(height.into()).unwrap(),
+            ))
+        })?;
+        Ok(TxStatus::Mined(MiningInfo {
+            height,
+            time,
+            block_hash,
+        }))
     }
 }

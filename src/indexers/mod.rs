@@ -34,7 +34,7 @@ pub use any::{AnyIndexer, AnyIndexerError};
 use bpstd::Tx;
 use descriptors::Descriptor;
 
-use crate::{Layer2, MayError, WalletCache, WalletDescr};
+use crate::{Layer2, MayError, TxStatus, Txid, WalletCache, WalletDescr};
 
 #[cfg(any(feature = "electrum", feature = "esplora"))]
 const BATCH_SIZE: usize = 10;
@@ -54,4 +54,6 @@ pub trait Indexer {
     ) -> MayError<usize, Vec<Self::Error>>;
 
     fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error>;
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error>;
 }

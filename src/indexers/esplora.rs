@@ -24,15 +24,15 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Txid, Witness};
 use descriptors::Descriptor;
 use esplora::BlockingClient;
 pub use esplora::{Builder, Config, Error};
 
 use super::BATCH_SIZE;
 use crate::{
-    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
-    WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus,
+    WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 /// Represents a client for interacting with the Esplora indexer.
@@ -330,4 +330,24 @@ impl Indexer for Client {
     }
 
     fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        let Ok(status) = self.inner.tx_status(&txid) else {
+            return match self.inner.tx(&txid)? {
+                Some(_) => Err(Error::InvalidServerData),
+                None => Ok(TxStatus::Unknown),
+            };
+        };
+        let Some(((height, time), block_hash)) =
+            status.block_height.zip(status.block_time).zip(status.block_hash)
+        else {
+            return Ok(TxStatus::Mempool);
+        };
+        let height = BlockHeight::try_from(height).map_err(|_| Error::InvalidServerData)?;
+        Ok(TxStatus::Mined(MiningInfo {
+            height,
+            time,
+            block_hash,
+        }))
+    }
 }
