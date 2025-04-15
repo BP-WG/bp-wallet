@@ -572,6 +572,7 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         Ok(res)
     }
 
+    #[must_use]
     pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
         self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
     }
