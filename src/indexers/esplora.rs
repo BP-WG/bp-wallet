@@ -31,8 +31,8 @@ pub use esplora::{Builder, Config, Error};
 
 use super::BATCH_SIZE;
 use crate::{
-    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus,
-    WalletAddr, WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
+    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 /// Represents a client for interacting with the Esplora indexer.
@@ -188,6 +188,11 @@ fn get_scripthash_txs_all(
 
 impl Indexer for Client {
     type Error = Error;
+
+    fn network(&self) -> Result<Network, Self::Error> {
+        let genesis = self.inner.block_hash(0)?;
+        Network::try_from(genesis).map_err(|_| Error::InvalidServerData)
+    }
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,

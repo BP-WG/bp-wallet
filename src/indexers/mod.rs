@@ -31,7 +31,7 @@ mod any;
 
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use any::{AnyIndexer, AnyIndexerError};
-use bpstd::Tx;
+use bpstd::{Network, Tx};
 use descriptors::Descriptor;
 
 use crate::{Layer2, MayError, TxStatus, Txid, WalletCache, WalletDescr};
@@ -41,6 +41,8 @@ const BATCH_SIZE: usize = 10;
 
 pub trait Indexer {
     type Error;
+
+    fn network(&self) -> Result<Network, Self::Error>;
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,

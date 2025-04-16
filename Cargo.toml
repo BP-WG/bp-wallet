@@ -98,4 +98,13 @@ strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
 
 [patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core", branch = "v0.12" }
+bp-dbc = { git = "https://github.com/BP-WG/bp-core", branch = "v0.12" }
+bp-seals = { git = "https://github.com/BP-WG/bp-core", branch = "v0.12" }
+bp-core = { git = "https://github.com/BP-WG/bp-core", branch = "v0.12" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "v0.12" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "v0.12" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "v0.12" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "v0.12" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "v0.12" }
 bp-electrum = { git = "https://github.com/BP-WG/bp-electrum-client", branch = "v0.12" }

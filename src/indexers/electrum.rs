@@ -31,8 +31,8 @@ use serde_json::Value;
 
 use super::BATCH_SIZE;
 use crate::{
-    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus,
-    WalletAddr, WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
+    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
@@ -44,11 +44,14 @@ pub enum ElectrumApiError {
     InvalidBlockHash(Txid),
     /// Electrum indexer returned invalid block time value for the transaction {0}.
     InvalidBlockTime(Txid),
-    /// electrum indexer returned zero block height for the transaction {0}.
-    InvalidBlockHeight(Txid),
-    /// electrum indexer returned invalid previous transaction, which doesn't have an output spent
+    /// Electrum indexer returned zero block height for the transaction {0}.
+    ZeroBlockHeight(Txid),
+    /// Electrum indexer returned invalid previous transaction, which doesn't have an output spent
     /// by transaction {0} input {1:?}.
     PrevOutTxMismatch(Txid, TxIn),
+    /// Electrum indexer returned a genesis block hash which doesn't match any of the known
+    /// networks.
+    InvalidGenesis,
 }
 
 #[derive(Debug, Display, Error, From)]
@@ -62,6 +65,11 @@ pub enum ElectrumError {
 
 impl Indexer for Client {
     type Error = ElectrumError;
+
+    fn network(&self) -> Result<Network, Self::Error> {
+        let genesis = self.block_header(0)?;
+        Network::try_from(genesis.block_hash()).map_err(|_| ElectrumApiError::InvalidGenesis.into())
+    }
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
@@ -146,7 +154,7 @@ impl Indexer for Client {
                                 .and_then(Value::as_u64)
                                 .ok_or(ElectrumApiError::InvalidBlockTime(txid))?;
                             let height = NonZeroU32::try_from(hr.height as u32)
-                                .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
+                                .map_err(|_| ElectrumApiError::ZeroBlockHeight(txid))?;
                             TxStatus::Mined(MiningInfo {
                                 height,
                                 time: blocktime,
@@ -336,11 +344,8 @@ impl Indexer for Client {
         };
         let last_header = self.block_headers_subscribe()?;
         let height = last_header.height as u32 - info.confirmations;
-        let height = BlockHeight::try_from(height).map_err(|_| {
-            Error::InvalidResponse(serde_json::Value::Number(
-                serde_json::Number::from_u128(height.into()).unwrap(),
-            ))
-        })?;
+        let height =
+            BlockHeight::try_from(height).map_err(|_| ElectrumApiError::ZeroBlockHeight(txid))?;
         Ok(TxStatus::Mined(MiningInfo {
             height,
             time,

@@ -19,7 +19,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bpstd::{Tx, Txid};
+use bpstd::{Network, Tx, Txid};
 use descriptors::Descriptor;
 
 use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr};
@@ -71,6 +71,17 @@ pub enum AnyIndexerError {
 
 impl Indexer for AnyIndexer {
     type Error = AnyIndexerError;
+
+    fn network(&self) -> Result<Network, Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.network().map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.network().map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.network().map_err(|e| e.into()),
+        }
+    }
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
