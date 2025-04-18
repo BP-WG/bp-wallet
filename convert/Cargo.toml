@@ -18,7 +18,7 @@ license = "Apache-2.0"
 name = "bconv"
 
 [dependencies]
-amplify = "4.7.0"
+amplify = "4.8.0"
 secp256k1 = "0.29.0"
 bitcoin = "0.32.2"
 bp-std = "0.11.0-beta.8"

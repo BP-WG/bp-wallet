@@ -14,7 +14,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-amplify = "4.7.0"
+amplify = "4.8.0"
 nonasync = "0.1.2"
 bp-std = "0.11.1-alpha.1"
 psbt = "0.11.1-alpha.1"
@@ -56,7 +56,7 @@ name = "bpwallet"
 [dependencies]
 amplify = { workspace = true }
 nonasync = { workspace = true }
-strict_encoding = "2.7.0"
+strict_encoding = "2.8.2"
 bp-std = { workspace = true }
 bp-esplora = { workspace = true, optional = true }
 bp-electrum = { workspace = true, optional = true }
@@ -64,7 +64,7 @@ psbt = { workspace = true }
 descriptors = { workspace = true }
 
 sha2 = "0.10.8"
-rand = { version = "0.8.5", optional = true }
+rand = { version = "0.9.1", optional = true }
 rpassword = { version = "7.3.1", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 bip39 = { version = "2.0.0", optional = true }
@@ -74,7 +74,7 @@ serde_json = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
 log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
-colored = { version = "2", optional = true }
+colored = { version = "3", optional = true }
 
 # Cli-only:
 base64 = { version = "0.22.1", optional = true }
