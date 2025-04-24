@@ -54,7 +54,7 @@ pub struct AddrIter<'descr, K, D: Descriptor<K>> {
     generator: &'descr D,
     network: AddressNetwork,
     keychain: Keychain,
-    index: NormalIndex,
+    next_index: Option<NormalIndex>,
     remaining: VecDeque<DerivedAddr>,
     _phantom: PhantomData<K>,
 }
@@ -67,12 +67,13 @@ impl<K, D: Descriptor<K>> Iterator for AddrIter<'_, K, D> {
             if let Some(derived) = self.remaining.pop_front() {
                 return Some(derived);
             }
+            let current_index = self.next_index?;
             self.remaining = self
                 .generator
-                .derive_address(self.network, self.keychain, self.index)
-                .map(|addr| DerivedAddr::new(addr, self.keychain, self.index))
+                .derive_address(self.network, self.keychain, current_index)
+                .map(|addr| DerivedAddr::new(addr, self.keychain, current_index))
                 .collect();
-            self.index.checked_inc_assign()?;
+            self.next_index.as_mut().map(|i| i.checked_inc_assign());
         }
     }
 }
@@ -135,7 +136,7 @@ impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
             generator: &self.generator,
             network: self.network.into(),
             keychain: keychain.into(),
-            index: NormalIndex::ZERO,
+            next_index: Some(NormalIndex::ZERO),
             remaining: VecDeque::new(),
             _phantom: PhantomData,
         }
