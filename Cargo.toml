@@ -3,7 +3,7 @@ members = ["."]
 exclude = ["convert"]
 
 [workspace.package]
-version = "0.11.1-alpha.1"
+version = "0.11.1-alpha.2+unreviewed"
 keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
 categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
@@ -16,11 +16,11 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.8.0"
 nonasync = "0.1.2"
-bp-std = "0.11.1-alpha.1"
-psbt = "0.11.1-alpha.1"
-descriptors = "0.11.1-alpha.1"
-bp-esplora = { version = "0.11.1-alpha.1", default-features = false, features = ["blocking"] }
-bp-electrum = "0.11.1-alpha.1"
+bp-std = "0.11.1-alpha.2"
+psbt = "0.11.1-alpha.2"
+descriptors = "0.11.1-alpha.2"
+bp-esplora = { version = "0.11.1-alpha.2", default-features = false, features = ["blocking"] }
+bp-electrum = "0.11.1-alpha.2"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.19"
@@ -96,14 +96,3 @@ fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
-
-[patch.crates-io]
-commit_verify = { git = "https://github.com/zoedberg/client_side_validation", branch = "0.11.1-2" }
-bp-consensus = { git = "https://github.com/zoedberg/bp-core", branch = "0.11.1-2" }
-bp-core = { git = "https://github.com/zoedberg/bp-core", branch = "0.11.1-2" }
-bp-std = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
-bp-invoice = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
-descriptors = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
-psbt = { git = "https://github.com/zoedberg/bp-std", branch = "0.11.1-2" }
-bp-electrum = { git = "https://github.com/zoedberg/bp-electrum-client", branch = "0.11.1-2" }
-bp-esplora = { git = "https://github.com/zoedberg/bp-esplora-client", branch = "0.11.1-2" }
