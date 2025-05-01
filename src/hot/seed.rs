@@ -74,7 +74,7 @@ pub struct Seed(Box<[u8]>);
 impl Seed {
     pub fn random(seed_type: SeedType) -> Seed {
         let mut entropy = vec![0u8; seed_type.byte_len()];
-        rand::thread_rng().fill_bytes(&mut entropy);
+        rand::rng().fill_bytes(&mut entropy);
         Seed(Box::from(entropy))
     }
 

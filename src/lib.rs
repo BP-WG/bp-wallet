@@ -49,8 +49,7 @@ pub mod fs;
 pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use bpstd::*;
 pub use data::{
-    BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
-    WalletUtxo,
+    BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx, WalletUtxo,
 };
 #[cfg(feature = "hot")]
 pub use hot::{HotArgs, HotCommand};
