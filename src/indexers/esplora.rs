@@ -337,22 +337,33 @@ impl Indexer for Client {
     fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
 
     fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
-        let Ok(status) = self.inner.tx_status(&txid) else {
-            return match self.inner.tx(&txid)? {
-                Some(_) => Err(Error::InvalidServerData),
-                None => Ok(TxStatus::Unknown),
-            };
+        // First check if the transaction exists at all
+        // This avoids confusion with non-existent transactions returning status objects
+        match self.inner.tx(&txid) {
+            Ok(Some(_)) => {}
+            Ok(None) => return Ok(TxStatus::Unknown),
+            Err(err) => return Err(err),
         };
-        let Some(((height, time), block_hash)) =
-            status.block_height.zip(status.block_time).zip(status.block_hash)
-        else {
-            return Ok(TxStatus::Mempool);
+
+        // If transaction exists, get its status
+        let status = match self.inner.tx_status(&txid) {
+            Ok(status) => status,
+            Err(_) => return Err(Error::InvalidServerData),
         };
-        let height = BlockHeight::try_from(height).map_err(|_| Error::InvalidServerData)?;
-        Ok(TxStatus::Mined(MiningInfo {
-            height,
-            time,
-            block_hash,
-        }))
+
+        // If it has block info, it's mined
+        if let (Some(height), Some(time), Some(block_hash)) =
+            (status.block_height, status.block_time, status.block_hash)
+        {
+            let height = BlockHeight::try_from(height).map_err(|_| Error::InvalidServerData)?;
+            return Ok(TxStatus::Mined(MiningInfo {
+                height,
+                time,
+                block_hash,
+            }));
+        }
+
+        // Otherwise it's in mempool (since we already confirmed it exists)
+        Ok(TxStatus::Mempool)
     }
 }
