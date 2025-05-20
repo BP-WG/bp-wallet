@@ -365,7 +365,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
                                     .addr
                                     .iter()
                                     .flat_map(|(keychain, addrs)| {
-                                        addrs.into_iter().map(|a| (*keychain, a))
+                                        addrs.iter().map(|a| (*keychain, a))
                                     })
                                     .find(|(_, a)| a.addr == addr)
                                     .map(|(keychain, a)| (keychain, a.terminal.index))

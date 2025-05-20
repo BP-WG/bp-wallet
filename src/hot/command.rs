@@ -172,8 +172,7 @@ fn get_password(
             match env::var(varname) {
                 Ok(password) => return Ok(password),
                 Err(VarError::NotUnicode(_)) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
+                    return Err(std::io::Error::other(
                         "password set by environment is not a valid unicode string",
                     ));
                 }
@@ -190,7 +189,7 @@ fn get_password(
         if !accept_weak && (password.is_empty() || entropy < 64.0) {
             eprintln!("Entropy is too low, please try with a different password");
             if password_envvar.is_some() {
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, "low password entropy"));
+                return Err(std::io::Error::other("low password entropy"));
             } else {
                 continue;
             }
