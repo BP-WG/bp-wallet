@@ -2,7 +2,7 @@
 
 [package]
 name = "bp-convert"
-version = "0.12.0-beta.6"
+version = "0.12.0-rc.1"
 description = "Convertor between bp-wallet and rust-bitcoin data types"
 keywords = ["bitcoin", "wallet"]
 categories = ["cryptography::cryptocurrencies"]
@@ -21,4 +21,4 @@ name = "bconv"
 amplify = "4.8.0"
 secp256k1 = "0.30.0"
 bitcoin = "0.32.2"
-bp-std = "0.12.0-beta.6"
+bp-std = "0.12.0-rc.1"
