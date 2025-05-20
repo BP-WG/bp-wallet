@@ -64,7 +64,7 @@ psbt = { workspace = true }
 descriptors = { workspace = true }
 
 sha2 = "0.10.8"
-rand = { version = "0.8.5", optional = true }
+rand = { version = "0.9.1", optional = true }
 rpassword = { version = "7.3.1", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 bip39 = { version = "2.0.0", optional = true }
@@ -96,6 +96,15 @@ fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+rand = { version = "0.9.1", optional = true }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom2 = { package = "getrandom", version = "0.2", features = ["js"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
 
 [patch.crates-io]
 bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "develop" }
