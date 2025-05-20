@@ -32,11 +32,12 @@ use bpstd::{
 use nonasync::persistence::{
     CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
 };
-use psbt::{PsbtConstructor, Utxo};
+use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty,
-    MayError, MiningInfo, NoLayer2, Party, TxRow, WalletAddr, WalletTx, WalletUtxo,
+    MayError, MiningInfo, NoLayer2, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr,
+    WalletTx, WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -346,6 +347,77 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         res
     }
 
+    pub fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
+        let unsigned_tx = psbt.to_unsigned_tx();
+        let txid = unsigned_tx.txid();
+        let wallet_tx = WalletTx {
+            txid,
+            status: TxStatus::Mempool,
+            inputs: psbt
+                .inputs()
+                .map(|input| {
+                    let addr = Address::with(&input.prev_txout().script_pubkey, meta.network).ok();
+                    TxCredit {
+                        outpoint: input.previous_outpoint,
+                        payer: match (self.utxo.get(&input.previous_outpoint), addr) {
+                            (Some(_), Some(addr)) => {
+                                let (keychain, index) = self
+                                    .addr
+                                    .iter()
+                                    .flat_map(|(keychain, addrs)| {
+                                        addrs.into_iter().map(|a| (*keychain, a))
+                                    })
+                                    .find(|(_, a)| a.addr == addr)
+                                    .map(|(keychain, a)| (keychain, a.terminal.index))
+                                    .expect("address cache inconsistency");
+                                Party::Wallet(DerivedAddr::new(addr, keychain, index))
+                            }
+                            (_, Some(addr)) => Party::Counterparty(addr),
+                            _ => Party::Unknown(input.prev_txout().script_pubkey.clone()),
+                        },
+                        sequence: unsigned_tx.inputs[input.index()].sequence,
+                        coinbase: false,
+                        script_sig: none!(),
+                        witness: none!(),
+                        value: input.value(),
+                    }
+                })
+                .collect(),
+            outputs: psbt
+                .outputs()
+                .map(|output| {
+                    let vout = Vout::from_u32(output.index() as u32);
+                    let addr = Address::with(&output.script, meta.network).ok();
+                    TxDebit {
+                        outpoint: Outpoint::new(txid, vout),
+                        beneficiary: match (meta.change, addr) {
+                            (Some(change), Some(addr)) if change.vout == vout => {
+                                Party::Wallet(DerivedAddr::new(
+                                    addr,
+                                    change.terminal.keychain,
+                                    change.terminal.index,
+                                ))
+                            }
+                            (_, Some(addr)) => Party::Counterparty(addr),
+                            (_, _) => Party::Unknown(output.script.clone()),
+                        },
+                        value: output.value(),
+                        spent: None,
+                    }
+                })
+                .collect(),
+            fee: meta.fee,
+            size: meta.size,
+            weight: meta.weight,
+            version: unsigned_tx.version,
+            locktime: unsigned_tx.lock_time,
+        };
+        self.tx.insert(txid, wallet_tx);
+        if let Some(change) = meta.change {
+            self.utxo.insert(Outpoint::new(txid, change.vout));
+        }
+    }
+
     pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
         self.addr.get(&keychain).unwrap_or_else(|| {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
@@ -387,6 +459,7 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
         Ok((utxo, spk))
     }
 
+    // TODO: Rename WalletUtxo into WalletTxo and add `spent_by` optional field.
     pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
         self.tx.iter().flat_map(|(txid, tx)| {
             tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
@@ -506,6 +579,11 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
             self.data.mark_dirty();
         }
         idx
+    }
+
+    fn after_construct_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
+        debug_assert_eq!(AddressNetwork::from(self.network), meta.network);
+        self.cache.register_psbt(psbt, meta);
     }
 }
 
