@@ -27,4 +27,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Test ${{matrix.os}}
-        run: RUSTFLAGS='--cfg getrandom_backend="wasm_js"' wasm-pack test --headless --chrome --all-features
+        run: cargo test --workspace --all-features --no-fail-fast
