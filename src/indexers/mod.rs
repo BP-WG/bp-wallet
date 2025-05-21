@@ -31,16 +31,18 @@ mod any;
 
 #[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
 pub use any::{AnyIndexer, AnyIndexerError};
-use bpstd::Tx;
+use bpstd::{Network, Tx};
 use descriptors::Descriptor;
 
-use crate::{Layer2, MayError, WalletCache, WalletDescr};
+use crate::{Layer2, MayError, TxStatus, Txid, WalletCache, WalletDescr};
 
 #[cfg(any(feature = "electrum", feature = "esplora"))]
 const BATCH_SIZE: usize = 10;
 
 pub trait Indexer {
     type Error;
+
+    fn network(&self) -> Result<Network, Self::Error>;
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
@@ -53,5 +55,7 @@ pub trait Indexer {
         cache: &mut WalletCache<L2::Cache>,
     ) -> MayError<usize, Vec<Self::Error>>;
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error>;
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error>;
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error>;
 }

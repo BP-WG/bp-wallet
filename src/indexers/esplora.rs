@@ -24,17 +24,15 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
-use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Witness};
+use bpstd::{Address, DerivedAddr, LockTime, Outpoint, SeqNo, Tx, TxVer, Txid, Witness};
 use descriptors::Descriptor;
 use esplora::BlockingClient;
 pub use esplora::{Builder, Config, Error};
 
-#[cfg(feature = "mempool")]
-use super::mempool::Mempool;
 use super::BATCH_SIZE;
 use crate::{
-    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
-    WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
+    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 /// Represents a client for interacting with the Esplora indexer.
@@ -167,14 +165,12 @@ fn get_scripthash_txs_all(
     let mut res = Vec::new();
     let mut last_seen = None;
     let script = derive.addr.script_pubkey();
-    #[cfg(feature = "mempool")]
-    let address = derive.addr.to_string();
 
     loop {
         let r = match client.kind {
             ClientKind::Esplora => client.inner.scripthash_txs(&script, last_seen)?,
             #[cfg(feature = "mempool")]
-            ClientKind::Mempool => client.inner.address_txs(&address, last_seen)?,
+            ClientKind::Mempool => client.inner.address_txs(&derive.addr, last_seen)?,
         };
         match &r[..] {
             [a @ .., esplora::Tx { txid, .. }] if a.len() >= PAGE_SIZE - 1 => {
@@ -193,6 +189,11 @@ fn get_scripthash_txs_all(
 impl Indexer for Client {
     type Error = Error;
 
+    fn network(&self) -> Result<Network, Self::Error> {
+        let genesis = self.inner.block_hash(0)?;
+        Network::try_from(genesis).map_err(|_| Error::InvalidServerData)
+    }
+
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
         descriptor: &WalletDescr<K, D, L2::Descr>,
@@ -208,16 +209,18 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = vec![];
 
+        #[cfg(feature = "log")]
+        log::debug!("Updating wallet from Esplora indexer");
+
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
-            #[cfg(feature = "cli")]
-            eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
+                #[cfg(feature = "log")]
+                log::trace!("Retrieving transaction for {derive}");
+
                 let script = derive.addr.script_pubkey();
 
-                #[cfg(feature = "cli")]
-                eprint!(".");
                 let mut txids = Vec::new();
                 match get_scripthash_txs_all(self, &derive) {
                     Err(err) => {
@@ -314,11 +317,53 @@ impl Indexer for Client {
         }
 
         if errors.is_empty() {
+            #[cfg(feature = "log")]
+            log::debug!("Wallet update from the indexer successfully complete with no errors");
             MayError::ok(0)
         } else {
+            #[cfg(feature = "log")]
+            {
+                log::error!(
+                    "The following errors has happened during wallet update from the indexer"
+                );
+                for err in &errors {
+                    log::error!("- {err}");
+                }
+            }
             MayError::err(0, errors)
         }
     }
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> { self.inner.broadcast(tx) }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        // First check if the transaction exists at all
+        // This avoids confusion with non-existent transactions returning status objects
+        match self.inner.tx(&txid) {
+            Ok(Some(_)) => {}
+            Ok(None) => return Ok(TxStatus::Unknown),
+            Err(err) => return Err(err),
+        };
+
+        // If transaction exists, get its status
+        let status = match self.inner.tx_status(&txid) {
+            Ok(status) => status,
+            Err(_) => return Err(Error::InvalidServerData),
+        };
+
+        // If it has block info, it's mined
+        if let (Some(height), Some(time), Some(block_hash)) =
+            (status.block_height, status.block_time, status.block_hash)
+        {
+            let height = BlockHeight::try_from(height).map_err(|_| Error::InvalidServerData)?;
+            return Ok(TxStatus::Mined(MiningInfo {
+                height,
+                time,
+                block_hash,
+            }));
+        }
+
+        // Otherwise it's in mempool (since we already confirmed it exists)
+        Ok(TxStatus::Mempool)
+    }
 }

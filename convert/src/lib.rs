@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use amplify::RawArray;
+use amplify::ByteArray;
 use bitcoin::hashes::Hash;
 
 pub trait Convertible {
@@ -30,10 +30,10 @@ pub trait Convertible {
 
 impl Convertible for bpstd::Txid {
     type Target = bitcoin::Txid;
-    fn convert(&self) -> Self::Target { Self::Target::from_byte_array(self.to_raw_array()) }
+    fn convert(&self) -> Self::Target { Self::Target::from_byte_array(self.to_byte_array()) }
 }
 
 impl Convertible for bitcoin::Txid {
     type Target = bpstd::Txid;
-    fn convert(&self) -> Self::Target { Self::Target::from_raw_array(self.to_byte_array()) }
+    fn convert(&self) -> Self::Target { Self::Target::from_byte_array(self.to_byte_array()) }
 }

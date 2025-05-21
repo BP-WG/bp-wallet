@@ -31,8 +31,8 @@ use serde_json::Value;
 
 use super::BATCH_SIZE;
 use crate::{
-    Indexer, Layer2, MayError, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr,
-    WalletCache, WalletDescr, WalletTx,
+    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
+    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Display, Error)]
@@ -44,11 +44,14 @@ pub enum ElectrumApiError {
     InvalidBlockHash(Txid),
     /// Electrum indexer returned invalid block time value for the transaction {0}.
     InvalidBlockTime(Txid),
-    /// electrum indexer returned zero block height for the transaction {0}.
-    InvalidBlockHeight(Txid),
-    /// electrum indexer returned invalid previous transaction, which doesn't have an output spent
+    /// Electrum indexer returned zero block height for the transaction {0}.
+    ZeroBlockHeight(Txid),
+    /// Electrum indexer returned invalid previous transaction, which doesn't have an output spent
     /// by transaction {0} input {1:?}.
     PrevOutTxMismatch(Txid, TxIn),
+    /// Electrum indexer returned a genesis block hash which doesn't match any of the known
+    /// networks.
+    InvalidGenesis,
 }
 
 #[derive(Debug, Display, Error, From)]
@@ -62,6 +65,11 @@ pub enum ElectrumError {
 
 impl Indexer for Client {
     type Error = ElectrumError;
+
+    fn network(&self) -> Result<Network, Self::Error> {
+        let genesis = self.block_header(0)?;
+        Network::try_from(genesis.block_hash()).map_err(|_| ElectrumApiError::InvalidGenesis.into())
+    }
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
@@ -78,16 +86,24 @@ impl Indexer for Client {
     ) -> MayError<usize, Vec<Self::Error>> {
         let mut errors = Vec::<ElectrumError>::new();
 
+        #[cfg(feature = "log")]
+        log::debug!("Updating wallet from Electrum indexer");
+
+        // First, we scan all addresses.
+        // Addresses may be re-used, so known transactions doesn't help here.
+        // We collect these transactions, which contain the most recent information, into a new
+        // cache. We remove old transaction, since its data are now updated (for instance, if a
+        // transaction was re-orged, it may have a different height).
+
         let mut address_index = BTreeMap::new();
         for keychain in descriptor.keychains() {
             let mut empty_count = 0usize;
-            #[cfg(feature = "cli")]
-            eprint!(" keychain {keychain} ");
             for derive in descriptor.addresses(keychain) {
+                #[cfg(feature = "log")]
+                log::trace!("Retrieving transaction for {derive}");
+
                 let script = derive.addr.script_pubkey();
 
-                #[cfg(feature = "cli")]
-                eprint!(".");
                 let mut txids = Vec::new();
                 let Ok(hres) =
                     self.script_get_history(&script).map_err(|err| errors.push(err.into()))
@@ -108,6 +124,9 @@ impl Indexer for Client {
                     |hr: GetHistoryRes| -> Result<WalletTx, ElectrumError> {
                         let txid = hr.tx_hash;
                         txids.push(txid);
+
+                        #[cfg(feature = "log")]
+                        log::trace!("- {txid}");
 
                         // get the tx details (requires electrum verbose support)
                         let tx_details = self.raw_call("blockchain.transaction.get", vec![
@@ -135,7 +154,7 @@ impl Indexer for Client {
                                 .and_then(Value::as_u64)
                                 .ok_or(ElectrumApiError::InvalidBlockTime(txid))?;
                             let height = NonZeroU32::try_from(hr.height as u32)
-                                .map_err(|_| ElectrumApiError::InvalidBlockHeight(txid))?;
+                                .map_err(|_| ElectrumApiError::ZeroBlockHeight(txid))?;
                             TxStatus::Mined(MiningInfo {
                                 height,
                                 time: blocktime,
@@ -151,7 +170,15 @@ impl Indexer for Client {
                         let mut inputs = Vec::with_capacity(tx.inputs.len());
                         for input in tx.inputs {
                             // get value from previous output tx
-                            let prev_tx = self.transaction_get(&input.prev_output.txid)?;
+                            let Some(prev_tx) = self.transaction_get(&input.prev_output.txid)?
+                            else {
+                                #[cfg(feature = "log")]
+                                log::error!(
+                                    "- {txid}: previous output {} transaction is not found",
+                                    input.prev_output
+                                );
+                                return Err(ElectrumApiError::PrevOutTxMismatch(txid, input).into());
+                            };
                             let prev_out = prev_tx
                                 .outputs
                                 .get(input.prev_output.vout.into_usize())
@@ -283,14 +310,46 @@ impl Indexer for Client {
         }
 
         if errors.is_empty() {
+            #[cfg(feature = "log")]
+            log::debug!("Wallet update from the indexer successfully complete with no errors");
             MayError::ok(0)
         } else {
+            #[cfg(feature = "log")]
+            {
+                log::error!(
+                    "The following errors has happened during wallet update from the indexer"
+                );
+                for err in &errors {
+                    log::error!("- {err}");
+                }
+            }
             MayError::err(0, errors)
         }
     }
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> {
         self.transaction_broadcast(tx)?;
         Ok(())
+    }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        let Some(info) = self.transaction_get_verbose(&txid)? else {
+            return Ok(TxStatus::Unknown);
+        };
+        let Some(block_hash) = info.block_hash else {
+            return Ok(TxStatus::Mempool);
+        };
+        let Some(time) = info.time else {
+            return Ok(TxStatus::Mempool);
+        };
+        let last_header = self.block_headers_subscribe()?;
+        let height = last_header.height as u32 - info.confirmations;
+        let height =
+            BlockHeight::try_from(height).map_err(|_| ElectrumApiError::ZeroBlockHeight(txid))?;
+        Ok(TxStatus::Mined(MiningInfo {
+            height,
+            time,
+            block_hash,
+        }))
     }
 }

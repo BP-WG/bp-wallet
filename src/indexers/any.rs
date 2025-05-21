@@ -19,10 +19,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use bpstd::Tx;
+use bpstd::{Network, Tx, Txid};
 use descriptors::Descriptor;
 
-use crate::{Indexer, Layer2, MayError, WalletCache, WalletDescr};
+use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr};
 
 /// Type that contains any of the client types implementing the Indexer trait
 #[derive(From)]
@@ -71,6 +71,17 @@ pub enum AnyIndexerError {
 
 impl Indexer for AnyIndexer {
     type Error = AnyIndexerError;
+
+    fn network(&self) -> Result<Network, Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.network().map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.network().map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.network().map_err(|e| e.into()),
+        }
+    }
 
     fn create<K, D: Descriptor<K>, L2: Layer2>(
         &self,
@@ -137,14 +148,25 @@ impl Indexer for AnyIndexer {
         }
     }
 
-    fn publish(&self, tx: &Tx) -> Result<(), Self::Error> {
+    fn broadcast(&self, tx: &Tx) -> Result<(), Self::Error> {
         match self {
             #[cfg(feature = "electrum")]
-            AnyIndexer::Electrum(inner) => inner.publish(tx).map_err(|e| e.into()),
+            AnyIndexer::Electrum(inner) => inner.broadcast(tx).map_err(|e| e.into()),
             #[cfg(feature = "esplora")]
-            AnyIndexer::Esplora(inner) => inner.publish(tx).map_err(|e| e.into()),
+            AnyIndexer::Esplora(inner) => inner.broadcast(tx).map_err(|e| e.into()),
             #[cfg(feature = "mempool")]
-            AnyIndexer::Mempool(inner) => inner.publish(tx).map_err(|e| e.into()),
+            AnyIndexer::Mempool(inner) => inner.broadcast(tx).map_err(|e| e.into()),
+        }
+    }
+
+    fn status(&self, txid: Txid) -> Result<TxStatus, Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.status(txid).map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.status(txid).map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.status(txid).map_err(|e| e.into()),
         }
     }
 }
