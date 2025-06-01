@@ -69,7 +69,7 @@ impl XprivSigner<'_> {
         Some(
             self.account
                 .xpriv()
-                .derive_priv(&origin.derivation()[self.account.origin().derivation().len()..]),
+                .derive_priv(&origin.as_derivation()[self.account.origin().derivation().len()..]),
         )
     }
 }

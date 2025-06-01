@@ -3,7 +3,7 @@ members = ["."]
 exclude = ["convert"]
 
 [workspace.package]
-version = "0.12.0-rc.1"
+version = "0.12.0-rc.2"
 keywords = ["bitcoin", "wallet", "descriptor-wallet", "psbt", "taproot"]
 categories = ["cryptography::cryptocurrencies"]
 authors = ["Dr Maxim Orlovsky <orlovsky@lnp-bp.org>"]
@@ -16,9 +16,9 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.9.0"
 nonasync = "0.1.3"
-bp-std = "0.12.0-rc.1"
-psbt = "0.12.0-rc.1"
-descriptors = "0.12.0-rc.1"
+bp-std = "0.12.0-rc.2"
+psbt = "0.12.0-rc.2"
+descriptors = "0.12.0-rc.2"
 bp-esplora = { version = "0.12.0-rc.1", default-features = false, features = ["blocking"] }
 bp-electrum = "0.12.0-rc.1"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
