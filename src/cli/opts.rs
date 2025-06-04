@@ -23,9 +23,15 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
+use amplify::confinement::Confined;
+use amplify::num::u4;
 use bpstd::{Network, XpubDerivable};
+use clap::error::ErrorKind;
 use clap::ValueHint;
-use descriptors::{Descriptor, StdDescr, TrKey, Wpkh};
+use descriptors::{
+    Descriptor, Pkh, ShMulti, ShSortedMulti, StdDescr, TrKey, TrMulti, TrSortedMulti, Wpkh,
+    WshMulti, WshSortedMulti,
+};
 use strict_encoding::Ident;
 
 pub const BP_DATA_DIR_ENV: &str = "BP_DATA_DIR";
@@ -104,30 +110,176 @@ pub struct ResolverOpt {
 pub trait DescriptorOpts: clap::Args + Clone + Eq + Debug {
     type Descr: Descriptor + serde::Serialize + for<'de> serde::Deserialize<'de>;
     fn is_some(&self) -> bool;
-    fn descriptor(&self) -> Option<Self::Descr>;
+    fn descriptor(
+        &self,
+        keys: &[XpubDerivable],
+        internal_key: &Option<XpubDerivable>,
+        command: clap::Command,
+    ) -> Option<Self::Descr>;
 }
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]
-#[group(multiple = false)]
+#[group(id = "descr", multiple = false, requires = "key")]
 pub struct DescrStdOpts {
-    /// Use wpkh(WPKH) descriptor as wallet
+    /// Use pkh(key) descriptor as wallet
     #[arg(long, global = true)]
-    pub wpkh: Option<XpubDerivable>,
+    pub pkh: bool,
 
-    /// Use tr(TR_KEY_ONLY) descriptor as wallet
+    /// Use sh(multi(threshold, key, ...)) descriptor as wallet
     #[arg(long, global = true)]
-    pub tr_key_only: Option<XpubDerivable>,
+    pub sh_multi: Option<u4>,
+
+    /// Use sh(sortedmulti(threshold, key, ...)) descriptor as wallet
+    #[arg(long, global = true)]
+    pub sh_sorted_multi: Option<u4>,
+
+    /// Use wpkh(key) descriptor as wallet
+    #[arg(long, global = true)]
+    pub wpkh: bool,
+
+    /// Use wsh(multi(threshold, key, ...)) descriptor as wallet
+    #[arg(long, global = true)]
+    pub wsh_multi: Option<u4>,
+
+    /// Use wsh(sortedmulti(threshold, key, ...)) descriptor as wallet
+    #[arg(long, global = true)]
+    pub wsh_sorted_multi: Option<u4>,
+
+    /// Use tr(key) descriptor as wallet
+    #[arg(long, global = true)]
+    pub tr_key_only: bool,
+
+    /// Use tr(unspendable, multi_a(threshold, key, ...)) descriptor as wallet
+    #[arg(long, global = true, requires = "internal_key")]
+    pub tr_multi: Option<u16>,
+
+    /// Use tr(unspendable, sortedmulti_a(threshold, key, ...)) descriptor as wallet
+    #[arg(long, global = true, requires = "internal_key")]
+    pub tr_sorted_multi: Option<u16>,
+}
+
+impl DescrStdOpts {
+    pub fn required_key_count(&self) -> usize {
+        if self.pkh || self.wpkh || self.tr_key_only {
+            1
+        } else if let Some(threshold) = self.sh_multi {
+            threshold.into_u8() as usize
+        } else if let Some(threshold) = self.sh_sorted_multi {
+            threshold.into_u8() as usize
+        } else if let Some(threshold) = self.wsh_multi {
+            threshold.into_u8() as usize
+        } else if let Some(threshold) = self.wsh_sorted_multi {
+            threshold.into_u8() as usize
+        } else if let Some(threshold) = self.tr_multi {
+            threshold as usize
+        } else if let Some(threshold) = self.tr_sorted_multi {
+            threshold as usize
+        } else {
+            0
+        }
+    }
 }
 
 impl DescriptorOpts for DescrStdOpts {
     type Descr = StdDescr;
 
-    fn is_some(&self) -> bool { self.tr_key_only.is_some() | self.wpkh.is_some() }
-    fn descriptor(&self) -> Option<Self::Descr> {
-        if let Some(ref x) = self.tr_key_only {
-            Some(TrKey::from(x.clone()).into())
+    fn is_some(&self) -> bool { self.required_key_count() > 0 }
+    fn descriptor(
+        &self,
+        keys: &[XpubDerivable],
+        internal_key: &Option<XpubDerivable>,
+        mut command: clap::Command,
+    ) -> Option<Self::Descr> {
+        let required_key_count = self.required_key_count();
+        if required_key_count > keys.len() {
+            command
+                .error(
+                    ErrorKind::MissingRequiredArgument,
+                    format!(
+                        "the selected wallet descriptor require at least {required_key_count} \
+                         keys, which must be provided using `--key` argument",
+                    ),
+                )
+                .exit();
+        }
+
+        let mut confine_keys = || {
+            Confined::try_from(keys.to_vec()).unwrap_or_else(|_| {
+                command
+                    .error(ErrorKind::MissingRequiredArgument, "too many key key arguments")
+                    .exit();
+            })
+        };
+
+        if self.pkh {
+            Some(Pkh::from(keys.first().cloned().expect("at least one key is required")).into())
+        } else if self.wpkh {
+            Some(Wpkh::from(keys.first().cloned().expect("at least one key is required")).into())
+        } else if self.tr_key_only {
+            Some(TrKey::from(keys.first().cloned().expect("at least one key is required")).into())
+        } else if let Some(threshold) = self.sh_multi {
+            Some(
+                ShMulti {
+                    threshold,
+                    keys: confine_keys(),
+                }
+                .into(),
+            )
+        } else if let Some(threshold) = self.sh_sorted_multi {
+            Some(
+                ShSortedMulti {
+                    threshold,
+                    keys: confine_keys(),
+                }
+                .into(),
+            )
+        } else if let Some(threshold) = self.wsh_multi {
+            Some(
+                WshMulti {
+                    threshold,
+                    keys: confine_keys(),
+                }
+                .into(),
+            )
+        } else if let Some(threshold) = self.wsh_sorted_multi {
+            Some(
+                WshSortedMulti {
+                    threshold,
+                    keys: confine_keys(),
+                }
+                .into(),
+            )
         } else {
-            self.wpkh.as_ref().map(|x| Wpkh::from(x.clone()).into())
+            // We need this because of the rust borrower checker
+            let mut tr_script_keys = || {
+                Confined::try_from(keys.to_vec()).unwrap_or_else(|_| {
+                    command
+                        .error(ErrorKind::MissingRequiredArgument, "too many key key arguments")
+                        .exit();
+                })
+            };
+            let internal_key = internal_key.clone().expect("internal ey is required by clap");
+            if let Some(threshold) = self.tr_multi {
+                Some(
+                    TrMulti {
+                        threshold,
+                        script_keys: tr_script_keys(),
+                        internal_key,
+                    }
+                    .into(),
+                )
+            } else if let Some(threshold) = self.tr_sorted_multi {
+                Some(
+                    TrSortedMulti {
+                        threshold,
+                        script_keys: tr_script_keys(),
+                        internal_key,
+                    }
+                    .into(),
+                )
+            } else {
+                None
+            }
         }
     }
 }
@@ -150,6 +302,14 @@ pub struct WalletOpts<O: DescriptorOpts = DescrStdOpts> {
 
     #[command(flatten)]
     pub descriptor_opts: O,
+
+    /// A xpub with full derivation path, which should be added to the descriptor
+    #[arg(long, global = true)]
+    pub key: Vec<XpubDerivable>,
+
+    /// A xpub with a full derivation path for taproot-based descriptors
+    #[arg(long, global = true)]
+    pub internal_key: Option<XpubDerivable>,
 }
 
 #[derive(Args, Clone, PartialEq, Eq, Debug)]

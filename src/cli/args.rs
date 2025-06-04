@@ -25,7 +25,7 @@ use std::path::PathBuf;
 use std::process::exit;
 
 use bpstd::XpubDerivable;
-use clap::Subcommand;
+use clap::{CommandFactory, Subcommand};
 use descriptors::Descriptor;
 use strict_encoding::Ident;
 
@@ -126,30 +126,33 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         eprint!("Loading descriptor");
         let sync = self.sync || self.wallet.descriptor_opts.is_some();
 
-        let mut wallet: Wallet<XpubDerivable, D> =
-            if let Some(d) = self.wallet.descriptor_opts.descriptor() {
-                eprintln!(" from command-line argument");
-                eprint!("Syncing");
-                Wallet::new_layer1(d.into(), self.general.network)
+        let mut wallet: Wallet<XpubDerivable, D> = if let Some(d) = self
+            .wallet
+            .descriptor_opts
+            .descriptor(&self.wallet.key, &self.wallet.internal_key, Self::command())
+        {
+            eprintln!(" from command-line argument");
+            eprint!("Syncing");
+            Wallet::new_layer1(d.into(), self.general.network)
+        } else {
+            let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
+                eprint!(" from specified wallet directory ... ");
+                wallet_path
             } else {
-                let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
-                    eprint!(" from specified wallet directory ... ");
-                    wallet_path
-                } else {
-                    let wallet_name = self
-                        .wallet
-                        .name
-                        .as_ref()
-                        .map(Ident::to_string)
-                        .unwrap_or(conf.default_wallet.clone());
-                    eprint!(" from wallet {wallet_name} ... ");
-                    self.general.wallet_dir(wallet_name)
-                };
-                let provider = FsTextStore::new(path)?;
-                let wallet = Wallet::load(provider, true)?;
-                eprintln!("success");
-                wallet
+                let wallet_name = self
+                    .wallet
+                    .name
+                    .as_ref()
+                    .map(Ident::to_string)
+                    .unwrap_or(conf.default_wallet.clone());
+                eprint!(" from wallet {wallet_name} ... ");
+                self.general.wallet_dir(wallet_name)
             };
+            let provider = FsTextStore::new(path)?;
+            let wallet = Wallet::load(provider, true)?;
+            eprintln!("success");
+            wallet
+        };
 
         if sync {
             let indexer = self.indexer()?;
