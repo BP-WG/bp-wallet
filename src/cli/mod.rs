@@ -31,6 +31,6 @@ pub use command::{BpCommand, Command, ExecError};
 pub use config::Config;
 pub use loglevel::LogLevel;
 pub use opts::{
-    DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, DATA_DIR, DATA_DIR_ENV,
-    DEFAULT_ELECTRUM, DEFAULT_ESPLORA,
+    DescrStdOpts, DescriptorOpts, GeneralOpts, ResolverOpt, WalletOpts, BP_DATA_DIR,
+    BP_DATA_DIR_ENV, DEFAULT_ELECTRUM, DEFAULT_ESPLORA,
 };

@@ -28,19 +28,31 @@ use clap::ValueHint;
 use descriptors::{Descriptor, StdDescr, TrKey, Wpkh};
 use strict_encoding::Ident;
 
-pub const DATA_DIR_ENV: &str = "LNPBP_DATA_DIR";
-#[cfg(target_os = "linux")]
-pub const DATA_DIR: &str = "~/.lnp-bp";
-#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
-pub const DATA_DIR: &str = "~/.lnp-bp";
+pub const BP_DATA_DIR_ENV: &str = "BP_DATA_DIR";
+#[cfg(any(
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd"
+))]
+pub const BP_DATA_DIR: &str = "~/.local/share/bp";
 #[cfg(target_os = "macos")]
-pub const DATA_DIR: &str = "~/Library/Application Support/LNP-BP Suite";
+pub const BP_DATA_DIR: &str = "~/Library/Application Support/BP Wallet";
 #[cfg(target_os = "windows")]
-pub const DATA_DIR: &str = "~\\AppData\\Local\\LNP-BP Suite";
+pub const BP_DATA_DIR: &str = "~\\AppData\\Local\\BP Wallet";
 #[cfg(target_os = "ios")]
-pub const DATA_DIR: &str = "~/Documents";
+pub const BP_DATA_DIR: &str = "~/Documents";
 #[cfg(target_os = "android")]
-pub const DATA_DIR: &str = ".";
+pub const BP_DATA_DIR: &str = ".";
+
+// Uses XDG_DATA_HOME if set, otherwise falls back to RGB_DATA_DIR
+fn default_data_dir() -> PathBuf {
+    if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+        PathBuf::from(xdg).join("bp")
+    } else {
+        PathBuf::from(BP_DATA_DIR)
+    }
+}
 
 pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/{network}/api";
@@ -149,8 +161,8 @@ pub struct GeneralOpts {
         short,
         long,
         global = true,
-        default_value = DATA_DIR,
-        env = DATA_DIR_ENV,
+        default_value_os_t = default_data_dir(),
+        env = BP_DATA_DIR_ENV,
         value_hint = ValueHint::DirPath
     )]
     pub data_dir: PathBuf,
