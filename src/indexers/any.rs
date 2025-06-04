@@ -22,7 +22,7 @@
 use bpstd::{Network, Tx, Txid};
 use descriptors::Descriptor;
 
-use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr};
+use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr, BlockHash};
 
 /// Type that contains any of the client types implementing the Indexer trait
 #[derive(From)]
@@ -167,6 +167,17 @@ impl Indexer for AnyIndexer {
             AnyIndexer::Esplora(inner) => inner.status(txid).map_err(|e| e.into()),
             #[cfg(feature = "mempool")]
             AnyIndexer::Mempool(inner) => inner.status(txid).map_err(|e| e.into()),
+        }
+    }
+
+    fn block_hash(&self, block_height: u32) -> Result<BlockHash, Self::Error> {
+        match self {
+            #[cfg(feature = "electrum")]
+            AnyIndexer::Electrum(inner) => inner.block_hash(block_height).map_err(|e| e.into()),
+            #[cfg(feature = "esplora")]
+            AnyIndexer::Esplora(inner) => inner.block_hash(block_height).map_err(|e| e.into()),
+            #[cfg(feature = "mempool")]
+            AnyIndexer::Mempool(inner) => inner.block_hash(block_height).map_err(|e| e.into()),
         }
     }
 }
