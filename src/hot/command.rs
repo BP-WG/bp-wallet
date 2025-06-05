@@ -37,6 +37,7 @@ use crate::hot::{calculate_entropy, DataError, SecureIo, Seed, SeedType};
 use crate::Bip43;
 
 const SEED_PASSWORD_ENVVAR: &str = "SEED_PASSWORD";
+const ACCOUNT_PASSWORD_ENVVAR: &str = "ACCOUNT_PASSWORD";
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -162,27 +163,31 @@ impl HotArgs {
     }
 }
 
-fn get_password(
+fn env_password(password_envvar: Option<&str>) -> Result<Option<String>, std::io::Error> {
+    if let Some(varname) = password_envvar {
+        match env::var(varname) {
+            Ok(password) => Ok(Some(password)),
+            Err(VarError::NotUnicode(_)) => Err(std::io::Error::other(
+                "password set by environment is not a valid unicode string",
+            )),
+            Err(VarError::NotPresent) => Ok(None),
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+fn new_password(
     password_envvar: Option<&str>,
     prompt: &str,
     accept_weak: bool,
 ) -> Result<String, std::io::Error> {
     let password = loop {
-        let password = if let Some(varname) = password_envvar {
-            match env::var(varname) {
-                Ok(password) => return Ok(password),
-                Err(VarError::NotUnicode(_)) => {
-                    return Err(std::io::Error::other(
-                        "password set by environment is not a valid unicode string",
-                    ));
-                }
-                Err(VarError::NotPresent) => None,
-            }
+        let password = if let Some(pass) = env_password(password_envvar)? {
+            pass
         } else {
-            None
+            rpassword::prompt_password(prompt)?
         };
-        let password =
-            if let Some(pass) = password { pass } else { rpassword::prompt_password(prompt)? };
 
         let entropy = calculate_entropy(&password);
         eprintln!("Password entropy: ~{entropy:.0} bits");
@@ -195,7 +200,7 @@ fn get_password(
             }
         }
 
-        if password_envvar.is_none() {
+        if password_envvar.and_then(|varname| env::var(varname).ok()).is_none() {
             let repeat = rpassword::prompt_password("Repeat the password: ")?;
             if repeat != password {
                 eprintln!("Passwords do not match, please try again");
@@ -207,9 +212,19 @@ fn get_password(
     Ok(password)
 }
 
+fn get_password(password_envvar: Option<&str>, prompt: &str) -> Result<String, std::io::Error> {
+    let password = if let Some(pass) = env_password(password_envvar)? {
+        pass
+    } else {
+        rpassword::prompt_password(prompt)?
+    };
+
+    Ok(password)
+}
+
 fn seed(output_file: &Path) -> Result<(), DataError> {
     let seed = Seed::random(SeedType::Bit128);
-    let seed_password = get_password(Some(SEED_PASSWORD_ENVVAR), "Seed password:", false)?;
+    let seed_password = new_password(Some(SEED_PASSWORD_ENVVAR), "Seed password: ", false)?;
 
     seed.write(output_file, &seed_password)?;
     Seed::read(output_file, &seed_password).inspect_err(|_| {
@@ -223,60 +238,65 @@ fn seed(output_file: &Path) -> Result<(), DataError> {
 }
 
 fn info(file: &Path, print_private: bool) -> Result<(), IoError> {
-    let password = rpassword::prompt_password("File password: ")?;
+    let password = get_password(None, "File password: ")?;
     if let Ok(seed) = Seed::read(file, &password) {
         info_seed(seed, print_private)
     } else if let Ok(account) = XprivAccount::read(file, &password) {
         info_account(account, print_private)
     } else {
-        eprintln!("{} can't detect file format for `{}`", "Error:".bright_red(), file.display());
+        eprintln!(
+            "{} can't parse `{}`, maybe password is wrong",
+            "Error:".bright_red(),
+            file.display()
+        );
     }
     Ok(())
 }
 
 fn info_seed(seed: Seed, print_private: bool) {
     if print_private {
+        println!();
         let mnemonic = Mnemonic::from_entropy(seed.as_entropy()).expect("invalid seed");
-        println!("\n{:-18} {}", "Mnemonic:".bright_white(), mnemonic.to_string().black().dimmed());
+        println!("{:-14} {}", "Mnemonic:".bright_white(), mnemonic.to_string().black().dimmed());
+        println!("{:-14} {}", "Seed:".bright_white(), seed.as_entropy().to_hex().black().dimmed());
     }
 
     let xpriv = seed.master_xpriv(false);
     let xpub = xpriv.to_xpub();
+    println!();
+    println!("{}", "Master:".bright_white());
+    println!("{:-14} {}", "  fingerprint:", xpub.fingerprint().to_string().bright_green());
+    println!("{:-14} {}", "  xpubid:", xpub.identifier());
 
-    println!("{}", "Master key:".bright_white());
-    println!(
-        "{:-18} {}",
-        "  - fingerprint:".bright_white(),
-        xpub.fingerprint().to_string().bright_green()
-    );
-    println!("{:-18} {}", "  - mainnet:", if xpub.is_testnet() { "no" } else { "yes" });
-    println!("{:-18} {}", "  - id:".bright_white(), xpub.identifier());
+    println!();
+    println!("{}", "Mainnet:".bright_white());
     if print_private {
-        println!("{:-18} {}", "  - xprv:".bright_white(), xpriv.to_string().black().dimmed());
+        println!("{:-14} {}", "  xprv:", xpriv.to_string().black().dimmed());
     }
-    println!("{:-18} {}", "  - xpub:".bright_white(), xpub.to_string().bright_green());
+    println!("{:-14} {}", "  xpub:", xpub.to_string().bright_green());
+
+    println!();
+    println!("{}", "Testnet:".bright_white());
+    let xpriv = seed.master_xpriv(true);
+    let xpub = xpriv.to_xpub();
+    if print_private {
+        println!("{:-14} {}", "  xprv:", xpriv.to_string().black().dimmed());
+    }
+    println!("{:-14} {}", "  xpub:", xpub.to_string().bright_yellow());
 }
 
 fn info_account(account: XprivAccount, print_private: bool) {
     let xpub = account.to_xpub_account();
     println!("\n{} {}", "Account:".bright_white(), xpub);
-    println!(
-        "{:-18} {}",
-        "  - fingerprint:".bright_white(),
-        xpub.account_fp().to_string().bright_green()
-    );
-    println!("{:-18} {}", "  - id:".bright_white(), xpub.account_id());
-    println!("{:-18} [{}]", "  - key origin:".bright_white(), xpub.origin(),);
+    println!("{:-14} {}", "  fingerprint:", xpub.account_fp().to_string().bright_green());
+    println!("{:-14} {}", "  xpubid:", xpub.account_id());
+    println!("{:-14} [{}]", "  origin:", xpub.origin(),);
     if print_private {
         let account_xpriv = account.xpriv();
-        println!(
-            "{:-18} {}",
-            "  - xpriv:".bright_white(),
-            account_xpriv.to_string().black().dimmed()
-        );
+        println!("{:-14} {}", "  xpriv:", account_xpriv.to_string().black().dimmed());
         // TODO: Add Zpriv etc
     }
-    println!("{:-18} {}", "  - xpub:".bright_white(), xpub.to_string().bright_green());
+    println!("{:-14} {}", "  xpub:", xpub.to_string().bright_green());
     // TODO: Add Zpub etc
 }
 
@@ -288,12 +308,12 @@ fn derive(
     output_file: &Path,
     no_password: bool,
 ) -> Result<(), DataError> {
-    let seed_password = get_password(Some(SEED_PASSWORD_ENVVAR), "Seed password:", false)?;
+    let seed_password = get_password(Some(SEED_PASSWORD_ENVVAR), "Seed password: ")?;
 
     let account_password = if !mainnet && no_password {
         s!("")
     } else {
-        get_password(None, "Account password:", !mainnet)?
+        new_password(None, "Account password: ", !mainnet)?
     };
 
     let seed = Seed::read(seed_file, &seed_password)?;
@@ -312,7 +332,11 @@ fn derive(
 
 fn sign(psbt_file: &Path, account_file: &Path, no_password: bool) -> Result<(), DataError> {
     eprintln!("Signing {} with {}", psbt_file.display(), account_file.display());
-    let password = if no_password { s!("") } else { rpassword::prompt_password("Password: ")? };
+    let password = if no_password {
+        s!("")
+    } else {
+        get_password(Some(ACCOUNT_PASSWORD_ENVVAR), "Password: ")?
+    };
     let account = XprivAccount::read(account_file, &password)?;
 
     eprintln!("Signing key: {}", account.to_xpub_account());
