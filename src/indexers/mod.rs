@@ -34,7 +34,7 @@ pub use any::{AnyIndexer, AnyIndexerError};
 use bpstd::{Network, Tx};
 use descriptors::Descriptor;
 
-use crate::{Layer2, MayError, TxStatus, Txid, WalletCache, WalletDescr, BlockHash};
+use crate::{BlockHash, Layer2, MayError, TxStatus, Txid, WalletCache, WalletDescr};
 
 #[cfg(any(feature = "electrum", feature = "esplora"))]
 const BATCH_SIZE: usize = 10;

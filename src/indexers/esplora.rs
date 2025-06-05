@@ -31,8 +31,8 @@ pub use esplora::{Builder, Config, Error};
 
 use super::BATCH_SIZE;
 use crate::{
-    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
-    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx, BlockHash
+    BlockHash, BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit,
+    TxDebit, TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 /// Represents a client for interacting with the Esplora indexer.

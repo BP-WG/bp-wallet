@@ -22,7 +22,7 @@
 use bpstd::{Network, Tx, Txid};
 use descriptors::Descriptor;
 
-use crate::{Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr, BlockHash};
+use crate::{BlockHash, Indexer, Layer2, MayError, TxStatus, WalletCache, WalletDescr};
 
 /// Type that contains any of the client types implementing the Indexer trait
 #[derive(From)]
