@@ -132,7 +132,6 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             .descriptor(&self.wallet.key, &self.wallet.internal_key, Self::command())
         {
             eprintln!(" from command-line argument");
-            eprint!("Syncing");
             Wallet::new_layer1(d.into(), self.general.network)
         } else {
             let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
@@ -156,7 +155,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
 
         if sync {
             let indexer = self.indexer()?;
-            eprint!("Syncing");
+            eprint!("Syncing ...");
             if let Some(errors) = wallet.update(&indexer).into_err() {
                 eprintln!(" partial, some requests has failed:");
                 for err in errors {

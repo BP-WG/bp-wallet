@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::{fs, io};
 
+use amplify::hex::ToHex;
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx, XpubDerivable};
@@ -85,9 +86,9 @@ pub enum Command {
     /// Finalize a PSBT, optionally extracting and publishing the signed transaction
     #[display("finalize")]
     Finalize {
-        /// Extract and send the signed transaction to the network.
+        /// Extract and broadcast the signed transaction to the network.
         #[clap(short, long)]
-        publish: bool,
+        broadcast: bool,
 
         /// Name of PSBT file to finalize.
         psbt: PathBuf,
@@ -99,9 +100,9 @@ pub enum Command {
     /// Extract a signed transaction from PSBT. The PSBT file itself is not modified
     #[display("finalize")]
     Extract {
-        /// Send the extracted transaction to the network.
+        /// Broadcast the extracted transaction to the network.
         #[clap(short, long)]
-        publish: bool,
+        broadcast: bool,
 
         /// Name of PSBT file to take the transaction from
         psbt: PathBuf,
@@ -306,7 +307,7 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
             }
             Command::Finalize {
-                publish,
+                broadcast,
                 psbt: psbt_path,
                 tx,
             } => {
@@ -319,17 +320,17 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 }
 
                 psbt_write(&psbt, psbt_path)?;
-                if let Ok(tx) = psbt_extract(&psbt, *publish, tx.as_deref()) {
-                    if *publish {
+                if let Ok(tx) = psbt_extract(&psbt, *broadcast, tx.as_deref()) {
+                    if *broadcast {
                         let indexer = self.indexer()?;
-                        eprint!("Publishing transaction via {} ... ", indexer.name());
+                        eprint!("Broadcasting transaction via {} ... ", indexer.name());
                         indexer.broadcast(&tx)?;
                         eprintln!("success");
                     }
                 }
             }
             Command::Extract {
-                publish,
+                broadcast,
                 psbt: psbt_path,
                 tx,
             } => {
@@ -339,10 +340,10 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     psbt_finalize(&mut psbt, wallet.descriptor())?;
                 }
 
-                if let Ok(tx) = psbt_extract(&psbt, *publish, tx.as_deref()) {
-                    if *publish {
+                if let Ok(tx) = psbt_extract(&psbt, *broadcast, tx.as_deref()) {
+                    if *broadcast {
                         let indexer = self.indexer()?;
-                        eprint!("Publishing transaction via {} ... ", indexer.name());
+                        eprint!("Broadcasting transaction via {} ... ", indexer.name());
                         indexer.broadcast(&tx)?;
                         eprintln!("success");
                     }

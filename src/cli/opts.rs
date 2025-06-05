@@ -258,8 +258,8 @@ impl DescriptorOpts for DescrStdOpts {
                         .exit();
                 })
             };
-            let internal_key = internal_key.clone().expect("internal ey is required by clap");
             if let Some(threshold) = self.tr_multi {
+                let internal_key = internal_key.clone().expect("internal key is required by clap");
                 Some(
                     TrMulti {
                         threshold,
@@ -269,6 +269,7 @@ impl DescriptorOpts for DescrStdOpts {
                     .into(),
                 )
             } else if let Some(threshold) = self.tr_sorted_multi {
+                let internal_key = internal_key.clone().expect("internal key is required by clap");
                 Some(
                     TrSortedMulti {
                         threshold,
