@@ -60,7 +60,7 @@ fn default_data_dir() -> PathBuf {
     }
 }
 
-pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
+pub const DEFAULT_ELECTRUM: &str = "ssl://blockstream.info:993";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/{network}/api";
 pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/{network}/api";
 

@@ -25,7 +25,6 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::{fs, io};
 
-use amplify::hex::ToHex;
 use amplify::IoError;
 use bpstd::psbt::{Beneficiary, TxParams};
 use bpstd::{ConsensusEncode, Derive, IdxBase, Keychain, NormalIndex, Sats, Tx, XpubDerivable};
@@ -322,8 +321,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                 psbt_write(&psbt, psbt_path)?;
                 if let Ok(tx) = psbt_extract(&psbt, *broadcast, tx.as_deref()) {
                     if *broadcast {
+                        eprint!("Broadcasting transaction via {} ... ", self.indexer_url());
                         let indexer = self.indexer()?;
-                        eprint!("Broadcasting transaction via {} ... ", indexer.name());
                         indexer.broadcast(&tx)?;
                         eprintln!("success");
                     }
@@ -342,8 +341,8 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
 
                 if let Ok(tx) = psbt_extract(&psbt, *broadcast, tx.as_deref()) {
                     if *broadcast {
+                        eprint!("Broadcasting transaction via {} ... ", self.indexer_url());
                         let indexer = self.indexer()?;
-                        eprint!("Broadcasting transaction via {} ... ", indexer.name());
                         indexer.broadcast(&tx)?;
                         eprintln!("success");
                     }

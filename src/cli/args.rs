@@ -95,10 +95,19 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
         conf_path
     }
 
+    pub fn indexer_url(&self) -> &str {
+        match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
+            (None, Some(url), None) => url,
+            (Some(url), None, None) => url,
+            (None, None, Some(url)) => url,
+            _ => "<no indexer>",
+        }
+    }
+
     pub fn indexer(&self) -> Result<AnyIndexer, ExecError> {
         let network = self.general.network.to_string();
         Ok(match (&self.resolver.esplora, &self.resolver.electrum, &self.resolver.mempool) {
-            (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(url)?)),
+            (None, Some(url), None) => AnyIndexer::Electrum(Box::new(electrum::Client::new(&url)?)),
             (Some(url), None, None) => AnyIndexer::Esplora(Box::new(esplora::Client::new_esplora(
                 &url.replace("{network}", &network),
             )?)),
