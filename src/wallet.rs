@@ -32,7 +32,7 @@ use bpstd::{
 use nonasync::persistence::{
     CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
 };
-use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
+use psbt::{Psbt, PsbtConstructor, PsbtMeta, UnsignedTx, Utxo};
 
 use crate::{
     BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty,
@@ -437,6 +437,8 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
     #[inline]
     pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxo.contains(&outpoint) }
 
+    pub fn tx(&self, txid: Txid) -> Option<&WalletTx> { self.tx.get(&txid) }
+
     pub fn outpoint_by(
         &self,
         outpoint: Outpoint,
@@ -562,6 +564,10 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     type Descr = D;
 
     fn descriptor(&self) -> &D { &self.descr.generator }
+
+    fn prev_tx(&self, txid: Txid) -> Option<UnsignedTx> {
+        self.cache.tx(txid).map(|wtx| wtx.to_unsigned_tx())
+    }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
         self.cache.outpoint_by(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
