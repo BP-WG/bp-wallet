@@ -31,8 +31,8 @@ pub use esplora::{Builder, Config, Error};
 
 use super::BATCH_SIZE;
 use crate::{
-    BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit, TxDebit,
-    TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
+    BlockHash, BlockHeight, Indexer, Layer2, MayError, MiningInfo, Network, Party, TxCredit,
+    TxDebit, TxStatus, WalletAddr, WalletCache, WalletDescr, WalletTx,
 };
 
 /// Represents a client for interacting with the Esplora indexer.
@@ -365,5 +365,9 @@ impl Indexer for Client {
 
         // Otherwise it's in mempool (since we already confirmed it exists)
         Ok(TxStatus::Mempool)
+    }
+
+    fn block_hash(&self, height: u32) -> Result<BlockHash, Self::Error> {
+        self.inner.block_hash(height)
     }
 }
