@@ -264,6 +264,12 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                     eprintln!("Error: you must provide an argument specifying wallet descriptor");
                     exit(1);
                 }
+                for key in &self.wallet.key {
+                    if self.general.network.is_testnet() != key.xpub().is_testnet() {
+                        eprintln!("Error: key {key} is not compatible with the used network");
+                        exit(1);
+                    }
+                }
                 print!("Saving the wallet as '{name}' ... ");
                 let mut wallet = self.bp_wallet::<O::Descr>(&config)?;
                 let name = name.to_string();

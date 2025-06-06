@@ -20,6 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
@@ -203,6 +204,14 @@ impl DescriptorOpts for DescrStdOpts {
                 .exit();
         }
 
+        if keys.iter().map(|key| key.xpub().is_testnet()).collect::<BTreeSet<_>>().len() != 1 {
+            command
+                .error(
+                    ErrorKind::ValueValidation,
+                    "the provided keys must be from the same network",
+                )
+                .exit();
+        }
         let mut confine_keys = || {
             Confined::try_from(keys.to_vec()).unwrap_or_else(|_| {
                 command
