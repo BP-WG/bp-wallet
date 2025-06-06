@@ -57,9 +57,9 @@ pub struct HotArgs {
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum HotCommand {
-    /// Generate new seed file
+    /// Generate a new seed file
     ///
-    /// Generate new seed and saves it as an encoded file. The password can be provided via the
+    /// Generate a new seed and saves it as an encoded file. The password can be provided via the
     /// `SEED_PASSWORD` environment variable (security warning: don't set it on the command line,
     /// use instead the shell's builtin `read` and then export it).
     #[display("seed")]
@@ -68,9 +68,9 @@ pub enum HotCommand {
         output_file: PathBuf,
     },
 
-    /// Derive new extended private key from seed file
+    /// Derive a new extended private key from a seed file
     ///
-    /// Derive new extended private key from the seed and saves it into a separate file as a new
+    /// Derive a new extended private key from a seed and saves it into a separate file as a new
     /// signing account. The seed password can be provided via the `SEED_PASSWORD` environment
     /// variable (security warning: don't set it on the command line, use instead the shell's
     /// builtin `read` and then export it).
@@ -81,14 +81,14 @@ pub enum HotCommand {
         #[clap(short = 'N', long, conflicts_with = "mainnet")]
         no_password: bool,
 
-        /// Seed file containing extended master key, created previously with `seed` command
+        /// Seed file containing an extended master key, created previously with the `seed` command
         seed_file: PathBuf,
 
         /// Derivation scheme.
         #[clap(short, long, default_value = "bip86")]
         scheme: Bip43,
 
-        /// Account derivation number (should be hardened, i.e. with `h` suffix)
+        /// Account derivation number (should be hardened, i.e., with the `h` suffix)
         #[clap(short, long, default_value = "0h")]
         account: HardenedIndex,
 
@@ -104,7 +104,7 @@ pub enum HotCommand {
     #[display("info")]
     Info {
         /// File containing either seed information or extended private key for the account,
-        /// previously created with `seed` and `derive` commands
+        /// previously created with the `seed` and `derive` commands
         file: PathBuf,
 
         /// Print private information, including mnemonic, extended private keys and
