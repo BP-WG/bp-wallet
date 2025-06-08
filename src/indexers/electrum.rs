@@ -352,4 +352,10 @@ impl Indexer for Client {
             block_hash,
         }))
     }
+
+    fn block_hash(&self, height: u32) -> Result<BlockHash, Self::Error> {
+        self.block_header(height as usize)
+            .map(|header| header.block_hash())
+            .map_err(|_| ElectrumApiError::InvalidGenesis.into())
+    }
 }
