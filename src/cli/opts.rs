@@ -204,7 +204,7 @@ impl DescriptorOpts for DescrStdOpts {
                 .exit();
         }
 
-        if keys.iter().map(|key| key.xpub().is_testnet()).collect::<BTreeSet<_>>().len() != 1 {
+        if keys.iter().map(|key| key.xpub().is_testnet()).collect::<BTreeSet<_>>().len() > 1 {
             command
                 .error(
                     ErrorKind::ValueValidation,
