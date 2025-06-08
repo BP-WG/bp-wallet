@@ -132,7 +132,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     where
         for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
     {
-        eprint!("Loading descriptor");
+        eprint!("Loading descriptor ");
         let sync = self.sync || self.wallet.descriptor_opts.is_some();
 
         let mut wallet: Wallet<XpubDerivable, D> = if let Some(d) = self
@@ -140,11 +140,11 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
             .descriptor_opts
             .descriptor(&self.wallet.key, &self.wallet.internal_key, Self::command())
         {
-            eprintln!(" from command-line argument");
+            eprintln!("from command-line argument");
             Wallet::new_layer1(d.into(), self.general.network)
         } else {
             let path = if let Some(wallet_path) = self.wallet.wallet_path.clone() {
-                eprint!(" from specified wallet directory ... ");
+                eprint!("from specified wallet directory ... ");
                 wallet_path
             } else {
                 let wallet_name = self
@@ -153,7 +153,7 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
                     .as_ref()
                     .map(Ident::to_string)
                     .unwrap_or(conf.default_wallet.clone());
-                eprint!(" from wallet {wallet_name} ... ");
+                eprint!("from wallet {wallet_name} ... ");
                 self.general.wallet_dir(wallet_name)
             };
             let provider = FsTextStore::new(path)?;
