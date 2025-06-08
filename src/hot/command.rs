@@ -413,7 +413,7 @@ fn sighash(psbt_file: &Path) -> Result<(), DataError> {
             match sig_hasher.legacy_sighash(
                 input.index(),
                 &input.prev_txout().script_pubkey,
-                input.sighash_type.unwrap_or_default().to_consensus_u32(),
+                input.sighash_type.unwrap_or_default(),
             ) {
                 Ok(sighash) => println!("{sighash}\tn/a"),
                 Err(e) => println!("{e}"),
