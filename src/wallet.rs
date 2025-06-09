@@ -450,9 +450,11 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
             .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
         let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
         // Check whether TXO is spend
-        if !self.utxo.contains(&outpoint) {
+        if debit.spent.is_some() {
+            debug_assert!(!self.is_unspent(outpoint));
             return Err(NonWalletItem::Spent(outpoint));
         }
+        debug_assert!(self.is_unspent(outpoint));
         let utxo = WalletUtxo {
             outpoint,
             value: debit.value,
