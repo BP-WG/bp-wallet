@@ -846,6 +846,24 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, WalletCache<L2::Cache>, L2> {
 impl<K, D: Descriptor<K>, Cache: WalletCacheProvider<L2::Cache>, L2: Layer2>
     Wallet<K, D, Cache, L2>
 {
+    pub fn bind(
+        descr: WalletDescr<K, D, L2::Descr>,
+        data: WalletData<L2::Data>,
+        cache: Cache,
+        layer2: L2,
+    ) -> Self {
+        Self {
+            descr,
+            data,
+            cache,
+            layer2,
+        }
+    }
+
+    pub fn unbind(self) -> (WalletDescr<K, D, L2::Descr>, WalletData<L2::Data>, Cache) {
+        (self.descr, self.data, self.cache)
+    }
+
     pub fn set_name(&mut self, name: String) {
         self.data.name = name;
         self.data.mark_dirty();
