@@ -36,7 +36,10 @@ use strict_encoding::Ident;
 
 use crate::cli::{Args, Config, DescriptorOpts, Exec};
 use crate::fs::FsTextStore;
-use crate::{coinselect, AnyIndexerError, Indexer, OpType, Wallet, WalletAddr, WalletUtxo};
+use crate::{
+    coinselect, AnyIndexerError, Indexer, Layer2Empty, OpType, Wallet, WalletAddr, WalletCache,
+    WalletUtxo,
+};
 
 #[derive(Subcommand, Clone, PartialEq, Eq, Debug, Display)]
 pub enum Command {
@@ -237,14 +240,17 @@ impl<O: DescriptorOpts> Exec for Args<Command, O> {
                         if config.default_wallet == name { "\t[default]\t" } else { "\t\t" }
                     );
                     let provider = FsTextStore::new(entry.path().clone())?;
-                    let wallet = match Wallet::<XpubDerivable, O::Descr>::load(provider, true) {
-                        Err(err) => {
-                            error!("Error loading wallet descriptor: {err}");
-                            println!("# broken wallet descriptor");
-                            continue;
-                        }
-                        Ok(wallet) => wallet,
-                    };
+                    let wallet =
+                        match Wallet::<XpubDerivable, O::Descr, WalletCache<Layer2Empty>>::load(
+                            provider, true,
+                        ) {
+                            Err(err) => {
+                                error!("Error loading wallet descriptor: {err}");
+                                println!("# broken wallet descriptor");
+                                continue;
+                            }
+                            Ok(wallet) => wallet,
+                        };
                     println!("\t{}", wallet.descriptor());
                 }
                 if count == 0 {

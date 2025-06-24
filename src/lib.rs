@@ -64,4 +64,4 @@ pub use layer2::{
 };
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
 pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+pub use wallet::{Wallet, WalletCache, WalletCacheProvider, WalletData, WalletDescr};

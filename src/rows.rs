@@ -26,9 +26,7 @@ use std::str::FromStr;
 use amplify::hex::FromHex;
 use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 
-use crate::{
-    BlockHeight, Layer2Cache, Layer2Coin, Layer2Empty, Layer2Tx, Party, TxStatus, WalletCache,
-};
+use crate::{BlockHeight, Layer2Coin, Layer2Empty, Layer2Tx, Party, TxStatus};
 
 #[cfg_attr(
     feature = "serde",
@@ -144,82 +142,6 @@ pub struct CoinRow<L2: Layer2Coin> {
     pub outpoint: Outpoint,
     pub amount: Sats,
     pub layer2: Vec<L2>,
-}
-
-impl<L2: Layer2Cache> WalletCache<L2> {
-    pub fn coins(&self) -> impl Iterator<Item = CoinRow<L2::Coin>> + '_ {
-        self.utxo.iter().map(|outpoint| {
-            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
-            let out = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
-            CoinRow {
-                height: tx.status.map(|info| info.height),
-                outpoint: *outpoint,
-                address: out.derived_addr().expect("cache data inconsistency"),
-                amount: out.value,
-                layer2: none!(), // TODO: Add support to WalletTx
-            }
-        })
-    }
-
-    pub fn history(&self) -> impl Iterator<Item = TxRow<L2::Tx>> + '_ {
-        self.tx.values().map(|tx| {
-            let (credit, debit) = tx.credited_debited();
-            let mut row = TxRow {
-                height: tx.status.map(|info| info.height),
-                operation: OpType::Credit,
-                our_inputs: tx
-                    .inputs
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, inp)| inp.derived_addr().map(|_| idx as u32))
-                    .collect(),
-                counterparties: none!(),
-                own: none!(),
-                txid: tx.txid,
-                fee: tx.fee,
-                weight: tx.weight,
-                size: tx.size,
-                total: tx.total_moved(),
-                amount: Sats::ZERO,
-                balance: Sats::ZERO,
-                layer2: none!(), // TODO: Add support to WalletTx
-            };
-            // TODO: Add balance calculation
-            row.own = tx
-                .inputs
-                .iter()
-                .filter_map(|i| i.derived_addr().map(|a| (a, -i.value.sats_i64())))
-                .chain(
-                    tx.outputs
-                        .iter()
-                        .filter_map(|o| o.derived_addr().map(|a| (a, o.value.sats_i64()))),
-                )
-                .collect();
-            if credit.is_non_zero() {
-                row.counterparties = tx.credits().fold(Vec::new(), |mut cp, inp| {
-                    let party = Counterparty::from(inp.payer.clone());
-                    cp.push((party, inp.value.sats_i64()));
-                    cp
-                });
-                row.counterparties.extend(tx.debits().fold(Vec::new(), |mut cp, out| {
-                    let party = Counterparty::from(out.beneficiary.clone());
-                    cp.push((party, -out.value.sats_i64()));
-                    cp
-                }));
-                row.operation = OpType::Credit;
-                row.amount = credit - debit - tx.fee;
-            } else if debit.is_non_zero() {
-                row.counterparties = tx.debits().fold(Vec::new(), |mut cp, out| {
-                    let party = Counterparty::from(out.beneficiary.clone());
-                    cp.push((party, -out.value.sats_i64()));
-                    cp
-                });
-                row.operation = OpType::Debit;
-                row.amount = debit;
-            }
-            row
-        })
-    }
 }
 
 #[cfg(test)]

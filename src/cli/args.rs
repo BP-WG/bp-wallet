@@ -34,7 +34,7 @@ use crate::cli::{
 };
 use crate::fs::FsTextStore;
 use crate::indexers::esplora;
-use crate::{AnyIndexer, Wallet};
+use crate::{AnyIndexer, Layer2Empty, Wallet, WalletCache};
 
 /// Command-line arguments
 #[derive(Parser)]
@@ -119,14 +119,14 @@ impl<C: Clone + Eq + Debug + Subcommand, O: DescriptorOpts> Args<C, O> {
     pub fn bp_wallet<D: Descriptor>(
         &self,
         conf: &Config,
-    ) -> Result<Wallet<XpubDerivable, D>, ExecError>
+    ) -> Result<Wallet<XpubDerivable, D, WalletCache<Layer2Empty>>, ExecError>
     where
         for<'de> D: From<O::Descr> + serde::Serialize + serde::Deserialize<'de>,
     {
         eprint!("Loading descriptor");
         let sync = self.sync || self.wallet.descriptor_opts.is_some();
 
-        let mut wallet: Wallet<XpubDerivable, D> =
+        let mut wallet: Wallet<XpubDerivable, D, WalletCache<Layer2Empty>> =
             if let Some(d) = self.wallet.descriptor_opts.descriptor() {
                 eprintln!(" from command-line argument");
                 eprint!("Syncing");
