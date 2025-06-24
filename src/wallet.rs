@@ -860,6 +860,7 @@ impl<K, D: Descriptor<K>, Cache: WalletCacheProvider<L2::Cache>, L2: Layer2>
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn unbind(self) -> (WalletDescr<K, D, L2::Descr>, WalletData<L2::Data>, Cache) {
         (self.descr, self.data, self.cache)
     }
@@ -877,7 +878,7 @@ impl<K, D: Descriptor<K>, Cache: WalletCacheProvider<L2::Cache>, L2: Layer2>
     }
 
     pub fn data_l2(&self) -> &L2::Data { &self.data.layer2 }
-    pub fn cache_l2(&self) -> &L2::Cache { &self.cache.layer2() }
+    pub fn cache_l2(&self) -> &L2::Cache { self.cache.layer2() }
 
     pub fn with_data<T, E>(
         &mut self,
@@ -901,7 +902,7 @@ impl<K, D: Descriptor<K>, Cache: WalletCacheProvider<L2::Cache>, L2: Layer2>
         &mut self,
         f: impl FnOnce(&mut L2::Cache) -> Result<T, E>,
     ) -> Result<T, E> {
-        let res = f(&mut self.cache.layer2_mut())?;
+        let res = f(self.cache.layer2_mut())?;
         self.cache.mark_dirty();
         Ok(res)
     }
