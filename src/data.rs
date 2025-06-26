@@ -32,6 +32,7 @@ use bpstd::{
     ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
 };
 use psbt::{Prevout, Utxo};
+use sha2::{Digest, Sha256};
 
 pub type BlockHeight = NonZeroU32;
 
@@ -222,6 +223,18 @@ impl WalletTx {
         let credit = self.credit_sum().sats_i64();
         let debit = self.debit_sum().sats_i64();
         debit - credit
+    }
+
+    pub fn inputs_sha256(&self) -> Vec<u8> {
+        Sha256::digest(
+            self.inputs
+                .iter()
+                .map(|input| format!("{}:{}", input.outpoint.txid, input.outpoint.vout))
+                .collect::<Vec<_>>()
+                .join("|")
+                .as_bytes(),
+        )
+        .to_vec()
     }
 }
 
