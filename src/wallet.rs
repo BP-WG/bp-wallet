@@ -35,9 +35,9 @@ use nonasync::persistence::{
 use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 
 use crate::{
-    BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty,
-    MayError, MiningInfo, NoLayer2, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr,
-    WalletTx, WalletUtxo,
+    CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty, MayError,
+    MiningInfo, NoLayer2, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr, WalletTx,
+    WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -310,7 +310,6 @@ pub struct WalletCache<L2: Layer2Cache> {
     pub id: Option<String>,
     pub last_block: MiningInfo,
     pub last_change: NormalIndex,
-    pub headers: BTreeSet<BlockInfo>,
     pub tx: BTreeMap<Txid, WalletTx>,
     pub utxo: BTreeSet<Outpoint>,
     pub addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
@@ -324,7 +323,6 @@ impl<L2C: Layer2Cache> WalletCache<L2C> {
             id: None,
             last_block: MiningInfo::genesis(),
             last_change: NormalIndex::ZERO,
-            headers: none!(),
             tx: none!(),
             utxo: none!(),
             addr: none!(),
@@ -511,7 +509,6 @@ impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
             id: self.id.clone(),
             last_block: self.last_block,
             last_change: self.last_change,
-            headers: self.headers.clone(),
             tx: self.tx.clone(),
             utxo: self.utxo.clone(),
             addr: self.addr.clone(),
