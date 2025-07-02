@@ -27,24 +27,14 @@ extern crate serde_crate as serde;
 #[macro_use]
 #[cfg(feature = "clap")]
 extern crate clap;
-#[macro_use]
-#[cfg(feature = "log")]
-extern crate log;
 
-pub mod indexers;
-mod util;
 mod data;
 mod rows;
 mod wallet;
-mod layer2;
 pub mod coinselect;
-#[cfg(feature = "cli")]
-pub mod cli;
 #[cfg(feature = "signers")]
 pub mod hot;
 mod bip43;
-#[cfg(feature = "fs")]
-pub mod fs;
 
 pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use bpstd::*;
@@ -52,16 +42,7 @@ pub use data::{
     BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletAddr, WalletTx,
     WalletUtxo,
 };
-#[cfg(feature = "hot")]
-pub use hot::{HotArgs, HotCommand};
 #[cfg(feature = "signers")]
 pub use hot::{Seed, SeedType};
-pub use indexers::Indexer;
-#[cfg(any(feature = "electrum", feature = "esplora", feature = "mempool"))]
-pub use indexers::{AnyIndexer, AnyIndexerError};
-pub use layer2::{
-    Layer2, Layer2Cache, Layer2Coin, Layer2Data, Layer2Descriptor, Layer2Empty, Layer2Tx, NoLayer2,
-};
 pub use rows::{CoinRow, Counterparty, OpType, TxRow};
-pub use util::MayError;
-pub use wallet::{Wallet, WalletCache, WalletData, WalletDescr};
+pub use wallet::{Wallet, WalletCache};

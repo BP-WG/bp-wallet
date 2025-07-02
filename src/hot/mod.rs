@@ -21,14 +21,8 @@
 // limitations under the License.
 
 mod seed;
-#[cfg(feature = "cli")]
-mod command;
-#[cfg(feature = "cli")]
-pub mod signer;
 mod password;
 
-#[cfg(feature = "cli")]
-pub use command::{HotArgs, HotCommand};
 pub use io::{decrypt, encrypt, DataError, SecureIo};
 pub use password::calculate_entropy;
 pub use seed::{Seed, SeedType};

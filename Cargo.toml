@@ -15,16 +15,11 @@ license = "Apache-2.0"
 
 [workspace.dependencies]
 amplify = "4.9.0"
-nonasync = "0.1.3"
 bp-std = "0.12.0-rc.2"
 psbt = "0.12.0-rc.2"
 descriptors = "0.12.0-rc.2"
-bp-esplora = { version = "0.12.0-rc.1", default-features = false, features = ["blocking"] }
-bp-electrum = "0.12.0-rc.1"
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
-serde_json = "1.0.114"
-serde_yaml = "0.9.19"
-toml = "0.8.2"
+clap = { version = "4.5.40", features = ["derive"] }
 
 [package]
 name = "bp-wallet"
@@ -40,62 +35,30 @@ rust-version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-[[bin]]
-name = "bp"
-path = "src/bin/bp.rs"
-required-features = ["cli"]
-
-[[bin]]
-name = "bp-hot"
-path = "src/bin/bp-hot.rs"
-required-features = ["hot", "cli"]
-
 [lib]
 name = "bpwallet"
 
 [dependencies]
 amplify = { workspace = true }
-nonasync = { workspace = true }
-strict_encoding = "2.7.0"
 bp-std = { workspace = true }
-bp-esplora = { workspace = true, optional = true }
-bp-electrum = { workspace = true, optional = true }
 psbt = { workspace = true }
 descriptors = { workspace = true }
 
 sha2 = "0.10.8"
 rand = { version = "0.9.1", optional = true }
-rpassword = { version = "7.3.1", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 bip39 = { version = "2.0.0", optional = true }
 
+clap = { workspace = true, optional = true }
 serde_crate = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
-serde_yaml = { workspace = true, optional = true }
-toml = { workspace = true, optional = true }
-log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"], optional = true }
-colored = { version = "2", optional = true }
-
-# Cli-only:
-base64 = { version = "0.22.1", optional = true }
-env_logger = { version = "0.11.5", optional = true }
-clap = { version = "4.5.23", features = ["derive", "env"], optional = true }
-shellexpand = { version = "3.1.0", optional = true }
 
 [features]
 default = []
-all = ["electrum", "esplora", "mempool", "fs", "cli", "clap", "log", "hot", "signers", "client-side-validation", "strict-encoding"]
+all = ["signers", "client-side-validation", "strict-encoding", "serde", "clap"]
 signers = ["bp-std/signers", "bip39", "rand", "aes-gcm"]
-hot = ["signers", "rpassword", "cli"]
-cli = ["base64", "env_logger", "clap", "shellexpand", "fs", "serde", "electrum", "esplora", "mempool", "log", "colored"]
-log = ["dep:log", "env_logger"]
-electrum = ["bp-electrum", "serde", "serde_json"]
-esplora = ["bp-esplora"]
-mempool = ["esplora"]
-fs = ["serde"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
-serde = ["serde_crate", "serde_yaml", "toml", "bp-std/serde", "psbt/serde", "descriptors/serde"]
+serde = ["serde_crate", "bp-std/serde", "psbt/serde", "descriptors/serde"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
