@@ -31,7 +31,6 @@ extern crate clap;
 mod data;
 mod rows;
 mod wallet;
-pub mod coinselect;
 #[cfg(feature = "signers")]
 pub mod hot;
 mod bip43;
