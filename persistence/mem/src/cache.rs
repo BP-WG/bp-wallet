@@ -23,15 +23,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bpwallet::{
-    CoinRow, Counterparty, Keychain, NonWalletItem, OpType, Outpoint, Party, Sats, ScriptPubkey,
-    TxRow, Txid, WalletAddr, WalletTx, WalletUtxo,
+    AddressBalance, Counterparty, Keychain, NonWalletItem, OpType, Outpoint, Party, Sats,
+    ScriptPubkey, Txid, WalletCoin, WalletOperation, WalletTx, WalletUtxo,
 };
 
 #[derive(Debug)]
 pub struct MemCache {
     txes: BTreeMap<Txid, WalletTx>,
     utxos: BTreeSet<Outpoint>,
-    addrs: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
+    addrs: BTreeMap<Keychain, BTreeSet<AddressBalance>>,
 }
 
 impl MemCache {
@@ -54,7 +54,7 @@ impl MemCache {
     }
      */
 
-    pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
+    pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<AddressBalance> {
         self.addrs.get(&keychain).unwrap_or_else(|| {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
         })
@@ -137,11 +137,11 @@ impl MemCache {
         })
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = CoinRow> + '_ {
+    pub fn coins(&self) -> impl Iterator<Item = WalletCoin> + '_ {
         self.utxos.iter().map(|outpoint| {
             let tx = self.txes.get(&outpoint.txid).expect("cache data inconsistency");
             let out = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
-            CoinRow {
+            WalletCoin {
                 height: tx.status.map(|info| info.height),
                 outpoint: *outpoint,
                 address: out.derived_addr().expect("cache data inconsistency"),
@@ -150,10 +150,10 @@ impl MemCache {
         })
     }
 
-    pub fn history(&self) -> impl Iterator<Item = TxRow> + '_ {
+    pub fn history(&self) -> impl Iterator<Item = WalletOperation> + '_ {
         self.txes.values().map(|tx| {
             let (credit, debit) = tx.credited_debited();
-            let mut row = TxRow {
+            let mut row = WalletOperation {
                 height: tx.status.map(|info| info.height),
                 operation: OpType::Credit,
                 our_inputs: tx

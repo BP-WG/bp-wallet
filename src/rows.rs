@@ -86,7 +86,7 @@ impl FromStr for Counterparty {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct TxRow {
+pub struct WalletOperation {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub operation: OpType,
@@ -104,7 +104,7 @@ pub struct TxRow {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct CoinRow {
+pub struct WalletCoin {
     pub height: TxStatus<BlockHeight>,
     // TODO: Add date/time
     pub address: DerivedAddr,

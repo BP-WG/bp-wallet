@@ -31,7 +31,10 @@ use bpstd::{
     Outpoint, Sats, ScriptPubkey, Txid, Vout,
 };
 
-use crate::{CoinRow, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr, WalletTx, WalletUtxo};
+use crate::{
+    AddressBalance, Party, TxCredit, TxDebit, TxStatus, WalletCoin, WalletOperation, WalletTx,
+    WalletUtxo,
+};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
 #[display(doc_comments)]
@@ -49,16 +52,17 @@ pub enum NonWalletItem {
 pub trait WalletCache {
     type SyncError;
 
-    fn transactions(&self) -> impl Iterator<Item = (Txid, WalletTx)>;
+    fn transactions(&self) -> impl Iterator<Item = WalletTx>;
     fn txos(&self) -> impl Iterator<Item = WalletUtxo>;
     fn utxos(&self) -> impl Iterator<Item = WalletUtxo>;
-    fn coins(&self) -> impl Iterator<Item = CoinRow>;
-    fn history(&self) -> impl Iterator<Item = TxRow>;
-    fn balances(&self) -> impl Iterator<Item = WalletAddr>;
+    fn coins(&self) -> impl Iterator<Item = WalletCoin>;
+    fn history(&self) -> impl Iterator<Item = WalletOperation>;
+    fn balances(&self) -> impl Iterator<Item = AddressBalance>;
 
-    fn has_outpoint(&self, outpoint: Outpoint) -> bool;
-    fn outpoint(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem>;
-    fn is_unspent(&self, outpoint: Outpoint) -> bool;
+    fn has_txo(&self, outpoint: Outpoint) -> bool;
+    fn has_utxo(&self, outpoint: Outpoint) -> bool;
+    // TODO: MAke ScriptPubkey part of the WalletUtxo
+    fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem>;
 
     fn add_tx(&mut self, tx: WalletTx);
     fn add_utxo(&mut self, utxo: WalletUtxo);
@@ -67,7 +71,7 @@ pub trait WalletCache {
     fn set_last_used(&mut self, keychain: Keychain, index: NormalIndex);
 
     // NB: The indexer is internalized inside a concrete cache implementation
-    fn update<K, D: Descriptor<K>>(&mut self, descriptor: &D) -> Result<(), Self::SyncError>;
+    fn sync<K, D: Descriptor<K>>(&mut self, descriptor: &D) -> Result<(), Self::SyncError>;
 
     fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
         let unsigned_tx = psbt.to_unsigned_tx();
@@ -78,7 +82,7 @@ pub trait WalletCache {
                 let addr = Address::with(&input.prev_txout().script_pubkey, meta.network).ok();
                 TxCredit {
                     outpoint: input.previous_outpoint,
-                    payer: match (self.outpoint(input.previous_outpoint), addr) {
+                    payer: match (self.utxo(input.previous_outpoint), addr) {
                         (Ok((utxo, _)), Some(addr)) => Party::Wallet(DerivedAddr::new(
                             addr,
                             utxo.terminal.keychain,
@@ -161,7 +165,7 @@ impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
     fn descriptor(&self) -> &D { &self.descriptor }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
-        self.cache.outpoint(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
+        self.cache.utxo(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
     }
 
     fn network(&self) -> Network { self.network }
@@ -197,7 +201,7 @@ impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
     pub fn into_components(self) -> (D, C) { (self.descriptor, self.cache) }
 
     pub fn update(&mut self) -> Result<(), C::SyncError> {
-        self.cache.update::<K, D>(&self.descriptor)
+        self.cache.sync::<K, D>(&self.descriptor)
     }
 
     fn next_published_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
@@ -227,14 +231,12 @@ impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
     pub fn balance(&self) -> Sats { self.cache.coins().map(|utxo| utxo.amount).sum::<Sats>() }
 
     #[inline]
-    pub fn transactions(&self) -> impl Iterator<Item = (Txid, WalletTx)> + '_ {
-        self.cache.transactions()
-    }
+    pub fn transactions(&self) -> impl Iterator<Item = WalletTx> + '_ { self.cache.transactions() }
 
     #[inline]
-    pub fn coins(&self) -> impl Iterator<Item = CoinRow> + '_ { self.cache.coins() }
+    pub fn coins(&self) -> impl Iterator<Item = WalletCoin> + '_ { self.cache.coins() }
 
-    pub fn address_coins(&self) -> HashMap<DerivedAddr, Vec<CoinRow>> {
+    pub fn address_coins(&self) -> HashMap<DerivedAddr, Vec<WalletCoin>> {
         let map = HashMap::new();
         self.coins().fold(map, |mut acc, txo| {
             acc.entry(txo.address).or_default().push(txo);
@@ -243,23 +245,20 @@ impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
     }
 
     #[inline]
-    pub fn balances(&self) -> impl Iterator<Item = WalletAddr> + '_ { self.cache.balances() }
+    pub fn balances(&self) -> impl Iterator<Item = AddressBalance> + '_ { self.cache.balances() }
 
     #[inline]
-    pub fn history(&self) -> impl Iterator<Item = TxRow> + '_ { self.cache.history() }
+    pub fn history(&self) -> impl Iterator<Item = WalletOperation> + '_ { self.cache.history() }
 
     #[inline]
-    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool { self.cache.has_outpoint(outpoint) }
+    pub fn has_txo(&self, outpoint: Outpoint) -> bool { self.cache.has_txo(outpoint) }
 
     #[inline]
-    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.cache.is_unspent(outpoint) }
+    pub fn has_utxo(&self, outpoint: Outpoint) -> bool { self.cache.has_utxo(outpoint) }
 
     #[inline]
-    pub fn outpoint_by(
-        &self,
-        outpoint: Outpoint,
-    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
-        self.cache.outpoint(outpoint)
+    pub fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
+        self.cache.utxo(outpoint)
     }
 
     #[inline]

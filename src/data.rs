@@ -230,7 +230,7 @@ impl Party {
             _ => None,
         }
     }
-    pub fn from_wallet_addr<T>(wallet_addr: &WalletAddr<T>) -> Self {
+    pub fn from_wallet_addr<T>(wallet_addr: &AddressBalance<T>) -> Self {
         Party::Wallet(DerivedAddr {
             addr: wallet_addr.addr,
             terminal: wallet_addr.terminal,
@@ -329,7 +329,7 @@ impl WalletUtxo {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct WalletAddr<T = Sats> {
+pub struct AddressBalance<T = Sats> {
     pub terminal: Terminal,
     pub addr: Address,
     pub used: u32,
@@ -337,23 +337,23 @@ pub struct WalletAddr<T = Sats> {
     pub balance: T,
 }
 
-impl<T> Ord for WalletAddr<T>
+impl<T> Ord for AddressBalance<T>
 where T: Eq
 {
     fn cmp(&self, other: &Self) -> Ordering { self.terminal.cmp(&other.terminal) }
 }
 
-impl<T> PartialOrd for WalletAddr<T>
+impl<T> PartialOrd for AddressBalance<T>
 where T: Eq
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-impl<T> From<DerivedAddr> for WalletAddr<T>
+impl<T> From<DerivedAddr> for AddressBalance<T>
 where T: Default
 {
     fn from(derived: DerivedAddr) -> Self {
-        WalletAddr {
+        AddressBalance {
             addr: derived.addr,
             terminal: derived.terminal,
             used: 0,
@@ -363,17 +363,17 @@ where T: Default
     }
 }
 
-impl<T> WalletAddr<T>
+impl<T> AddressBalance<T>
 where T: Default
 {
     pub fn new(addr: Address, keychain: Keychain, index: NormalIndex) -> Self {
-        WalletAddr::<T>::from(DerivedAddr::new(addr, keychain, index))
+        AddressBalance::<T>::from(DerivedAddr::new(addr, keychain, index))
     }
 }
 
-impl WalletAddr<i64> {
-    pub fn expect_transmute(self) -> WalletAddr<Sats> {
-        WalletAddr {
+impl AddressBalance<i64> {
+    pub fn expect_transmute(self) -> AddressBalance<Sats> {
+        AddressBalance {
             terminal: self.terminal,
             addr: self.addr,
             used: self.used,
