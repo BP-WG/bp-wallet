@@ -35,11 +35,7 @@ use psbt::{Prevout, Utxo};
 
 pub type BlockHeight = NonZeroU32;
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct BlockInfo {
     pub mined: MiningInfo,
@@ -59,11 +55,7 @@ impl PartialOrd for BlockInfo {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct MiningInfo {
     pub height: BlockHeight,
@@ -92,11 +84,7 @@ impl MiningInfo {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum TxStatus<T = MiningInfo> {
     Unknown,
@@ -132,11 +120,7 @@ where T: Display
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Display)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[display("{txid}.{vin}")]
 pub struct Inpoint {
     pub txid: Txid,
@@ -183,11 +167,7 @@ impl FromStr for Inpoint {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct WalletTx {
     pub txid: Txid,
@@ -226,11 +206,7 @@ impl WalletTx {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub enum Party {
     Subsidy,
 
@@ -296,11 +272,7 @@ impl FromStr for Party {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxCredit {
     pub outpoint: Outpoint,
@@ -318,11 +290,7 @@ impl TxCredit {
     pub fn derived_addr(&self) -> Option<DerivedAddr> { self.payer.derived_addr() }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxDebit {
     pub outpoint: Outpoint,
@@ -359,11 +327,7 @@ impl WalletUtxo {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct WalletAddr<T = Sats> {
     pub terminal: Terminal,

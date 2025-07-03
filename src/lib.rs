@@ -23,7 +23,8 @@
 #[macro_use]
 extern crate amplify;
 #[cfg(feature = "serde")]
-extern crate serde_crate as serde;
+#[macro_use]
+extern crate serde;
 #[macro_use]
 #[cfg(feature = "clap")]
 extern crate clap;

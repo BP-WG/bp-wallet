@@ -28,11 +28,7 @@ use bpstd::{Address, DerivedAddr, Outpoint, Sats, ScriptPubkey, Txid};
 
 use crate::{BlockHeight, Party, TxStatus};
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
 pub enum OpType {
     #[display("+")]
@@ -42,11 +38,7 @@ pub enum OpType {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 pub enum Counterparty {
     Miner,
     #[from]
@@ -92,11 +84,7 @@ impl FromStr for Counterparty {
     }
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase",)
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct TxRow {
     pub height: TxStatus<BlockHeight>,
@@ -114,11 +102,7 @@ pub struct TxRow {
     pub balance: Sats,
 }
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(crate = "serde_crate", rename_all = "camelCase")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct CoinRow {
     pub height: TxStatus<BlockHeight>,
