@@ -53,6 +53,7 @@ pub trait WalletCache {
     fn last_used(&self, keychain: Keychain) -> Option<NormalIndex>;
     fn set_last_used(&mut self, keychain: Keychain, index: NormalIndex);
 
+    // NB: The indexer is internalized inside a concrete cache implementation
     fn update<K, D: Descriptor<K>>(&mut self, descriptor: &D) -> Result<(), Self::SyncError>;
 
     fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
@@ -171,6 +172,17 @@ impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
 }
 
 impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
+    pub fn with(network: Network, descriptor: D, cache: C) -> Wallet<K, D, C> {
+        Self {
+            descriptor,
+            network,
+            cache,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn into_components(self) -> (D, C) { (self.descriptor, self.cache) }
+
     pub fn update(&mut self) -> Result<(), C::SyncError> {
         self.cache.update::<K, D>(&self.descriptor)
     }
