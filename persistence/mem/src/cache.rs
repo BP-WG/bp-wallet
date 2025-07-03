@@ -23,18 +23,20 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bpwallet::{
-    AddressBalance, Counterparty, Keychain, NonWalletItem, OpType, Outpoint, Party, Sats,
-    ScriptPubkey, Txid, WalletCoin, WalletOperation, WalletTx, WalletUtxo,
+    AddressBalance, Counterparty, Descriptor, Keychain, NonWalletItem, NormalIndex, OpType,
+    Outpoint, Party, Sats, ScriptPubkey, Txid, WalletCache, WalletCoin, WalletOperation, WalletTx,
+    WalletUtxo,
 };
 
 #[derive(Debug)]
 pub struct MemCache {
+    last_used: BTreeMap<Keychain, NormalIndex>,
     txes: BTreeMap<Txid, WalletTx>,
     utxos: BTreeSet<Outpoint>,
     addrs: BTreeMap<Keychain, BTreeSet<AddressBalance>>,
 }
 
-impl MemCache {
+impl WalletCache for MemCache {
     /*
     pub fn with<I: Indexer, K, D: Descriptor<K>>(
         descriptor: &D,
@@ -53,55 +55,12 @@ impl MemCache {
         res
     }
      */
+    type SyncError = ();
 
-    pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<AddressBalance> {
-        self.addrs.get(&keychain).unwrap_or_else(|| {
-            panic!("keychain #{keychain} is not supported by the wallet descriptor")
-        })
-    }
-
-    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool {
-        let Some(tx) = self.txes.get(&outpoint.txid) else {
-            return false;
-        };
-        let Some(out) = tx.outputs.get(outpoint.vout.to_usize()) else {
-            return false;
-        };
-        matches!(out.beneficiary, Party::Wallet(_))
-    }
-
-    #[inline]
-    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxos.contains(&outpoint) }
-
-    pub fn outpoint_by(
-        &self,
-        outpoint: Outpoint,
-    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
-        let tx = self.txes.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
-        let debit = tx
-            .outputs
-            .get(outpoint.vout.into_usize())
-            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
-        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
-        // Check whether TXO is spend
-        if debit.spent.is_some() {
-            debug_assert!(!self.is_unspent(outpoint));
-            return Err(NonWalletItem::Spent(outpoint));
-        }
-        debug_assert!(self.is_unspent(outpoint));
-        let utxo = WalletUtxo {
-            outpoint,
-            value: debit.value,
-            terminal,
-            status: tx.status,
-        };
-        let spk =
-            debit.beneficiary.script_pubkey().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?;
-        Ok((utxo, spk))
-    }
+    fn transactions(&self) -> impl Iterator<Item = WalletTx> { self.txes.values().cloned() }
 
     // TODO: Rename WalletUtxo into WalletTxo and add `spent_by` optional field.
-    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
+    fn txos(&self) -> impl Iterator<Item = WalletUtxo> {
         self.txes.iter().flat_map(|(txid, tx)| {
             tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
                 if let Party::Wallet(w) = out.beneficiary {
@@ -118,7 +77,7 @@ impl MemCache {
         })
     }
 
-    pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
+    fn utxos(&self) -> impl Iterator<Item = WalletUtxo> {
         self.utxos.iter().filter_map(|outpoint| {
             let tx = self.txes.get(&outpoint.txid).expect("cache data inconsistency");
             let debit = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
@@ -137,7 +96,7 @@ impl MemCache {
         })
     }
 
-    pub fn coins(&self) -> impl Iterator<Item = WalletCoin> + '_ {
+    fn coins(&self) -> impl Iterator<Item = WalletCoin> {
         self.utxos.iter().map(|outpoint| {
             let tx = self.txes.get(&outpoint.txid).expect("cache data inconsistency");
             let out = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
@@ -150,7 +109,7 @@ impl MemCache {
         })
     }
 
-    pub fn history(&self) -> impl Iterator<Item = WalletOperation> + '_ {
+    fn history(&self) -> impl Iterator<Item = WalletOperation> {
         self.txes.values().map(|tx| {
             let (credit, debit) = tx.credited_debited();
             let mut row = WalletOperation {
@@ -207,5 +166,62 @@ impl MemCache {
             }
             row
         })
+    }
+
+    fn balances(&self) -> impl Iterator<Item = AddressBalance> {
+        self.addrs.values().flatten().cloned()
+    }
+
+    fn has_txo(&self, outpoint: Outpoint) -> bool {
+        let Some(tx) = self.txes.get(&outpoint.txid) else {
+            return false;
+        };
+        let Some(out) = tx.outputs.get(outpoint.vout.to_usize()) else {
+            return false;
+        };
+        matches!(out.beneficiary, Party::Wallet(_))
+    }
+
+    #[inline]
+    fn has_utxo(&self, outpoint: Outpoint) -> bool { self.utxos.contains(&outpoint) }
+
+    fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
+        let tx = self.txes.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
+        let debit = tx
+            .outputs
+            .get(outpoint.vout.into_usize())
+            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
+        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
+        // Check whether TXO is spend
+        if debit.spent.is_some() {
+            debug_assert!(!self.has_utxo(outpoint));
+            return Err(NonWalletItem::Spent(outpoint));
+        }
+        debug_assert!(self.has_utxo(outpoint));
+        let utxo = WalletUtxo {
+            outpoint,
+            value: debit.value,
+            terminal,
+            status: tx.status,
+        };
+        let spk =
+            debit.beneficiary.script_pubkey().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?;
+        Ok((utxo, spk))
+    }
+
+    fn add_tx(&mut self, tx: WalletTx) { self.txes.insert(tx.txid, tx); }
+
+    fn add_utxo(&mut self, utxo: WalletUtxo) { self.utxos.insert(utxo.outpoint); }
+
+    fn last_used(&self, keychain: Keychain) -> Option<NormalIndex> {
+        self.last_used.get(&keychain).copied()
+    }
+
+    fn set_last_used(&mut self, keychain: Keychain, index: NormalIndex) {
+        self.last_used.insert(keychain, index);
+    }
+
+    fn sync<K, D: Descriptor<K>>(&mut self, _descriptor: &D) -> Result<(), Self::SyncError> {
+        todo!()
     }
 }
