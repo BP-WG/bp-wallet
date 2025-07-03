@@ -27,11 +27,11 @@ use std::ops::{AddAssign, Deref};
 
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, Keychain, Network, NormalIndex,
-    Outpoint, Sats, ScriptPubkey, Txid,
+    Outpoint, Sats, ScriptPubkey, Txid, Vout,
 };
 use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 
-use crate::{CoinRow, TxRow, WalletAddr, WalletTx, WalletUtxo};
+use crate::{CoinRow, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr, WalletTx, WalletUtxo};
 
 pub trait WalletCache {
     type SyncError;
@@ -42,17 +42,88 @@ pub trait WalletCache {
     fn coins(&self) -> impl Iterator<Item = CoinRow>;
     fn history(&self) -> impl Iterator<Item = TxRow>;
     fn balances(&self) -> impl Iterator<Item = WalletAddr>;
-    fn outpoint(&self, outpoint: Outpoint) -> Option<(WalletUtxo, ScriptPubkey)>;
 
     fn has_outpoint(&self, outpoint: Outpoint) -> bool;
+    fn outpoint(&self, outpoint: Outpoint) -> Option<(WalletUtxo, ScriptPubkey)>;
     fn is_unspent(&self, outpoint: Outpoint) -> bool;
+
+    fn add_tx(&mut self, tx: WalletTx);
+    fn add_utxo(&mut self, utxo: WalletUtxo);
 
     fn last_used(&self, keychain: Keychain) -> Option<NormalIndex>;
     fn set_last_used(&mut self, keychain: Keychain, index: NormalIndex);
 
     fn update<K, D: Descriptor<K>>(&mut self, descriptor: &D) -> Result<(), Self::SyncError>;
 
-    fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta);
+    fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
+        let unsigned_tx = psbt.to_unsigned_tx();
+        let txid = unsigned_tx.txid();
+        let inputs = psbt
+            .inputs()
+            .map(|input| {
+                let addr = Address::with(&input.prev_txout().script_pubkey, meta.network).ok();
+                TxCredit {
+                    outpoint: input.previous_outpoint,
+                    payer: match (self.outpoint(input.previous_outpoint), addr) {
+                        (Some((utxo, _)), Some(addr)) => Party::Wallet(DerivedAddr::new(
+                            addr,
+                            utxo.terminal.keychain,
+                            utxo.terminal.index,
+                        )),
+                        (_, Some(addr)) => Party::Counterparty(addr),
+                        _ => Party::Unknown(input.prev_txout().script_pubkey.clone()),
+                    },
+                    sequence: unsigned_tx.inputs[input.index()].sequence,
+                    coinbase: false,
+                    script_sig: none!(),
+                    witness: none!(),
+                    value: input.value(),
+                }
+            })
+            .collect();
+        let outputs = psbt
+            .outputs()
+            .map(|output| {
+                let vout = Vout::from_u32(output.index() as u32);
+                let addr = Address::with(&output.script, meta.network).ok();
+                TxDebit {
+                    outpoint: Outpoint::new(txid, vout),
+                    beneficiary: match (meta.change, addr) {
+                        (Some(change), Some(addr)) if change.vout == vout => Party::Wallet(
+                            DerivedAddr::new(addr, change.terminal.keychain, change.terminal.index),
+                        ),
+                        (_, Some(addr)) => Party::Counterparty(addr),
+                        (_, _) => Party::Unknown(output.script.clone()),
+                    },
+                    value: output.value(),
+                    spent: None,
+                }
+            })
+            .collect();
+
+        let wallet_tx = WalletTx {
+            txid,
+            status: TxStatus::Mempool,
+            inputs,
+            outputs,
+            fee: meta.fee,
+            size: meta.size,
+            weight: meta.weight,
+            version: unsigned_tx.version,
+            locktime: unsigned_tx.lock_time,
+        };
+        for output in &wallet_tx.outputs {
+            if let Party::Wallet(derived_addr) = output.beneficiary {
+                self.add_utxo(WalletUtxo {
+                    outpoint: output.outpoint,
+                    value: output.value,
+                    terminal: derived_addr.terminal,
+                    status: TxStatus::Mempool,
+                });
+            }
+        }
+        self.add_tx(wallet_tx);
+    }
 }
 
 #[derive(Clone, Debug)]

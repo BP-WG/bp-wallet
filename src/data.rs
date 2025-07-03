@@ -344,7 +344,6 @@ pub struct WalletUtxo {
     pub value: Sats,
     pub terminal: Terminal,
     pub status: TxStatus,
-    // TODO: Add layer 2
 }
 
 impl WalletUtxo {
