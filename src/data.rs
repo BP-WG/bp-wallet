@@ -363,6 +363,90 @@ impl AddressBalance<i64> {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display)]
+pub enum OpType {
+    #[display("+")]
+    Credit,
+    #[display("-")]
+    Debit,
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
+pub enum Counterparty {
+    Miner,
+    #[from]
+    Address(Address),
+    #[from]
+    Unknown(ScriptPubkey),
+}
+
+impl From<Party> for Counterparty {
+    fn from(party: Party) -> Self {
+        match party {
+            Party::Subsidy => Counterparty::Miner,
+            Party::Counterparty(addr) => Counterparty::Address(addr),
+            Party::Unknown(script) => Counterparty::Unknown(script),
+            Party::Wallet(_) => {
+                panic!("counterparty must be constructed only for external parties")
+            }
+        }
+    }
+}
+
+impl Display for Counterparty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Counterparty::Miner => f.write_str("miner"),
+            Counterparty::Address(addr) => Display::fmt(addr, f),
+            Counterparty::Unknown(script) => LowerHex::fmt(script, f),
+        }
+    }
+}
+
+impl FromStr for Counterparty {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "miner" {
+            return Ok(Counterparty::Miner);
+        }
+        Address::from_str(s)
+            .map(Self::from)
+            .or_else(|_| ScriptPubkey::from_hex(s).map(Self::from))
+            .map_err(|_| s.to_owned())
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub struct WalletOperation {
+    pub height: TxStatus<BlockHeight>,
+    // TODO: Add date/time
+    pub operation: OpType,
+    pub our_inputs: Vec<u32>,
+    pub counterparties: Vec<(Counterparty, i64)>,
+    pub own: Vec<(DerivedAddr, i64)>,
+    pub txid: Txid,
+    pub fee: Sats,
+    pub weight: u32,
+    pub size: u32,
+    pub total: Sats,
+    pub amount: Sats,
+    pub balance: Sats,
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+pub struct WalletCoin {
+    pub height: TxStatus<BlockHeight>,
+    // TODO: Add date/time
+    pub address: DerivedAddr,
+    pub outpoint: Outpoint,
+    pub amount: Sats,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -391,6 +475,24 @@ mod tests {
         ));
         assert_from_str_to_str(Party::Wallet(
             DerivedAddr::from_str("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq&1/1").unwrap(),
+        ));
+    }
+
+    #[test]
+    fn test_counterparty_str_round_trip() {
+        fn assert_from_str_to_str(counterparty: Counterparty) {
+            let str = counterparty.to_string();
+            let from_str = Counterparty::from_str(&str).unwrap();
+
+            assert_eq!(counterparty, from_str);
+        }
+
+        assert_from_str_to_str(Counterparty::Miner);
+        assert_from_str_to_str(Counterparty::Address(
+            Address::from_str("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq").unwrap(),
+        ));
+        assert_from_str_to_str(Counterparty::Unknown(
+            ScriptPubkey::from_hex("0014a3f8e1f1e1c7e8b4b2f4f3a1b4f7f0a1b4f7f0a1").unwrap(),
         ));
     }
 }
