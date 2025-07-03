@@ -1,15 +1,41 @@
+// Modern, minimalistic & standard-compliant cold wallet library.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Written in 2020-2024 by
+//     Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
+//
+// Copyright (C) 2020-2024 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2020-2024 Dr Maxim Orlovsky. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use std::collections::{BTreeMap, BTreeSet};
 
+use bpwallet::{
+    CoinRow, Counterparty, Keychain, NonWalletItem, OpType, Outpoint, Party, Sats, ScriptPubkey,
+    TxRow, Txid, WalletAddr, WalletTx, WalletUtxo,
+};
+
 #[derive(Debug)]
-pub struct WalletCache {
-    pub last_block: MiningInfo,
-    pub last_used: BTreeMap<Keychain, NormalIndex>,
-    pub tx: BTreeMap<Txid, WalletTx>,
-    pub utxo: BTreeSet<Outpoint>,
-    pub addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
+pub struct MemCache {
+    txes: BTreeMap<Txid, WalletTx>,
+    utxos: BTreeSet<Outpoint>,
+    addrs: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
 }
 
-impl WalletCache {
+impl MemCache {
+    /*
     pub fn with<I: Indexer, K, D: Descriptor<K>>(
         descriptor: &D,
         indexer: &I,
@@ -26,15 +52,16 @@ impl WalletCache {
         self.mark_dirty();
         res
     }
+     */
 
     pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
-        self.addr.get(&keychain).unwrap_or_else(|| {
+        self.addrs.get(&keychain).unwrap_or_else(|| {
             panic!("keychain #{keychain} is not supported by the wallet descriptor")
         })
     }
 
     pub fn has_outpoint(&self, outpoint: Outpoint) -> bool {
-        let Some(tx) = self.tx.get(&outpoint.txid) else {
+        let Some(tx) = self.txes.get(&outpoint.txid) else {
             return false;
         };
         let Some(out) = tx.outputs.get(outpoint.vout.to_usize()) else {
@@ -44,13 +71,13 @@ impl WalletCache {
     }
 
     #[inline]
-    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxo.contains(&outpoint) }
+    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxos.contains(&outpoint) }
 
     pub fn outpoint_by(
         &self,
         outpoint: Outpoint,
     ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
-        let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
+        let tx = self.txes.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
         let debit = tx
             .outputs
             .get(outpoint.vout.into_usize())
@@ -75,7 +102,7 @@ impl WalletCache {
 
     // TODO: Rename WalletUtxo into WalletTxo and add `spent_by` optional field.
     pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
-        self.tx.iter().flat_map(|(txid, tx)| {
+        self.txes.iter().flat_map(|(txid, tx)| {
             tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
                 if let Party::Wallet(w) = out.beneficiary {
                     Some(WalletUtxo {
@@ -92,8 +119,8 @@ impl WalletCache {
     }
 
     pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
-        self.utxo.iter().filter_map(|outpoint| {
-            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
+        self.utxos.iter().filter_map(|outpoint| {
+            let tx = self.txes.get(&outpoint.txid).expect("cache data inconsistency");
             let debit = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
             let terminal =
                 debit.derived_addr().expect("UTXO doesn't belong to the wallet").terminal;
@@ -111,8 +138,8 @@ impl WalletCache {
     }
 
     pub fn coins(&self) -> impl Iterator<Item = CoinRow> + '_ {
-        self.utxo.iter().map(|outpoint| {
-            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
+        self.utxos.iter().map(|outpoint| {
+            let tx = self.txes.get(&outpoint.txid).expect("cache data inconsistency");
             let out = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
             CoinRow {
                 height: tx.status.map(|info| info.height),
@@ -124,7 +151,7 @@ impl WalletCache {
     }
 
     pub fn history(&self) -> impl Iterator<Item = TxRow> + '_ {
-        self.tx.values().map(|tx| {
+        self.txes.values().map(|tx| {
             let (credit, debit) = tx.credited_debited();
             let mut row = TxRow {
                 height: tx.status.map(|info| info.height),

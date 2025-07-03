@@ -15,6 +15,7 @@ exclude = [".github"]
 
 [dependencies]
 amplify.workspace = true
+bp-wallet.workspace = true
 
 [features]
 

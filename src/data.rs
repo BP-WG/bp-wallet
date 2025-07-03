@@ -27,11 +27,11 @@ use std::str::FromStr;
 
 use amplify::hex;
 use amplify::hex::FromHex;
+use bpstd::psbt::Utxo;
 use bpstd::{
-    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Sats,
-    ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
+    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint,
+    Prevout, Sats, ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
 };
-use psbt::{Prevout, Utxo};
 
 pub type BlockHeight = NonZeroU32;
 

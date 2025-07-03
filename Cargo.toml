@@ -1,5 +1,5 @@
 [workspace]
-members = ["."]#, "persistence/mem"]
+members = [".", "persistence/mem"]
 exclude = ["convert"]
 
 [workspace.package]
@@ -16,8 +16,7 @@ license = "Apache-2.0"
 [workspace.dependencies]
 amplify = "4.9.0"
 bp-std = "0.12.0-rc.2"
-psbt = "0.12.0-rc.2"
-descriptors = "0.12.0-rc.2"
+bp-wallet = { version = "0.12.0-rc.2", path = "." }
 
 sha2 = "0.10.8"
 rand = "0.9.1"
@@ -47,11 +46,7 @@ name = "bpwallet"
 [dependencies]
 amplify = { workspace = true }
 bp-std = { workspace = true }
-psbt = { workspace = true }
-descriptors = { workspace = true }
-
 rand = { workspace = true, optional = true }
-
 clap = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 
@@ -60,9 +55,9 @@ default = []
 all = ["signers", "client-side-validation", "strict-encoding", "serde", "clap"]
 clap = ["dep:clap"]
 signers = ["bp-std/signers", "dep:rand"]
-client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
-strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
-serde = ["dep:serde", "bp-std/serde", "psbt/serde", "descriptors/serde"]
+client-side-validation = ["bp-std/client-side-validation"]
+strict-encoding = ["bp-std/strict_encoding"]
+serde = ["dep:serde", "bp-std/serde"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"

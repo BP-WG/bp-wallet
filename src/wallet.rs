@@ -25,13 +25,26 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
+use bpstd::psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, Keychain, Network, NormalIndex,
     Outpoint, Sats, ScriptPubkey, Txid, Vout,
 };
-use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 
 use crate::{CoinRow, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr, WalletTx, WalletUtxo};
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
+#[display(doc_comments)]
+pub enum NonWalletItem {
+    /// transaction {0} is not known to the wallet.
+    NonWalletTx(Txid),
+    /// transaction {0} doesn't contains output number {1}.
+    NoOutput(Txid, Vout),
+    /// transaction output {0} doesn't belong to the wallet.
+    NonWalletUtxo(Outpoint),
+    /// transaction output {0} is spent.
+    Spent(Outpoint),
+}
 
 pub trait WalletCache {
     type SyncError;
@@ -44,7 +57,7 @@ pub trait WalletCache {
     fn balances(&self) -> impl Iterator<Item = WalletAddr>;
 
     fn has_outpoint(&self, outpoint: Outpoint) -> bool;
-    fn outpoint(&self, outpoint: Outpoint) -> Option<(WalletUtxo, ScriptPubkey)>;
+    fn outpoint(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem>;
     fn is_unspent(&self, outpoint: Outpoint) -> bool;
 
     fn add_tx(&mut self, tx: WalletTx);
@@ -66,7 +79,7 @@ pub trait WalletCache {
                 TxCredit {
                     outpoint: input.previous_outpoint,
                     payer: match (self.outpoint(input.previous_outpoint), addr) {
-                        (Some((utxo, _)), Some(addr)) => Party::Wallet(DerivedAddr::new(
+                        (Ok((utxo, _)), Some(addr)) => Party::Wallet(DerivedAddr::new(
                             addr,
                             utxo.terminal.keychain,
                             utxo.terminal.index,
@@ -148,7 +161,7 @@ impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
     fn descriptor(&self) -> &D { &self.descriptor }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
-        self.cache.outpoint(outpoint).map(|(utxo, spk)| (utxo.into_utxo(), spk))
+        self.cache.outpoint(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
     }
 
     fn network(&self) -> Network { self.network }
@@ -242,7 +255,10 @@ impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
     pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.cache.is_unspent(outpoint) }
 
     #[inline]
-    pub fn outpoint_by(&self, outpoint: Outpoint) -> Option<(WalletUtxo, ScriptPubkey)> {
+    pub fn outpoint_by(
+        &self,
+        outpoint: Outpoint,
+    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
         self.cache.outpoint(outpoint)
     }
 

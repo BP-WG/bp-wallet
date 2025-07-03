@@ -285,6 +285,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bp-persist-mem"
+version = "0.12.0-rc.2"
+dependencies = [
+ "amplify",
+ "bp-wallet",
+]
+
+[[package]]
 name = "bp-seals"
 version = "0.12.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -329,10 +337,8 @@ dependencies = [
  "amplify",
  "bp-std",
  "clap",
- "descriptors",
  "getrandom 0.2.16",
  "getrandom 0.3.3",
- "psbt",
  "rand 0.9.1",
  "serde",
  "wasm-bindgen",
