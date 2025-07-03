@@ -20,7 +20,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{HashMap, HashSet};
 
 use bpwallet::{
     AddressBalance, Counterparty, Descriptor, Keychain, NonWalletItem, NormalIndex, OpType,
@@ -30,31 +30,13 @@ use bpwallet::{
 
 #[derive(Debug)]
 pub struct MemCache {
-    last_used: BTreeMap<Keychain, NormalIndex>,
-    txes: BTreeMap<Txid, WalletTx>,
-    utxos: BTreeSet<Outpoint>,
-    addrs: BTreeMap<Keychain, BTreeSet<AddressBalance>>,
+    last_used: HashMap<Keychain, NormalIndex>,
+    txes: HashMap<Txid, WalletTx>,
+    utxos: HashSet<Outpoint>,
+    addrs: HashMap<Keychain, HashSet<AddressBalance>>,
 }
 
 impl WalletCache for MemCache {
-    /*
-    pub fn with<I: Indexer, K, D: Descriptor<K>>(
-        descriptor: &D,
-        indexer: &I,
-    ) -> MayError<Self, Vec<I::Error>> {
-        indexer.create::<K, D>(descriptor)
-    }
-
-    pub fn update<I: Indexer, K, D: Descriptor<K>>(
-        &mut self,
-        descriptor: &D,
-        indexer: &I,
-    ) -> MayError<usize, Vec<I::Error>> {
-        let res = indexer.update::<K, D>(descriptor, self);
-        self.mark_dirty();
-        res
-    }
-     */
     type SyncError = ();
 
     fn transactions(&self) -> impl Iterator<Item = WalletTx> { self.txes.values().cloned() }
@@ -225,3 +207,22 @@ impl WalletCache for MemCache {
         todo!()
     }
 }
+
+/*
+pub fn with<I: Indexer, K, D: Descriptor<K>>(
+    descriptor: &D,
+    indexer: &I,
+) -> MayError<Self, Vec<I::Error>> {
+    indexer.create::<K, D>(descriptor)
+}
+
+pub fn update<I: Indexer, K, D: Descriptor<K>>(
+    &mut self,
+    descriptor: &D,
+    indexer: &I,
+) -> MayError<usize, Vec<I::Error>> {
+    let res = indexer.update::<K, D>(descriptor, self);
+    self.mark_dirty();
+    res
+}
+ */
