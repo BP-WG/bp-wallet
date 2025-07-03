@@ -1,4 +1,4 @@
-// Modern, minimalistic & standard-compliant hot wallet library.
+// Modern, minimalistic & standard-compliant cold wallet library.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,6 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod seed;
+#[macro_use]
+extern crate amplify;
 
-pub use seed::{Seed, SeedType};
+mod cache;
+
+pub use cache::MemCache;

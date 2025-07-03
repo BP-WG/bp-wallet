@@ -374,7 +374,7 @@ impl<O: DescriptorOpts> Exec for Args<BpCommand, O> {
             } => {
                 let wallet = self.bp_wallet::<O::Descr>(&config)?;
                 println!("\nTerm.\t{:62}\t# used\tVol., ṩ\tBalance, ṩ", "Address");
-                for info in wallet.address_balance() {
+                for info in wallet.balances() {
                     let WalletAddr {
                         addr,
                         terminal,

@@ -20,16 +20,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::path::Path;
-use std::str::FromStr;
-use std::{fs, io};
-
-use bip39::Mnemonic;
 use bpstd::{HardenedIndex, XkeyOrigin, Xpriv, XprivAccount};
 use rand::RngCore;
 
 use crate::bip43::DerivationStandard;
-use crate::hot::{decrypt, encrypt, DataError, SecureIo};
 use crate::Bip43;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Debug)]
@@ -94,37 +88,5 @@ impl Seed {
 
         let origin = XkeyOrigin::new(master_xpub.fingerprint(), derivation);
         XprivAccount::new(account_xpriv, origin).expect("seed must always derive")
-    }
-}
-
-impl SecureIo for Seed {
-    fn read<P>(file: P, password: &str) -> Result<Self, DataError>
-    where P: AsRef<Path> {
-        let data = fs::read(file)?;
-        let data = decrypt(&data, password).map_err(|_| DataError::SeedPassword)?;
-        let s = String::from_utf8(data).map_err(|_| DataError::SeedPassword)?;
-        let mnemonic = Mnemonic::from_str(&s).map_err(|_| DataError::SeedPassword)?;
-        Ok(Seed(Box::from(mnemonic.to_entropy())))
-    }
-
-    fn write<P>(&self, file: P, password: &str) -> io::Result<()>
-    where P: AsRef<Path> {
-        let mnemonic = Mnemonic::from_entropy(&self.0).expect("mnemonic generator is broken");
-        fs::write(file, encrypt(mnemonic.to_string().into_bytes(), password))
-    }
-}
-
-impl SecureIo for XprivAccount {
-    fn read<P>(file: P, password: &str) -> Result<Self, DataError>
-    where P: AsRef<Path> {
-        let data = fs::read(file)?;
-        let data = decrypt(&data, password).map_err(|_| DataError::AccountPassword)?;
-        let s = String::from_utf8(data).map_err(|_| DataError::AccountPassword)?;
-        XprivAccount::from_str(&s).map_err(|_| DataError::AccountPassword)
-    }
-
-    fn write<P>(&self, file: P, password: &str) -> io::Result<()>
-    where P: AsRef<Path> {
-        fs::write(file, encrypt(self.to_string().into_bytes(), password))
     }
 }

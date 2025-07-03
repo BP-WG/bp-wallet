@@ -21,23 +21,19 @@
 // limitations under the License.
 
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Deref};
 
+use bpstd::psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 use bpstd::{
-    Address, AddressNetwork, DerivedAddr, Descriptor, Idx, IdxBase, Keychain, Network, NormalIndex,
+    Address, AddressNetwork, DerivedAddr, Descriptor, Idx, Keychain, Network, NormalIndex,
     Outpoint, Sats, ScriptPubkey, Txid, Vout,
 };
-use nonasync::persistence::{
-    CloneNoPersistence, Persistence, PersistenceError, PersistenceProvider, Persisting,
-};
-use psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 
 use crate::{
-    BlockInfo, CoinRow, Indexer, Layer2, Layer2Cache, Layer2Data, Layer2Descriptor, Layer2Empty,
-    MayError, MiningInfo, NoLayer2, Party, TxCredit, TxDebit, TxRow, TxStatus, WalletAddr,
-    WalletTx, WalletUtxo,
+    AddressBalance, Party, TxCredit, TxDebit, TxStatus, WalletCoin, WalletOperation, WalletTx,
+    WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -53,540 +49,135 @@ pub enum NonWalletItem {
     Spent(Outpoint),
 }
 
-pub struct AddrIter<'descr, K, D: Descriptor<K>> {
-    generator: &'descr D,
-    network: AddressNetwork,
-    keychain: Keychain,
-    index: NormalIndex,
-    remainder: VecDeque<DerivedAddr>,
-    _phantom: PhantomData<K>,
-}
+pub trait WalletCache {
+    type SyncError;
 
-impl<K, D: Descriptor<K>> Iterator for AddrIter<'_, K, D> {
-    type Item = DerivedAddr;
+    fn transactions(&self) -> impl Iterator<Item = WalletTx>;
+    fn txos(&self) -> impl Iterator<Item = WalletUtxo>;
+    fn utxos(&self) -> impl Iterator<Item = WalletUtxo>;
+    fn coins(&self) -> impl Iterator<Item = WalletCoin>;
+    fn history(&self) -> impl Iterator<Item = WalletOperation>;
+    fn balances(&self) -> impl Iterator<Item = AddressBalance>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(derived) = self.remainder.pop_front() {
-                return Some(derived);
-            }
-            self.remainder = self
-                .generator
-                .derive_address(self.network, self.keychain, self.index)
-                .map(|addr| DerivedAddr::new(addr, self.keychain, self.index))
-                .collect();
-            self.index.checked_inc_assign()?;
-        }
-    }
-}
+    fn has_txo(&self, outpoint: Outpoint) -> bool;
+    fn has_utxo(&self, outpoint: Outpoint) -> bool;
+    // TODO: MAke ScriptPubkey part of the WalletUtxo
+    fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem>;
 
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(
-        crate = "serde_crate",
-        rename_all = "camelCase",
-        bound(
-            serialize = "D: serde::Serialize, L2: serde::Serialize",
-            deserialize = "D: serde::Deserialize<'de>, L2: serde::Deserialize<'de>"
-        )
-    )
-)]
-#[derive(Getters, Debug)]
-pub struct WalletDescr<K, D, L2 = Layer2Empty>
-where
-    D: Descriptor<K>,
-    L2: Layer2Descriptor,
-{
-    #[getter(skip)]
-    #[cfg_attr(feature = "serde", serde(skip))]
-    persistence: Option<Persistence<Self>>,
+    fn add_tx(&mut self, tx: WalletTx);
+    fn add_utxo(&mut self, utxo: WalletUtxo);
 
-    generator: D,
-    #[getter(as_copy)]
-    network: Network,
-    layer2: L2,
-    #[cfg_attr(feature = "serde", serde(skip))]
-    _phantom: PhantomData<K>,
-}
+    fn last_used(&self, keychain: Keychain) -> Option<NormalIndex>;
+    fn set_last_used(&mut self, keychain: Keychain, index: NormalIndex);
 
-impl<K, D: Descriptor<K>> WalletDescr<K, D, Layer2Empty> {
-    pub fn new_standard(descr: D, network: Network) -> Self {
-        WalletDescr {
-            persistence: None,
-            generator: descr,
-            network,
-            layer2: none!(),
-            _phantom: PhantomData,
-        }
-    }
-}
+    // NB: The indexer is internalized inside a concrete cache implementation
+    fn sync<K, D: Descriptor<K>>(&mut self, descriptor: &D) -> Result<(), Self::SyncError>;
 
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> WalletDescr<K, D, L2> {
-    pub fn new_layer2(descr: D, layer2: L2, network: Network) -> Self {
-        WalletDescr {
-            persistence: None,
-            generator: descr,
-            network,
-            layer2,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn addresses(&self, keychain: impl Into<Keychain>) -> AddrIter<K, D> {
-        AddrIter {
-            generator: &self.generator,
-            network: self.network.into(),
-            keychain: keychain.into(),
-            index: NormalIndex::ZERO,
-            remainder: VecDeque::new(),
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn with_descriptor<T, E>(
-        &mut self,
-        f: impl FnOnce(&mut D) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let res = f(&mut self.generator)?;
-        self.mark_dirty();
-        Ok(res)
-    }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Deref for WalletDescr<K, D, L2> {
-    type Target = D;
-
-    fn deref(&self) -> &Self::Target { &self.generator }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> CloneNoPersistence for WalletDescr<K, D, L2> {
-    fn clone_no_persistence(&self) -> Self {
-        Self {
-            persistence: None,
-            generator: self.generator.clone(),
-            network: self.network,
-            layer2: self.layer2.clone(),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Persisting for WalletDescr<K, D, L2> {
-    #[inline]
-    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
-    #[inline]
-    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
-    #[inline]
-    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2Descriptor> Drop for WalletDescr<K, D, L2> {
-    fn drop(&mut self) {
-        if self.is_autosave() && self.is_dirty() {
-            if let Err(e) = self.store() {
-                #[cfg(feature = "log")]
-                log::error!("impossible to automatically-save wallet descriptor on Drop: {e}");
-                #[cfg(not(feature = "log"))]
-                eprintln!("impossible to automatically-save wallet descriptor on Drop: {e}")
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(
-        crate = "serde_crate",
-        rename_all = "camelCase",
-        bound(serialize = "L2: serde::Serialize", deserialize = "L2: serde::Deserialize<'de>")
-    )
-)]
-pub struct WalletData<L2: Layer2Data> {
-    #[cfg_attr(feature = "serde", serde(skip))]
-    persistence: Option<Persistence<Self>>,
-
-    /// This field is used by applications to link data with other wallet components
-    #[cfg_attr(feature = "serde", serde(skip))]
-    pub id: Option<String>,
-    pub name: String,
-    pub tx_annotations: BTreeMap<Txid, String>,
-    pub txout_annotations: BTreeMap<Outpoint, String>,
-    pub txin_annotations: BTreeMap<Outpoint, String>,
-    pub addr_annotations: BTreeMap<Address, String>,
-    pub last_used: BTreeMap<Keychain, NormalIndex>,
-    pub layer2: L2,
-}
-
-impl<L2: Layer2Data> CloneNoPersistence for WalletData<L2> {
-    fn clone_no_persistence(&self) -> Self {
-        Self {
-            persistence: None,
-            id: self.id.clone(),
-            name: self.name.clone(),
-            tx_annotations: self.tx_annotations.clone(),
-            txout_annotations: self.txout_annotations.clone(),
-            txin_annotations: self.txin_annotations.clone(),
-            addr_annotations: self.addr_annotations.clone(),
-            layer2: self.layer2.clone(),
-            last_used: self.last_used.clone(),
-        }
-    }
-}
-
-impl<L2: Layer2Data> Persisting for WalletData<L2> {
-    #[inline]
-    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
-    #[inline]
-    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
-    #[inline]
-    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
-}
-
-impl WalletData<Layer2Empty> {
-    pub fn new_layer1() -> Self {
-        WalletData {
-            persistence: None,
-            id: None,
-            name: none!(),
-            tx_annotations: empty!(),
-            txout_annotations: empty!(),
-            txin_annotations: empty!(),
-            addr_annotations: empty!(),
-            layer2: none!(),
-            last_used: empty!(),
-        }
-    }
-}
-
-impl<L2: Layer2Data> WalletData<L2> {
-    pub fn new_layer2() -> Self
-    where L2: Default {
-        WalletData {
-            persistence: None,
-            id: None,
-            name: none!(),
-            tx_annotations: empty!(),
-            txout_annotations: empty!(),
-            txin_annotations: empty!(),
-            addr_annotations: empty!(),
-            layer2: none!(),
-            last_used: empty!(),
-        }
-    }
-}
-
-impl<L2: Layer2Data> Drop for WalletData<L2> {
-    fn drop(&mut self) {
-        if self.is_autosave() && self.is_dirty() {
-            if let Err(e) = self.store() {
-                #[cfg(feature = "log")]
-                log::error!("impossible to automatically-save wallet data on Drop: {e}");
-                #[cfg(not(feature = "log"))]
-                eprintln!("impossible to automatically-save wallet data on Drop: {e}")
-            }
-        }
-    }
-}
-
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(
-        crate = "serde_crate",
-        rename_all = "camelCase",
-        bound(serialize = "L2: serde::Serialize", deserialize = "L2: serde::Deserialize<'de>")
-    )
-)]
-#[derive(Debug)]
-pub struct WalletCache<L2: Layer2Cache> {
-    #[cfg_attr(feature = "serde", serde(skip))]
-    persistence: Option<Persistence<Self>>,
-
-    /// This field is used by applications to link data with other wallet components
-    #[cfg_attr(feature = "serde", serde(skip))]
-    pub id: Option<String>,
-    pub last_block: MiningInfo,
-    pub last_change: NormalIndex,
-    pub headers: BTreeSet<BlockInfo>,
-    pub tx: BTreeMap<Txid, WalletTx>,
-    pub utxo: BTreeSet<Outpoint>,
-    pub addr: BTreeMap<Keychain, BTreeSet<WalletAddr>>,
-    pub layer2: L2,
-}
-
-impl<L2C: Layer2Cache> WalletCache<L2C> {
-    pub(crate) fn new_nonsync() -> Self {
-        WalletCache {
-            persistence: None,
-            id: None,
-            last_block: MiningInfo::genesis(),
-            last_change: NormalIndex::ZERO,
-            headers: none!(),
-            tx: none!(),
-            utxo: none!(),
-            addr: none!(),
-            layer2: none!(),
-        }
-    }
-
-    pub fn with<I: Indexer, K, D: Descriptor<K>, L2: Layer2<Cache = L2C>>(
-        descriptor: &WalletDescr<K, D, L2::Descr>,
-        indexer: &I,
-    ) -> MayError<Self, Vec<I::Error>> {
-        indexer.create::<K, D, L2>(descriptor)
-    }
-
-    pub fn update<I: Indexer, K, D: Descriptor<K>, L2: Layer2<Cache = L2C>>(
-        &mut self,
-        descriptor: &WalletDescr<K, D, L2::Descr>,
-        indexer: &I,
-    ) -> MayError<usize, Vec<I::Error>> {
-        let res = indexer.update::<K, D, L2>(descriptor, self);
-        self.mark_dirty();
-        res
-    }
-
-    pub fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
+    fn register_psbt(&mut self, psbt: &Psbt, meta: &PsbtMeta) {
         let unsigned_tx = psbt.to_unsigned_tx();
         let txid = unsigned_tx.txid();
+        let inputs = psbt
+            .inputs()
+            .map(|input| {
+                let addr = Address::with(&input.prev_txout().script_pubkey, meta.network).ok();
+                TxCredit {
+                    outpoint: input.previous_outpoint,
+                    payer: match (self.utxo(input.previous_outpoint), addr) {
+                        (Ok((utxo, _)), Some(addr)) => Party::Wallet(DerivedAddr::new(
+                            addr,
+                            utxo.terminal.keychain,
+                            utxo.terminal.index,
+                        )),
+                        (_, Some(addr)) => Party::Counterparty(addr),
+                        _ => Party::Unknown(input.prev_txout().script_pubkey.clone()),
+                    },
+                    sequence: unsigned_tx.inputs[input.index()].sequence,
+                    coinbase: false,
+                    script_sig: none!(),
+                    witness: none!(),
+                    value: input.value(),
+                }
+            })
+            .collect();
+        let outputs = psbt
+            .outputs()
+            .map(|output| {
+                let vout = Vout::from_u32(output.index() as u32);
+                let addr = Address::with(&output.script, meta.network).ok();
+                TxDebit {
+                    outpoint: Outpoint::new(txid, vout),
+                    beneficiary: match (meta.change, addr) {
+                        (Some(change), Some(addr)) if change.vout == vout => Party::Wallet(
+                            DerivedAddr::new(addr, change.terminal.keychain, change.terminal.index),
+                        ),
+                        (_, Some(addr)) => Party::Counterparty(addr),
+                        (_, _) => Party::Unknown(output.script.clone()),
+                    },
+                    value: output.value(),
+                    spent: None,
+                }
+            })
+            .collect();
+
         let wallet_tx = WalletTx {
             txid,
             status: TxStatus::Mempool,
-            inputs: psbt
-                .inputs()
-                .map(|input| {
-                    let addr = Address::with(&input.prev_txout().script_pubkey, meta.network).ok();
-                    TxCredit {
-                        outpoint: input.previous_outpoint,
-                        payer: match (self.utxo.get(&input.previous_outpoint), addr) {
-                            (Some(_), Some(addr)) => {
-                                let (keychain, index) = self
-                                    .addr
-                                    .iter()
-                                    .flat_map(|(keychain, addrs)| {
-                                        addrs.iter().map(|a| (*keychain, a))
-                                    })
-                                    .find(|(_, a)| a.addr == addr)
-                                    .map(|(keychain, a)| (keychain, a.terminal.index))
-                                    .expect("address cache inconsistency");
-                                Party::Wallet(DerivedAddr::new(addr, keychain, index))
-                            }
-                            (_, Some(addr)) => Party::Counterparty(addr),
-                            _ => Party::Unknown(input.prev_txout().script_pubkey.clone()),
-                        },
-                        sequence: unsigned_tx.inputs[input.index()].sequence,
-                        coinbase: false,
-                        script_sig: none!(),
-                        witness: none!(),
-                        value: input.value(),
-                    }
-                })
-                .collect(),
-            outputs: psbt
-                .outputs()
-                .map(|output| {
-                    let vout = Vout::from_u32(output.index() as u32);
-                    let addr = Address::with(&output.script, meta.network).ok();
-                    TxDebit {
-                        outpoint: Outpoint::new(txid, vout),
-                        beneficiary: match (meta.change, addr) {
-                            (Some(change), Some(addr)) if change.vout == vout => {
-                                Party::Wallet(DerivedAddr::new(
-                                    addr,
-                                    change.terminal.keychain,
-                                    change.terminal.index,
-                                ))
-                            }
-                            (_, Some(addr)) => Party::Counterparty(addr),
-                            (_, _) => Party::Unknown(output.script.clone()),
-                        },
-                        value: output.value(),
-                        spent: None,
-                    }
-                })
-                .collect(),
+            inputs,
+            outputs,
             fee: meta.fee,
             size: meta.size,
             weight: meta.weight,
             version: unsigned_tx.version,
             locktime: unsigned_tx.lock_time,
         };
-        self.tx.insert(txid, wallet_tx);
-        if let Some(change) = meta.change {
-            self.utxo.insert(Outpoint::new(txid, change.vout));
-        }
-    }
-
-    pub fn addresses_on(&self, keychain: Keychain) -> &BTreeSet<WalletAddr> {
-        self.addr.get(&keychain).unwrap_or_else(|| {
-            panic!("keychain #{keychain} is not supported by the wallet descriptor")
-        })
-    }
-
-    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool {
-        let Some(tx) = self.tx.get(&outpoint.txid) else {
-            return false;
-        };
-        let Some(out) = tx.outputs.get(outpoint.vout.to_usize()) else {
-            return false;
-        };
-        matches!(out.beneficiary, Party::Wallet(_))
-    }
-
-    #[inline]
-    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.utxo.contains(&outpoint) }
-
-    pub fn outpoint_by(
-        &self,
-        outpoint: Outpoint,
-    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
-        let tx = self.tx.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;
-        let debit = tx
-            .outputs
-            .get(outpoint.vout.into_usize())
-            .ok_or(NonWalletItem::NoOutput(outpoint.txid, outpoint.vout))?;
-        let terminal = debit.derived_addr().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?.terminal;
-        // Check whether TXO is spend
-        if debit.spent.is_some() {
-            debug_assert!(!self.is_unspent(outpoint));
-            return Err(NonWalletItem::Spent(outpoint));
-        }
-        debug_assert!(self.is_unspent(outpoint));
-        let utxo = WalletUtxo {
-            outpoint,
-            value: debit.value,
-            terminal,
-            status: tx.status,
-        };
-        let spk =
-            debit.beneficiary.script_pubkey().ok_or(NonWalletItem::NonWalletUtxo(outpoint))?;
-        Ok((utxo, spk))
-    }
-
-    // TODO: Rename WalletUtxo into WalletTxo and add `spent_by` optional field.
-    pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
-        self.tx.iter().flat_map(|(txid, tx)| {
-            tx.outputs.iter().enumerate().filter_map(|(vout, out)| {
-                if let Party::Wallet(w) = out.beneficiary {
-                    Some(WalletUtxo {
-                        outpoint: Outpoint::new(*txid, vout as u32),
-                        value: out.value,
-                        terminal: w.terminal,
-                        status: tx.status,
-                    })
-                } else {
-                    None
-                }
-            })
-        })
-    }
-
-    pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ {
-        self.utxo.iter().filter_map(|outpoint| {
-            let tx = self.tx.get(&outpoint.txid).expect("cache data inconsistency");
-            let debit = tx.outputs.get(outpoint.vout_usize()).expect("cache data inconsistency");
-            let terminal =
-                debit.derived_addr().expect("UTXO doesn't belong to the wallet").terminal;
-            if debit.spent.is_some() {
-                None
-            } else {
-                Some(WalletUtxo {
-                    outpoint: *outpoint,
-                    value: debit.value,
-                    terminal,
-                    status: tx.status,
-                })
-            }
-        })
-    }
-}
-
-impl<L2: Layer2Cache> CloneNoPersistence for WalletCache<L2> {
-    fn clone_no_persistence(&self) -> Self {
-        Self {
-            persistence: None,
-            id: self.id.clone(),
-            last_block: self.last_block,
-            last_change: self.last_change,
-            headers: self.headers.clone(),
-            tx: self.tx.clone(),
-            utxo: self.utxo.clone(),
-            addr: self.addr.clone(),
-            layer2: self.layer2.clone(),
-        }
-    }
-}
-
-impl<L2: Layer2Cache> Persisting for WalletCache<L2> {
-    #[inline]
-    fn persistence(&self) -> Option<&Persistence<Self>> { self.persistence.as_ref() }
-    #[inline]
-    fn persistence_mut(&mut self) -> Option<&mut Persistence<Self>> { self.persistence.as_mut() }
-    #[inline]
-    fn as_mut_persistence(&mut self) -> &mut Option<Persistence<Self>> { &mut self.persistence }
-}
-
-impl<L2: Layer2Cache> Drop for WalletCache<L2> {
-    fn drop(&mut self) {
-        if self.is_autosave() && self.is_dirty() {
-            if let Err(e) = self.store() {
-                #[cfg(feature = "log")]
-                log::error!("impossible to automatically-save wallet cache on Drop: {e}");
-                #[cfg(not(feature = "log"))]
-                eprintln!("impossible to automatically-save wallet cache on Drop: {e}")
+        for output in &wallet_tx.outputs {
+            if let Party::Wallet(derived_addr) = output.beneficiary {
+                self.add_utxo(WalletUtxo {
+                    outpoint: output.outpoint,
+                    value: output.value,
+                    terminal: derived_addr.terminal,
+                    status: TxStatus::Mempool,
+                });
             }
         }
+        self.add_tx(wallet_tx);
     }
 }
 
-#[derive(Debug)]
-pub struct Wallet<K, D: Descriptor<K>, L2: Layer2 = NoLayer2> {
-    descr: WalletDescr<K, D, L2::Descr>,
-    data: WalletData<L2::Data>,
-    cache: WalletCache<L2::Cache>,
-    layer2: L2,
+#[derive(Clone, Debug)]
+pub struct Wallet<K, D: Descriptor<K>, C: WalletCache> {
+    descriptor: D,
+    network: Network,
+    cache: C,
+    _phantom: PhantomData<K>,
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> Deref for Wallet<K, D, L2> {
-    type Target = WalletDescr<K, D, L2::Descr>;
+impl<K, D: Descriptor<K>, C: WalletCache> Deref for Wallet<K, D, C> {
+    type Target = D;
 
-    fn deref(&self) -> &Self::Target { &self.descr }
+    fn deref(&self) -> &Self::Target { &self.descriptor }
 }
 
-impl<K, D: Descriptor<K>, L2: Layer2> CloneNoPersistence for Wallet<K, D, L2> {
-    fn clone_no_persistence(&self) -> Self {
-        Self {
-            descr: self.descr.clone_no_persistence(),
-            data: self.data.clone_no_persistence(),
-            cache: self.cache.clone_no_persistence(),
-            layer2: self.layer2.clone_no_persistence(),
-        }
-    }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
+impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
     type Key = K;
     type Descr = D;
 
-    fn descriptor(&self) -> &D { &self.descr.generator }
+    fn descriptor(&self) -> &D { &self.descriptor }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
-        self.cache.outpoint_by(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
+        self.cache.utxo(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
     }
 
-    fn network(&self) -> Network { self.descr.network }
+    fn network(&self) -> Network { self.network }
 
     fn next_derivation_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
         let keychain = keychain.into();
-        let mut idx = self.last_published_derivation_index(keychain);
-        let last_index = self.data.last_used.entry(keychain).or_default();
-        idx = cmp::max(*last_index, idx);
+        let mut idx = self.next_published_derivation_index(keychain);
+        let mut last_index = self.cache.last_used(keychain).unwrap_or_default();
+        idx = cmp::max(last_index, idx);
         if shift {
-            *last_index = idx.saturating_add(1u32);
-            self.data.mark_dirty();
+            last_index = idx.saturating_add(1u32);
+            self.cache.set_last_used(keychain, last_index);
         }
         idx
     }
@@ -597,83 +188,23 @@ impl<K, D: Descriptor<K>, L2: Layer2> PsbtConstructor for Wallet<K, D, L2> {
     }
 }
 
-impl<K, D: Descriptor<K>> Wallet<K, D> {
-    pub fn new_layer1(descr: D, network: Network) -> Self {
-        Wallet {
-            cache: WalletCache::new_nonsync(),
-            data: WalletData::new_layer1(),
-            descr: WalletDescr::new_standard(descr, network),
-            layer2: none!(),
-        }
-    }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn new_layer2(descr: D, l2_descr: L2::Descr, layer2: L2, network: Network) -> Self {
-        Wallet {
-            cache: WalletCache::new_nonsync(),
-            data: WalletData::new_layer2(),
-            descr: WalletDescr::new_layer2(descr, l2_descr, network),
-            layer2,
+impl<K, D: Descriptor<K>, C: WalletCache> Wallet<K, D, C> {
+    pub fn with(network: Network, descriptor: D, cache: C) -> Wallet<K, D, C> {
+        Self {
+            descriptor,
+            network,
+            cache,
+            _phantom: PhantomData,
         }
     }
 
-    pub fn set_name(&mut self, name: String) {
-        self.data.name = name;
-        self.data.mark_dirty();
+    pub fn into_components(self) -> (D, C) { (self.descriptor, self.cache) }
+
+    pub fn update(&mut self) -> Result<(), C::SyncError> {
+        self.cache.sync::<K, D>(&self.descriptor)
     }
 
-    pub fn with_descriptor<T, E>(
-        &mut self,
-        f: impl FnOnce(&mut D) -> Result<T, E>,
-    ) -> Result<T, E> {
-        self.descr.with_descriptor(f)
-    }
-
-    pub fn data_l2(&self) -> &L2::Data { &self.data.layer2 }
-    pub fn cache_l2(&self) -> &L2::Cache { &self.cache.layer2 }
-
-    pub fn with_data<T, E>(
-        &mut self,
-        f: impl FnOnce(&mut WalletData<L2::Data>) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let res = f(&mut self.data)?;
-        self.data.mark_dirty();
-        Ok(res)
-    }
-
-    pub fn with_data_l2<T, E>(
-        &mut self,
-        f: impl FnOnce(&mut L2::Data) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let res = f(&mut self.data.layer2)?;
-        self.data.mark_dirty();
-        Ok(res)
-    }
-
-    pub fn with_cache_l2<T, E>(
-        &mut self,
-        f: impl FnOnce(&mut L2::Cache) -> Result<T, E>,
-    ) -> Result<T, E> {
-        let res = f(&mut self.cache.layer2)?;
-        self.cache.mark_dirty();
-        Ok(res)
-    }
-
-    #[must_use]
-    pub fn update<I: Indexer>(&mut self, indexer: &I) -> MayError<(), Vec<I::Error>> {
-        self.cache.update::<I, K, D, L2>(&self.descr, indexer).map(|_| ())
-    }
-
-    pub fn to_deriver(&self) -> D
-    where
-        D: Clone,
-        K: Clone,
-    {
-        self.descr.clone()
-    }
-
-    fn last_published_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
+    fn next_published_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
         let keychain = keychain.into();
         self.address_coins()
             .keys()
@@ -685,34 +216,27 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
             .unwrap_or_default()
     }
 
-    pub fn last_derivation_index(&self, keychain: impl Into<Keychain>) -> NormalIndex {
-        let keychain = keychain.into();
-        let last_index = self.data.last_used.get(&keychain).copied().unwrap_or_default();
-        cmp::max(last_index, self.last_published_derivation_index(keychain))
-    }
-
     pub fn next_address(&mut self, keychain: impl Into<Keychain>, shift: bool) -> Address {
         let keychain = keychain.into();
         let index = self.next_derivation_index(keychain, shift);
-        self.addresses(keychain)
-            .nth(index.index() as usize)
-            .expect("address iterator always can produce address")
-            .addr
+        let spk = self
+            .descriptor
+            .derive(keychain, index)
+            .next()
+            .expect("wallet descriptor mush always be able to produce a derivation")
+            .to_script_pubkey();
+        Address::with(&spk, self.network).expect("non-standard script pubkey")
     }
 
     pub fn balance(&self) -> Sats { self.cache.coins().map(|utxo| utxo.amount).sum::<Sats>() }
 
     #[inline]
-    pub fn transactions(&self) -> &BTreeMap<Txid, WalletTx> { &self.cache.tx }
+    pub fn transactions(&self) -> impl Iterator<Item = WalletTx> + '_ { self.cache.transactions() }
 
     #[inline]
-    pub fn coins(&self) -> impl Iterator<Item = CoinRow<<L2::Cache as Layer2Cache>::Coin>> + '_ {
-        self.cache.coins()
-    }
+    pub fn coins(&self) -> impl Iterator<Item = WalletCoin> + '_ { self.cache.coins() }
 
-    pub fn address_coins(
-        &self,
-    ) -> HashMap<DerivedAddr, Vec<CoinRow<<L2::Cache as Layer2Cache>::Coin>>> {
+    pub fn address_coins(&self) -> HashMap<DerivedAddr, Vec<WalletCoin>> {
         let map = HashMap::new();
         self.coins().fold(map, |mut acc, txo| {
             acc.entry(txo.address).or_default().push(txo);
@@ -720,26 +244,27 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
         })
     }
 
-    pub fn address_balance(&self) -> impl Iterator<Item = WalletAddr> + '_ {
-        self.cache.addr.values().flat_map(|set| set.iter()).copied()
+    #[inline]
+    pub fn balances(&self) -> impl Iterator<Item = AddressBalance> + '_ { self.cache.balances() }
+
+    #[inline]
+    pub fn history(&self) -> impl Iterator<Item = WalletOperation> + '_ { self.cache.history() }
+
+    #[inline]
+    pub fn has_txo(&self, outpoint: Outpoint) -> bool { self.cache.has_txo(outpoint) }
+
+    #[inline]
+    pub fn has_utxo(&self, outpoint: Outpoint) -> bool { self.cache.has_utxo(outpoint) }
+
+    #[inline]
+    pub fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
+        self.cache.utxo(outpoint)
     }
 
     #[inline]
-    pub fn history(&self) -> impl Iterator<Item = TxRow<<L2::Cache as Layer2Cache>::Tx>> + '_ {
-        self.cache.history()
-    }
-
-    pub fn has_outpoint(&self, outpoint: Outpoint) -> bool { self.cache.has_outpoint(outpoint) }
-    pub fn is_unspent(&self, outpoint: Outpoint) -> bool { self.cache.is_unspent(outpoint) }
-
-    pub fn outpoint_by(
-        &self,
-        outpoint: Outpoint,
-    ) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
-        self.cache.outpoint_by(outpoint)
-    }
-
     pub fn txos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.txos() }
+
+    #[inline]
     pub fn utxos(&self) -> impl Iterator<Item = WalletUtxo> + '_ { self.cache.utxos() }
 
     pub fn coinselect<'a>(
@@ -759,63 +284,5 @@ impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
                 }
             })
             .map(|utxo| utxo.outpoint)
-    }
-}
-
-impl<K, D: Descriptor<K>, L2: Layer2> Wallet<K, D, L2> {
-    pub fn load<P>(provider: P, autosave: bool) -> Result<Wallet<K, D, L2>, PersistenceError>
-    where P: Clone
-            + PersistenceProvider<WalletDescr<K, D, L2::Descr>>
-            + PersistenceProvider<WalletData<L2::Data>>
-            + PersistenceProvider<WalletCache<L2::Cache>>
-            + PersistenceProvider<L2>
-            + 'static {
-        let descr = WalletDescr::<K, D, L2::Descr>::load(provider.clone(), autosave)?;
-        let data = WalletData::<L2::Data>::load(provider.clone(), autosave)?;
-        let cache = WalletCache::<L2::Cache>::load(provider.clone(), autosave)?;
-        let layer2 = L2::load(provider, autosave)?;
-
-        Ok(Wallet {
-            descr,
-            data,
-            cache,
-            layer2,
-        })
-    }
-
-    pub fn set_id(&mut self, id: &impl ToString) {
-        self.data.id = Some(id.to_string());
-        self.cache.id = Some(id.to_string());
-    }
-
-    pub fn make_persistent<P>(
-        &mut self,
-        provider: P,
-        autosave: bool,
-    ) -> Result<bool, PersistenceError>
-    where
-        P: Clone
-            + PersistenceProvider<WalletDescr<K, D, L2::Descr>>
-            + PersistenceProvider<WalletData<L2::Data>>
-            + PersistenceProvider<WalletCache<L2::Cache>>
-            + PersistenceProvider<L2>
-            + 'static,
-    {
-        let a = self.descr.make_persistent(provider.clone(), autosave)?;
-        let b = self.data.make_persistent(provider.clone(), autosave)?;
-        let c = self.cache.make_persistent(provider.clone(), autosave)?;
-        let d = self.layer2.make_persistent(provider, autosave)?;
-        Ok(a && b && c && d)
-    }
-
-    pub fn store(&mut self) -> Result<(), PersistenceError> {
-        // TODO: Revert on failure
-
-        self.descr.store()?;
-        self.data.store()?;
-        self.cache.store()?;
-        self.layer2.store()?;
-
-        Ok(())
     }
 }

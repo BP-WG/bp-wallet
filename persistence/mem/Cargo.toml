@@ -1,0 +1,23 @@
+[package]
+name = "bp-persist-mem"
+version.workspace = true
+authors.workspace = true
+description = "Memory persistence for BP wallet"
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories = ["algorithms", "cryptography", "science", "no-std"]
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+exclude = [".github"]
+
+[dependencies]
+amplify.workspace = true
+bp-wallet.workspace = true
+
+[features]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage_nightly)'] }
