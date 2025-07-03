@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 //
-// Written in 2020-2024 by
+// Written in 2020-2023 by
 //     Dr Maxim Orlovsky <orlovsky@lnp-bp.org>
 //
-// Copyright (C) 2020-2024 LNP/BP Standards Association. All rights reserved.
-// Copyright (C) 2020-2024 Dr Maxim Orlovsky. All rights reserved.
+// Copyright (C) 2020-2023 LNP/BP Standards Association. All rights reserved.
+// Copyright (C) 2020-2023 Dr Maxim Orlovsky. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod password;
+mod io;
 mod seed;
 
-pub use seed::{Seed, SeedType};
+pub use io::{decrypt, encrypt, DataError, SecureIo};
+pub use password::calculate_entropy;

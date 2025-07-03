@@ -1,5 +1,5 @@
 [workspace]
-members = ["."]
+members = ["."]#, "persistence/mem"]
 exclude = ["convert"]
 
 [workspace.package]
@@ -18,6 +18,12 @@ amplify = "4.9.0"
 bp-std = "0.12.0-rc.2"
 psbt = "0.12.0-rc.2"
 descriptors = "0.12.0-rc.2"
+
+sha2 = "0.10.8"
+rand = "0.9.1"
+aes-gcm = "0.10.3"
+bip39 = "2.0.0"
+
 serde_crate = { package = "serde", version = "1", features = ["derive"] }
 clap = { version = "4.5.40", features = ["derive"] }
 
@@ -44,10 +50,7 @@ bp-std = { workspace = true }
 psbt = { workspace = true }
 descriptors = { workspace = true }
 
-sha2 = "0.10.8"
-rand = { version = "0.9.1", optional = true }
-aes-gcm = { version = "0.10.3", optional = true }
-bip39 = { version = "2.0.0", optional = true }
+rand = { workspace = true, optional = true }
 
 clap = { workspace = true, optional = true }
 serde_crate = { workspace = true, optional = true }
@@ -55,7 +58,7 @@ serde_crate = { workspace = true, optional = true }
 [features]
 default = []
 all = ["signers", "client-side-validation", "strict-encoding", "serde", "clap"]
-signers = ["bp-std/signers", "bip39", "rand", "aes-gcm"]
+signers = ["bp-std/signers", "rand"]
 client-side-validation = ["bp-std/client-side-validation", "psbt/client-side-validation"]
 strict-encoding = ["bp-std/strict_encoding", "psbt/strict_encoding"]
 serde = ["serde_crate", "bp-std/serde", "psbt/serde", "descriptors/serde"]
