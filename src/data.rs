@@ -29,31 +29,11 @@ use amplify::hex;
 use amplify::hex::FromHex;
 use bpstd::psbt::Utxo;
 use bpstd::{
-    Address, BlockHash, BlockHeader, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint,
-    Prevout, Sats, ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
+    Address, BlockHash, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Prevout, Sats,
+    ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
 };
 
 pub type BlockHeight = NonZeroU32;
-
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct BlockInfo {
-    pub mined: MiningInfo,
-    pub header: BlockHeader,
-    pub difficulty: u8,
-    pub tx_count: u32,
-    pub size: u32,
-    pub weight: u32,
-    pub mediantime: u32,
-}
-
-impl Ord for BlockInfo {
-    fn cmp(&self, other: &Self) -> Ordering { self.mined.cmp(&other.mined) }
-}
-
-impl PartialOrd for BlockInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
-}
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]

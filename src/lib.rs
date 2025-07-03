@@ -39,8 +39,8 @@ mod bip43;
 pub use bip43::{Bip43, DerivationStandard, ParseBip43Error};
 pub use bpstd::*;
 pub use data::{
-    AddressBalance, BlockHeight, BlockInfo, MiningInfo, Party, TxCredit, TxDebit, TxStatus,
-    WalletTx, WalletUtxo,
+    AddressBalance, BlockHeight, MiningInfo, Party, TxCredit, TxDebit, TxStatus, WalletTx,
+    WalletUtxo,
 };
 #[cfg(feature = "signers")]
 pub use hot::{Seed, SeedType};
