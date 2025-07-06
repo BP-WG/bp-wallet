@@ -116,6 +116,12 @@ impl<T> TxStatus<T> {
     }
 
     pub fn is_mined(&self) -> bool { matches!(self, Self::Mined(_)) }
+
+    pub fn is_known(&self) -> bool {
+        matches!(self, Self::Mined(_) | Self::Mempool | Self::Channel)
+    }
+
+    pub fn is_unknown(&self) -> bool { matches!(self, Self::Unknown) }
 }
 
 impl<T> Display for TxStatus<T>

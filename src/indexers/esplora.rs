@@ -300,7 +300,7 @@ impl Indexer for Client {
                             prev_tx.outputs.get_mut(credit.outpoint.vout_u32() as usize)
                         {
                             let outpoint = txout.outpoint;
-                            if tx.status.is_mined() {
+                            if tx.status.is_known() {
                                 cache.utxo.remove(&outpoint);
                             }
                             txout.spent = Some(credit.outpoint.into())
