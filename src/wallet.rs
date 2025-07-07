@@ -173,10 +173,9 @@ impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
     fn next_derivation_index(&mut self, keychain: impl Into<Keychain>, shift: bool) -> NormalIndex {
         let keychain = keychain.into();
         let mut idx = self.next_published_derivation_index(keychain);
-        let mut last_index = self.cache.last_used(keychain).unwrap_or_default();
+        let last_index = self.cache.last_used(keychain).unwrap_or_default().saturating_inc();
         idx = cmp::max(last_index, idx);
         if shift {
-            last_index = idx.saturating_add(1u32);
             self.cache.set_last_used(keychain, last_index);
         }
         idx
