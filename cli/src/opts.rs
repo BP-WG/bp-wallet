@@ -42,7 +42,7 @@ pub const DATA_DIR: &str = "~/Documents";
 #[cfg(target_os = "android")]
 pub const DATA_DIR: &str = ".";
 
-pub const DEFAULT_ELECTRUM: &str = "example.com:50001";
+pub const DEFAULT_ELECTRUM: &str = "mycitadel.io:50001";
 pub const DEFAULT_ESPLORA: &str = "https://blockstream.info/{network}/api";
 pub const DEFAULT_MEMPOOL: &str = "https://mempool.space/{network}/api";
 
