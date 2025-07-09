@@ -67,3 +67,12 @@ getrandom2 = { package = "getrandom", version = "0.2", features = ["js"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+
+[patch.crates-io]
+bp-consensus = { git = "https://github.com/BP-WG/bp-core" }
+bp-core = { git = "https://github.com/BP-WG/bp-core" }
+bp-invoice = { git = "https://github.com/BP-WG/bp-std", branch = "feat/descriptors" }
+bp-derive = { git = "https://github.com/BP-WG/bp-std", branch = "feat/descriptors" }
+descriptors = { git = "https://github.com/BP-WG/bp-std", branch = "feat/descriptors" }
+psbt = { git = "https://github.com/BP-WG/bp-std", branch = "feat/descriptors" }
+bp-std = { git = "https://github.com/BP-WG/bp-std", branch = "feat/descriptors" }

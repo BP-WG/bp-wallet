@@ -30,7 +30,7 @@ use amplify::hex::FromHex;
 use bpstd::psbt::Utxo;
 use bpstd::{
     Address, BlockHash, DerivedAddr, Keychain, LockTime, NormalIndex, Outpoint, Prevout, Sats,
-    ScriptPubkey, SeqNo, SigScript, Terminal, TxVer, Txid, Witness,
+    ScriptPubkey, SeqNo, SigScript, Terminal, Tx, TxIn, TxOut, TxVer, Txid, VarIntArray, Witness,
 };
 
 pub type BlockHeight = NonZeroU32;
@@ -183,6 +183,15 @@ impl WalletTx {
         let debit = self.debit_sum().sats_i64();
         debit - credit
     }
+
+    pub fn to_tx(&self) -> Tx {
+        Tx {
+            version: self.version,
+            inputs: VarIntArray::from_iter_checked(self.inputs.iter().map(TxCredit::to_txin)),
+            outputs: VarIntArray::from_iter_checked(self.outputs.iter().map(TxDebit::to_txout)),
+            lock_time: self.locktime,
+        }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, From)]
@@ -268,6 +277,15 @@ impl TxCredit {
     pub fn is_ourself(&self) -> bool { self.payer.is_ourself() }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
     pub fn derived_addr(&self) -> Option<DerivedAddr> { self.payer.derived_addr() }
+
+    pub fn to_txin(&self) -> TxIn {
+        TxIn {
+            prev_output: self.outpoint,
+            sig_script: self.script_sig.clone(),
+            sequence: self.sequence,
+            witness: self.witness.clone(),
+        }
+    }
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(rename_all = "camelCase"))]
@@ -284,6 +302,16 @@ impl TxDebit {
     pub fn is_ourself(&self) -> bool { self.beneficiary.is_ourself() }
     pub fn is_external(&self) -> bool { !self.is_ourself() }
     pub fn derived_addr(&self) -> Option<DerivedAddr> { self.beneficiary.derived_addr() }
+
+    pub fn to_txout(&self) -> TxOut {
+        TxOut {
+            value: self.value,
+            script_pubkey: self
+                .beneficiary
+                .script_pubkey()
+                .expect("subsidy must not be listed in tx outputs"),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]

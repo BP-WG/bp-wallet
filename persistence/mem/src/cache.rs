@@ -24,8 +24,8 @@ use std::collections::{HashMap, HashSet};
 
 use bpwallet::{
     AddressBalance, Counterparty, Descriptor, Keychain, NonWalletItem, NormalIndex, OpType,
-    Outpoint, Party, Sats, ScriptPubkey, Txid, WalletCache, WalletCoin, WalletOperation, WalletTx,
-    WalletUtxo,
+    Outpoint, Party, Sats, ScriptPubkey, Tx, Txid, WalletCache, WalletCoin, WalletOperation,
+    WalletTx, WalletUtxo,
 };
 
 #[derive(Debug)]
@@ -166,6 +166,10 @@ impl WalletCache for MemCache {
 
     #[inline]
     fn has_utxo(&self, outpoint: Outpoint) -> bool { self.utxos.contains(&outpoint) }
+
+    fn transaction(&self, txid: Txid) -> Result<Tx, NonWalletItem> {
+        self.txes.get(&txid).map(|tx| tx.to_tx()).ok_or(NonWalletItem::NonWalletTx(txid))
+    }
 
     fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem> {
         let tx = self.txes.get(&outpoint.txid).ok_or(NonWalletItem::NonWalletTx(outpoint.txid))?;

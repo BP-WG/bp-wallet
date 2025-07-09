@@ -28,12 +28,12 @@ use std::ops::{AddAssign, Deref};
 use bpstd::psbt::{Psbt, PsbtConstructor, PsbtMeta, Utxo};
 use bpstd::{
     Address, AddressNetwork, DerivedAddr, Descriptor, Idx, Keychain, Network, NormalIndex,
-    Outpoint, Sats, ScriptPubkey, Txid, Vout,
+    Outpoint, Sats, ScriptPubkey, Tx, Txid, Vout,
 };
 
 use crate::{
-    AddressBalance, Party, TxCredit, TxDebit, TxStatus, WalletCoin, WalletOperation, WalletTx,
-    WalletUtxo,
+    AddressBalance, Party, TxCredit, TxDebit, TxStatus, UnsignedTx, WalletCoin, WalletOperation,
+    WalletTx, WalletUtxo,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Error)]
@@ -61,6 +61,7 @@ pub trait WalletCache {
 
     fn has_txo(&self, outpoint: Outpoint) -> bool;
     fn has_utxo(&self, outpoint: Outpoint) -> bool;
+    fn transaction(&self, txid: Txid) -> Result<Tx, NonWalletItem>;
     // TODO: MAke ScriptPubkey part of the WalletUtxo
     fn utxo(&self, outpoint: Outpoint) -> Result<(WalletUtxo, ScriptPubkey), NonWalletItem>;
 
@@ -163,6 +164,11 @@ impl<K, D: Descriptor<K>, C: WalletCache> PsbtConstructor for Wallet<K, D, C> {
     type Descr = D;
 
     fn descriptor(&self) -> &D { &self.descriptor }
+
+    fn prev_tx(&self, txid: Txid) -> Option<UnsignedTx> {
+        let tx = self.cache.transaction(txid).ok()?;
+        Some(UnsignedTx::with_sigs_removed(tx))
+    }
 
     fn utxo(&self, outpoint: Outpoint) -> Option<(Utxo, ScriptPubkey)> {
         self.cache.utxo(outpoint).ok().map(|(utxo, spk)| (utxo.into_utxo(), spk))
